@@ -1,0 +1,326 @@
+import { useState, useEffect, useRef } from 'react';
+import { Modal, Box, Typography, Button, Switch, FormControlLabel } from '@mui/material';
+import { 
+  RUNNING_GAMES, 
+  BUSINESS_GAMES, 
+  PUZZLE_GAMES, 
+  HIDDEN_OBJECT_GAMES,
+  SHOOTER_GAMES,
+  BALL_GAMES,
+  ALL_GAMES
+} from './gameConstants';
+
+const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile }) => {
+  const [isTestRoll, setIsTestRoll] = useState(false);
+  const [isRolling, setIsRolling] = useState(false);
+  const [selectedPool, setSelectedPool] = useState(null);
+  const [visibleGames, setVisibleGames] = useState([]);
+  const [selectedGame, setSelectedGame] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [gamesPool, setGamesPool] = useState([]);
+  
+  const rollData = useRef({
+    interval: null,
+    timeout: null,
+    speed: 50,
+    elapsedTime: 0,
+    currentIndex: 0,
+    targetGame: null
+  });
+
+  const getModalTitle = () => {
+    if (!currentUser) return 'Гостевой ролл';
+    if (currentUser.type === 'admin') return 'Ролл Администратора';
+    return `Ролл игр игрока ${playerProfile?.name || currentUser.name}`;
+  };
+
+  const getGamesForPool = (pool) => {
+    switch(pool) {
+      case 'Бегалки': return RUNNING_GAMES;
+      case 'Бизнес': return BUSINESS_GAMES;
+      case 'Головоломки': return PUZZLE_GAMES;
+      case 'Поиск предметов': return HIDDEN_OBJECT_GAMES;
+      case 'Стрелялки': return SHOOTER_GAMES;
+      case 'Шарики': return BALL_GAMES;
+      case 'Общий': return ALL_GAMES;
+      default: return [];
+    }
+  };
+
+  const updateVisibleGames = (index) => {
+    const visible = [];
+    for (let i = 0; i < 7; i++) {
+      const gameIndex = (index + i) % gamesPool.length;
+      visible.push(gamesPool[gameIndex]);
+    }
+    setVisibleGames(visible);
+    return visible[3];
+  };
+
+  const handlePoolSelect = (pool) => {
+    setSelectedPool(pool);
+    const poolGames = getGamesForPool(pool);
+    setGamesPool(poolGames);
+    const randomIndex = Math.floor(Math.random() * poolGames.length);
+    rollData.current.currentIndex = randomIndex;
+    const centerGame = updateVisibleGames(randomIndex);
+    setSelectedGame(null);
+  };
+
+  const canSelectGame = () => {
+    if (!currentUser || currentUser.type !== 'player' || isTestRoll) return true;
+
+    const games = playerProfile?.games || [];
+    const hasGameToUpdate = games.some(
+      game => game.status === 'В процессе' && 
+             game.dice > 0 && 
+             !game.name
+    );
+    const hasEmptyGame = games.some(
+      game => game.status === 'В процессе' && 
+             !game.dice && 
+             !game.name
+    );
+    const allGamesCompleted = games.every(
+      game => game.status !== 'В процессе'
+    );
+
+    return hasGameToUpdate || hasEmptyGame || allGamesCompleted;
+  };
+
+  const startRoll = () => {
+    if (!selectedPool) {
+      setErrorMessage('Выберите пул игр');
+      return;
+    }
+
+    if (currentUser?.type === 'player' && !isTestRoll && !canSelectGame()) {
+      setErrorMessage('Завершите текущие игры или бросьте кубик');
+      return;
+    }
+
+    setIsRolling(true);
+    setSelectedGame(null);
+    setErrorMessage('');
+    rollData.current.speed = 50;
+    rollData.current.elapsedTime = 0;
+    
+    const targetIndex = Math.floor(Math.random() * gamesPool.length);
+    rollData.current.targetGame = gamesPool[targetIndex];
+    
+    const animate = () => {
+      rollData.current.elapsedTime += rollData.current.speed;
+      rollData.current.currentIndex = (rollData.current.currentIndex + 1) % gamesPool.length;
+      
+      const centerGame = updateVisibleGames(rollData.current.currentIndex);
+      
+      if (rollData.current.elapsedTime > 3000) {
+        rollData.current.speed = Math.min(rollData.current.speed + 5, 200);
+      }
+
+      if (rollData.current.elapsedTime < 10000) {
+        rollData.current.interval = setTimeout(animate, rollData.current.speed);
+      } else {
+        finishRoll();
+      }
+    };
+
+    const finishRoll = () => {
+      clearTimeout(rollData.current.interval);
+      setIsRolling(false);
+      
+      const targetIndex = gamesPool.indexOf(rollData.current.targetGame);
+      rollData.current.currentIndex = (targetIndex - 3 + gamesPool.length) % gamesPool.length;
+      const centerGame = updateVisibleGames(rollData.current.currentIndex);
+      
+      setSelectedGame(centerGame);
+      
+      if (currentUser?.type === 'player' && !isTestRoll) {
+        onGameSelect(centerGame);
+      }
+    };
+
+    animate();
+  };
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(rollData.current.interval);
+      clearTimeout(rollData.current.timeout);
+    };
+  }, []);
+
+  const getGameStyle = (index) => {
+    const baseSize = 16;
+    const sizeDiff = Math.abs(3 - index) * 2;
+    const fontSize = baseSize - sizeDiff;
+    const opacity = 1 - (Math.abs(3 - index) * 0.2);
+    
+    return {
+      fontSize: `${fontSize}px`,
+      opacity,
+      fontWeight: index === 3 ? 'bold' : 'normal',
+      color: index === 3 ? '#151515' : 'inherit',
+      transition: 'all 0.1s ease',
+      textAlign: 'center',
+      padding: '8px 0',
+      height: '40px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: 'Raleway, sans-serif'
+    };
+  };
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <Box sx={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: 850,
+        bgcolor: 'background.paper',
+        boxShadow: 24,
+        p: 4,
+        borderRadius: '8px',
+        textAlign: 'center',
+        fontFamily: 'Raleway, sans-serif'
+      }}>
+        <Typography variant="h5" sx={{ 
+          fontFamily: 'Manrope, sans-serif',
+          fontWeight: 800,
+          fontSize: '24px',
+          mb: 3,
+          color: '#151515'
+        }}>
+          {getModalTitle()}
+        </Typography>
+        
+        {errorMessage && (
+          <Typography sx={{ 
+            color: '#C32519',
+            mb: 2,
+            fontFamily: 'Raleway, sans-serif'
+          }}>
+            {errorMessage}
+          </Typography>
+        )}
+        
+        {selectedGame && (
+          <Typography variant="h6" sx={{ 
+            mb: 2,
+            fontFamily: 'Manrope, sans-serif',
+            fontWeight: 700,
+            color: '#151515'
+          }}>
+            Выпала игра: {selectedGame}
+          </Typography>
+        )}
+
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          gap: '8px', 
+          margin: '20px 0',
+          flexWrap: 'wrap'
+        }}>
+          {['Бегалки', 'Бизнес', 'Головоломки', 'Поиск предметов', 'Стрелялки', 'Шарики', 'Общий'].map(pool => (
+            <Button
+              key={pool}
+              variant={selectedPool === pool ? 'contained' : 'outlined'}
+              onClick={() => handlePoolSelect(pool)}
+              disabled={isRolling}
+              sx={{
+                fontFamily: 'Raleway, sans-serif',
+                fontWeight: 700,
+                fontSize: '14px',
+                minWidth: '110px',
+                color: selectedPool === pool ? '#FFFFFF' : '#151515',
+                bgcolor: selectedPool === pool ? '#151515' : 'transparent',
+                borderColor: '#151515',
+                '&:hover': {
+                  bgcolor: selectedPool === pool ? '#333333' : '#F5F5F5',
+                  borderColor: '#151515'
+                },
+                borderRadius: '6px',
+                textTransform: 'none',
+                padding: '8px 16px'
+              }}
+            >
+              {pool}
+            </Button>
+          ))}
+        </div>
+
+        {selectedPool && (
+          <Typography variant="subtitle1" sx={{ 
+            mb: 2,
+            fontFamily: 'Raleway, sans-serif',
+            color: '#151515'
+          }}>
+            Выбран пулл: {selectedPool} ({gamesPool.length} игр)
+          </Typography>
+        )}
+
+        <div style={{ 
+          height: '300px',
+          overflow: 'hidden',
+          position: 'relative',
+          border: '1px solid #EDEDED',
+          borderRadius: '8px',
+          margin: '20px 0',
+          backgroundColor: '#F5F5F5'
+        }}>
+          {visibleGames.map((game, index) => (
+            <div key={`${game}-${index}`} style={getGameStyle(index)}>
+              {game}
+            </div>
+          ))}
+        </div>
+
+        {currentUser?.type === 'player' && (
+          <FormControlLabel
+            control={
+              <Switch
+                checked={isTestRoll}
+                onChange={(e) => setIsTestRoll(e.target.checked)}
+                disabled={isRolling}
+                color="primary"
+              />
+            }
+            label="Тестовый ролл"
+            sx={{ 
+              mb: 2,
+              fontFamily: 'Raleway, sans-serif'
+            }}
+          />
+        )}
+
+        <Button
+          variant="contained"
+          onClick={startRoll}
+          disabled={isRolling || !selectedPool}
+          sx={{
+            bgcolor: '#151515',
+            color: '#FFFFFF',
+            fontFamily: 'Raleway, sans-serif',
+            fontWeight: 700,
+            fontSize: '16px',
+            '&:hover': {
+              bgcolor: '#333333'
+            },
+            padding: '10px 20px',
+            borderRadius: '6px',
+            textTransform: 'none',
+            height: 'auto'
+          }}
+        >
+          {isRolling ? 'Выбор игры...' : 'Выбор игры'}
+        </Button>
+      </Box>
+    </Modal>
+  );
+};
+
+export default GameRollModal;
