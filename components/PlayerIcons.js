@@ -78,7 +78,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
             }`}
           >
             {player.image ? (
-              <img 
+              <Igame 
                 src={player.image} 
                 alt={player.name} 
                 className="w-full h-full rounded-full object-cover"

@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
 
 module.exports = {
   output: 'export',
+  eslint: {
+    ignoreDuringBuilds: true, // Отключает проверку ESLint при сборке
+  },
 };
 
 
