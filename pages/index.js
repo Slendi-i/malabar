@@ -3,6 +3,7 @@ import { Button } from '@mui/material';
 import Sidebar from '../components/Sidebar';
 import PlayerIcons from '../components/PlayerIcons';
 import AuthModal from '../components/AuthModal';
+import apiService from '../services/apiService';
 
 export default function Home() {
   const [players, setPlayers] = useState([]);
@@ -21,47 +22,38 @@ export default function Home() {
   useEffect(() => {
     setIsMounted(true);
 
-    const loadData = () => {
-      if (typeof localStorage === 'undefined') {
-        createDefaultPlayers();
-        return;
-      }
-      
+    const loadData = async () => {
       try {
-        const savedPlayers = localStorage.getItem('players');
-        const savedUser = localStorage.getItem('currentUser');
-        
-        if (savedPlayers) {
-          try {
-            const parsedPlayers = JSON.parse(savedPlayers);
-            const normalizedPlayers = parsedPlayers.map(player => ({
-              ...player,
-              games: Array.isArray(player.games) ? player.games : [],
-              stats: player.stats || {
-                wins: 0,
-                rerolls: 0,
-                drops: 0,
-                position: player.id
-              }
-            }));
-            setPlayers(normalizedPlayers);
-          } catch (e) {
-            console.error("Failed to parse players data", e);
-            createDefaultPlayers();
-          }
+        // Load players from API
+        const apiPlayers = await apiService.getPlayers();
+        if (apiPlayers && Array.isArray(apiPlayers)) {
+          const normalizedPlayers = apiPlayers.map(player => ({
+            ...player,
+            games: Array.isArray(player.games) ? player.games : [],
+            stats: player.stats || {
+              wins: 0,
+              rerolls: 0,
+              drops: 0,
+              position: player.id
+            }
+          }));
+          setPlayers(normalizedPlayers);
         } else {
+          console.warn('No players data from API, using defaults');
           createDefaultPlayers();
         }
         
-        if (savedUser) {
-          try {
-            setCurrentUser(JSON.parse(savedUser));
-          } catch (e) {
-            console.error("Failed to parse user data", e);
+        // Load current user from API
+        try {
+          const apiUser = await apiService.getCurrentUser();
+          if (apiUser) {
+            setCurrentUser(apiUser);
           }
+        } catch (e) {
+          console.warn('Failed to load user from API:', e);
         }
       } catch (error) {
-        console.warn('Failed to access localStorage:', error);
+        console.error('Failed to load data from API:', error);
         createDefaultPlayers();
       }
     };
@@ -112,38 +104,76 @@ export default function Home() {
     }
   }, [imageDimensions.ratio]);
 
-  // Сохранение данных
+  // Сохранение данных в API
   useEffect(() => {
-    if (isMounted && typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-      try {
-        localStorage.setItem('players', JSON.stringify(players));
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-      } catch (error) {
-        console.warn('Failed to save to localStorage:', error);
-      }
+    if (isMounted && players.length > 0) {
+      const saveData = async () => {
+        try {
+          // Save players to API
+          await apiService.batchUpdatePlayers(players);
+          
+          // Save current user to API
+          if (currentUser) {
+            await apiService.setCurrentUser(currentUser);
+          }
+        } catch (error) {
+          console.warn('Failed to save data to API:', error);
+        }
+      };
+      
+      saveData();
     }
   }, [players, currentUser, isMounted]);
 
   // Обработчики авторизации
-  const handleLogin = (login, password) => {
-    if (login === 'admin' && password === 'admin') {
-      setCurrentUser({ type: 'admin', id: 0, name: 'Администратор' });
-      return;
-    }
-
-    const playerNumber = parseInt(login.replace('Player', ''));
-    if (!isNaN(playerNumber) && login === `Player${playerNumber}` && password === `Player${playerNumber}`) {
-      setCurrentUser({
-        type: 'player',
-        id: playerNumber,
-        name: `Игрок ${playerNumber}`
-      });
-    } else {
-      setCurrentUser({ type: 'viewer', id: -1, name: 'Зритель' });
+  const handleLogin = async (login, password) => {
+    try {
+      let userData;
+      
+      if (login === 'admin' && password === 'admin') {
+        userData = { type: 'admin', id: 0, name: 'Администратор' };
+      } else {
+        const playerNumber = parseInt(login.replace('Player', ''));
+        if (!isNaN(playerNumber) && login === `Player${playerNumber}` && password === `Player${playerNumber}`) {
+          userData = {
+            type: 'player',
+            id: playerNumber,
+            name: `Игрок ${playerNumber}`
+          };
+        } else {
+          userData = { type: 'viewer', id: -1, name: 'Зритель' };
+        }
+      }
+      
+      // Save user to API
+      await apiService.setCurrentUser(userData);
+      setCurrentUser(userData);
+    } catch (error) {
+      console.error('Login failed:', error);
+      // Fallback to local state if API fails
+      if (login === 'admin' && password === 'admin') {
+        setCurrentUser({ type: 'admin', id: 0, name: 'Администратор' });
+      } else {
+        const playerNumber = parseInt(login.replace('Player', ''));
+        if (!isNaN(playerNumber) && login === `Player${playerNumber}` && password === `Player${playerNumber}`) {
+          setCurrentUser({
+            type: 'player',
+            id: playerNumber,
+            name: `Игрок ${playerNumber}`
+          });
+        } else {
+          setCurrentUser({ type: 'viewer', id: -1, name: 'Зритель' });
+        }
+      }
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await apiService.setCurrentUser(null);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
     setCurrentUser(null);
   };
 
