@@ -73,7 +73,7 @@ nano ../config/api.js
 
 **Change this line in `config/api.js`:**
 ```javascript
-const API_BASE_URL = 'http://YOUR_ACTUAL_VPS_IP:3001';
+const API_BASE_URL = 'http://46.173.17.229:3000';
 ```
 
 ### Step 4: Start the Backend
@@ -92,8 +92,8 @@ pm2 startup
 ### Step 5: Configure Firewall
 
 ```bash
-# Allow port 3001
-sudo ufw allow 3001
+# Allow port 3000
+sudo ufw allow 3000
 
 # If using nginx as reverse proxy
 sudo ufw allow 80
@@ -104,7 +104,7 @@ sudo ufw allow 443
 
 ```bash
 # Test if backend is running
-curl http://your-vps-ip:3001/api/health
+curl http://46.173.17.229:3000/api/health
 
 # Should return: {"status":"OK","timestamp":"..."}
 ```
@@ -112,7 +112,7 @@ curl http://your-vps-ip:3001/api/health
 ## 🔧 Configuration Files
 
 ### Backend Configuration (`server/server.js`)
-- Port: 3001 (configurable via environment variable)
+- Port: 3000 (configurable via environment variable)
 - Database: SQLite (automatically created)
 - CORS: Enabled for all origins (customize as needed)
 
@@ -255,7 +255,7 @@ server {
     server_name your-domain.com;
 
     location / {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -268,17 +268,17 @@ server {
 ### Without Domain
 - Use VPS IP directly
 - Update `config/api.js` with your VPS IP
-- Access via `http://your-vps-ip:3001`
+- Access via `http://46.173.17.229:3000`
 
 ## ✅ Verification Checklist
 
-- [ ] Backend server running on port 3001
+- [ ] Backend server running on port 3000
 - [ ] API health check returns success
 - [ ] Frontend can connect to backend
 - [ ] Players data loads from database
 - [ ] Changes persist between sessions
 - [ ] Multiple users see same data
-- [ ] Firewall allows port 3001
+- [ ] Firewall allows port 3000
 - [ ] Database file created successfully
 
 ## 🆘 Support

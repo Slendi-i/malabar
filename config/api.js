@@ -1,7 +1,7 @@
 // API Configuration
-// Change this URL when deploying to VPS
+// VPS Server Configuration
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'http://46.173.17.229:3000'  // Change this to your VPS IP
+  ? 'http://46.173.17.229:3000'  // Your VPS server
   : 'http://localhost:3000';
 
 export const API_ENDPOINTS = {

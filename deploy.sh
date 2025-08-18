@@ -27,7 +27,7 @@ echo "📋 Creating deployment configuration..."
 # Create production config
 cat > config/api.js << 'EOF'
 // API Configuration for VPS
-const API_BASE_URL = 'http://your-vps-ip:3001';  // CHANGE THIS TO YOUR VPS IP
+const API_BASE_URL = 'http://46.173.17.229:3000';  // Your VPS server
 
 export const API_ENDPOINTS = {
   PLAYERS: `${API_BASE_URL}/api/players`,
@@ -54,14 +54,14 @@ ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=10
 Environment=NODE_ENV=production
-Environment=PORT=3001
+Environment=PORT=3000
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
 echo "🔒 Setting up firewall..."
-sudo ufw allow 3001
+sudo ufw allow 3000
 
 echo "📊 Starting backend service..."
 sudo systemctl daemon-reload
