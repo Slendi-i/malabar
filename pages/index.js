@@ -10,48 +10,59 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState(null);
   const [isMounted, setIsMounted] = useState(false);
   const [imageDimensions, setImageDimensions] = useState({ 
-    width: 0, 
-    height: 0,
-    ratio: 1
+    width: 800, 
+    height: 600,
+    ratio: 0.75
   });
   const containerRef = useRef(null);
+  const imageRef = useRef(null);
 
   // Инициализация компонента
   useEffect(() => {
     setIsMounted(true);
 
     const loadData = () => {
-      const savedPlayers = localStorage.getItem('players');
-      const savedUser = localStorage.getItem('currentUser');
-      
-      if (savedPlayers) {
-        try {
-          const parsedPlayers = JSON.parse(savedPlayers);
-          const normalizedPlayers = parsedPlayers.map(player => ({
-            ...player,
-            games: Array.isArray(player.games) ? player.games : [],
-            stats: player.stats || {
-              wins: 0,
-              rerolls: 0,
-              drops: 0,
-              position: player.id
-            }
-          }));
-          setPlayers(normalizedPlayers);
-        } catch (e) {
-          console.error("Failed to parse players data", e);
-          createDefaultPlayers();
-        }
-      } else {
+      if (typeof localStorage === 'undefined') {
         createDefaultPlayers();
+        return;
       }
       
-      if (savedUser) {
-        try {
-          setCurrentUser(JSON.parse(savedUser));
-        } catch (e) {
-          console.error("Failed to parse user data", e);
+      try {
+        const savedPlayers = localStorage.getItem('players');
+        const savedUser = localStorage.getItem('currentUser');
+        
+        if (savedPlayers) {
+          try {
+            const parsedPlayers = JSON.parse(savedPlayers);
+            const normalizedPlayers = parsedPlayers.map(player => ({
+              ...player,
+              games: Array.isArray(player.games) ? player.games : [],
+              stats: player.stats || {
+                wins: 0,
+                rerolls: 0,
+                drops: 0,
+                position: player.id
+              }
+            }));
+            setPlayers(normalizedPlayers);
+          } catch (e) {
+            console.error("Failed to parse players data", e);
+            createDefaultPlayers();
+          }
+        } else {
+          createDefaultPlayers();
         }
+        
+        if (savedUser) {
+          try {
+            setCurrentUser(JSON.parse(savedUser));
+          } catch (e) {
+            console.error("Failed to parse user data", e);
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to access localStorage:', error);
+        createDefaultPlayers();
       }
     };
 
@@ -67,29 +78,14 @@ export default function Home() {
       setPlayers(defaultPlayers);
     };
 
-    const loadImageDimensions = () => {
-      const img = new Image();
-      img.src = '/game-field.jpg';
-      
-      img.onload = () => {
-        const ratio = img.naturalHeight / img.naturalWidth;
-        setImageDimensions({
-          width: img.naturalWidth,
-          height: img.naturalHeight,
-          ratio
-        });
-      };
-    };
+
 
     if (typeof window !== 'undefined') {
       loadData();
-      loadImageDimensions();
+      // Image dimensions are now handled by the img element's onLoad event
     }
 
-    return () => {
-      const img = new Image();
-      img.onload = null;
-    };
+    // No cleanup needed for the new approach
   }, []);
 
   // Обновление размеров при изменении окна
@@ -107,17 +103,24 @@ export default function Home() {
       }
     };
 
-    window.addEventListener('resize', handleResize);
-    handleResize(); // Инициализация размеров
+    // Only add resize listener if we're in browser environment
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+      handleResize(); // Инициализация размеров
 
-    return () => window.removeEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
   }, [imageDimensions.ratio]);
 
   // Сохранение данных
   useEffect(() => {
-    if (isMounted && typeof window !== 'undefined') {
-      localStorage.setItem('players', JSON.stringify(players));
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    if (isMounted && typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem('players', JSON.stringify(players));
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      } catch (error) {
+        console.warn('Failed to save to localStorage:', error);
+      }
     }
   }, [players, currentUser, isMounted]);
 
@@ -233,18 +236,47 @@ export default function Home() {
             width: '100%',
             height: `${imageDimensions.height}px`,
             minHeight: '100vh',
-            backgroundImage: 'url(/game-field.jpg)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'top center',
-            backgroundRepeat: 'no-repeat',
             position: 'relative'
           }}
         >
-          <PlayerIcons 
-            players={players} 
-            setPlayers={setPlayers}
-            currentUser={currentUser}
+          {/* Hidden image for dimension detection */}
+          <img
+            ref={imageRef}
+            src="/game-field.jpg"
+            alt="Game field"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              zIndex: 0
+            }}
+            onLoad={() => {
+              if (imageRef.current) {
+                const ratio = imageRef.current.naturalHeight / imageRef.current.naturalWidth;
+                setImageDimensions({
+                  width: imageRef.current.naturalWidth,
+                  height: imageRef.current.naturalHeight,
+                  ratio
+                });
+              }
+            }}
+            onError={() => {
+              console.warn('Failed to load game-field.jpg, using default dimensions');
+              // Keep default dimensions
+            }}
           />
+          
+          {/* Player icons overlay */}
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <PlayerIcons 
+              players={players} 
+              setPlayers={setPlayers}
+              currentUser={currentUser}
+            />
+          </div>
         </div>
       </div>
 

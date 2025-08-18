@@ -174,7 +174,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
             position: 'relative',
             flexShrink: 0
           }}>
-            <Image
+            <img
               src={image || '/default-avatar.png'}
               alt="Аватар"
               style={{
