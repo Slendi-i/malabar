@@ -61,11 +61,12 @@ export default function Home() {
     const createDefaultPlayers = () => {
       const defaultPlayers = Array.from({ length: 12 }, (_, i) => ({
         id: i + 1,
-        name: `Игрок ${i + 1}`,
-        image: '',
-        socialLinks: { twitch: '', telegram: '', discord: '' },
-        stats: { wins: 0, rerolls: 0, drops: 0, position: i + 1 },
-        games: []
+        name: `Player ${i + 1}`,
+        avatar: '/avatars/player' + (i + 1) + '.jpg',
+        socialLinks: { discord: '', twitter: '', instagram: '' },
+        stats: { wins: 0, losses: 0, draws: 0 },
+        games: [],
+        isOnline: false
       }));
       setPlayers(defaultPlayers);
     };
