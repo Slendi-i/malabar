@@ -3,7 +3,7 @@
 # Malabar Event Site VPS Deployment Script
 # Make sure to run this from your project root directory
 
-echo "🚀 Starting Malabar Event Site deployment..."
+echo "🚀 Starting Malabar deployment..."
 
 # Check if we're in the right directory
 if [ ! -f "package.json" ]; then
@@ -24,15 +24,16 @@ npm run build
 
 echo "📋 Creating deployment configuration..."
 
-# Create production config
+# Create production config/api.js
 cat > config/api.js << 'EOF'
-// API Configuration for VPS
-const API_BASE_URL = 'http://46.173.17.229:3000';  // Your VPS server
+const API_BASE_URL = process.env.NODE_ENV === 'production'
+  ? 'http://46.173.17.229:3001'  // Your VPS server
+  : 'http://localhost:3001';      // Local development
 
 export const API_ENDPOINTS = {
-  PLAYERS: `${API_BASE_URL}/api/players`,
-  CURRENT_USER: `${API_BASE_URL}/api/users/current`,
-  HEALTH: `${API_BASE_URL}/api/health`
+  PLAYERS: '/api/players',
+  CURRENT_USER: '/api/users/current',
+  HEALTH: '/api/health'
 };
 
 export default API_BASE_URL;
@@ -60,8 +61,8 @@ Environment=PORT=3000
 WantedBy=multi-user.target
 EOF
 
-echo "🔒 Setting up firewall..."
-sudo ufw allow 3000
+echo "🔒 Configuring firewall..."
+sudo ufw allow 3001
 
 echo "📊 Starting backend service..."
 sudo systemctl daemon-reload

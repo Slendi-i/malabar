@@ -1,140 +1,128 @@
-# 🚀 Malabar Event Site - VPS Deployment Guide
+# Malabar Event Site - VPS Deployment Guide
 
 ## Overview
-This guide will help you migrate your site from localStorage (local data) to a global database system where all users see the same data in real-time.
+This guide will help you deploy your Malabar Event Site to a VPS server with global data synchronization.
 
-## 🏗️ Architecture Changes
+## Architecture
+- **Frontend**: Next.js website running on port 3000
+- **Backend**: Express.js API server running on port 3001
+- **Database**: SQLite for data persistence
+- **Synchronization**: Global API endpoints for real-time updates
 
-### Before (localStorage)
-- ❌ Each user has their own data
-- ❌ Changes don't sync between users
-- ❌ Data lost when browser is cleared
-- ❌ No real-time updates
+## Prerequisites
+- VPS with Ubuntu/Debian
+- Node.js 18+ installed
+- Git access to your repository
+- SSH access to your VPS
 
-### After (Global Database)
-- ✅ All users see the same data
-- ✅ Changes sync immediately
-- ✅ Data persists on server
-- ✅ Real-time synchronization
+## Deployment Steps
 
-## 📋 Prerequisites
-
-1. **VPS Server** with Ubuntu/Debian
-2. **Node.js** (v16 or higher)
-3. **Git** (for code deployment)
-4. **Domain name** (optional but recommended)
-
-## 🚀 Deployment Steps
-
-### Step 1: Prepare Your VPS
-
+### 1. Prepare Your VPS
 ```bash
 # Update system
 sudo apt update && sudo apt upgrade -y
 
-# Install Node.js
+# Install Node.js (if not already installed)
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
-# Install PM2 (process manager)
+# Install PM2 for process management
 sudo npm install -g pm2
-
-# Verify installation
-node --version
-npm --version
 ```
 
-### Step 2: Upload Your Code
-
+### 2. Upload Your Code
 ```bash
-# On your local machine, build the project
-npm run build
+# Clone your repository
+git clone <your-repo-url> /var/www/malabar
+cd /var/www/malabar
 
-# Upload to VPS (replace with your VPS IP)
-scp -r . user@your-vps-ip:/home/user/malabar-event
-
-# Or use Git
-git clone https://github.com/your-username/malabar-event.git
-cd malabar-event
-```
-
-### Step 3: Configure the Backend
-
-```bash
-# Navigate to server directory
-cd server
-
-# Install dependencies
+# Install frontend dependencies
 npm install
 
-# Edit the API configuration
-nano ../config/api.js
-```
-
-**Change this line in `config/api.js`:**
-```javascript
-const API_BASE_URL = 'http://46.173.17.229:3000';
-```
-
-### Step 4: Start the Backend
-
-```bash
-# Start the backend server
+# Install backend dependencies
 cd server
-node server.js
-
-# Or use PM2 for production
-pm2 start server.js --name "malabar-backend"
-pm2 save
-pm2 startup
+npm install
+cd ..
 ```
 
-### Step 5: Configure Firewall
-
+### 3. Configure Backend
 ```bash
-# Allow port 3000
-sudo ufw allow 3000
+# Navigate to server directory
+cd /var/www/malabar/server
 
-# If using nginx as reverse proxy
+# Start the backend server
+node server.js
+```
+
+**Expected output:**
+```
+Server running on port 3001
+Database initialized
+```
+
+### 4. Configure Frontend
+```bash
+# Build the frontend for production
+cd /var/www/malabar
+npm run build
+
+# Start the frontend (or use PM2)
+npm start
+```
+
+### 5. Firewall Configuration
+```bash
+# Allow HTTP/HTTPS
 sudo ufw allow 80
 sudo ufw allow 443
+
+# Allow frontend port
+sudo ufw allow 3000
+
+# Allow backend API port
+sudo ufw allow 3001
+
+# Enable firewall
+sudo ufw enable
 ```
 
-### Step 6: Test the API
-
+### 6. Test Your Setup
 ```bash
-# Test if backend is running
-curl http://46.173.17.229:3000/api/health
+# Test backend API locally
+curl http://localhost:3001/api/health
+curl http://localhost:3001/api/players
 
-# Should return: {"status":"OK","timestamp":"..."}
+# Test from external machine
+curl http://46.173.17.229:3001/api/health
 ```
 
-## 🔧 Configuration Files
+## Configuration Files
 
-### Backend Configuration (`server/server.js`)
-- Port: 3000 (configurable via environment variable)
-- Database: SQLite (automatically created)
-- CORS: Enabled for all origins (customize as needed)
+### Backend Server (server/server.js)
+- **Port**: 3001
+- **Database**: SQLite (malabar.db)
+- **CORS**: Enabled for frontend access
 
-### Frontend Configuration (`config/api.js`)
-- API base URL: Points to your VPS
-- Environment-aware: Different URLs for dev/prod
+### Frontend API Config (config/api.js)
+```javascript
+const API_BASE_URL = process.env.NODE_ENV === 'production'
+  ? 'http://46.173.17.229:3001'  // Backend API
+  : 'http://localhost:3001';      // Local development
+```
 
-## 📊 Database Schema
-
-The backend automatically creates these tables:
+## Database Schema
 
 ### Players Table
 ```sql
 CREATE TABLE players (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
-  image TEXT,
+  avatar TEXT,
   socialLinks TEXT,  -- JSON string
   stats TEXT,        -- JSON string
   games TEXT,        -- JSON string
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  isOnline INTEGER DEFAULT 0,
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
@@ -142,118 +130,115 @@ CREATE TABLE players (
 ```sql
 CREATE TABLE users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  type TEXT NOT NULL,
-  name TEXT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  username TEXT UNIQUE NOT NULL,
+  isLoggedIn INTEGER DEFAULT 0,
+  lastLogin DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
-## 🔄 Real-time Updates
+## API Endpoints
 
-### Current Implementation
-- Manual refresh required
-- API calls on user actions
-- Batch updates for efficiency
+### Players
+- `GET /api/players` - Get all players
+- `GET /api/players/:id` - Get specific player
+- `PUT /api/players/:id` - Update specific player
+- `PUT /api/players` - Batch update all players
 
-### Future Enhancements (Optional)
-- WebSocket connections for real-time updates
-- Server-sent events
-- Database change notifications
+### Users
+- `GET /api/users/current` - Get current logged-in user
+- `POST /api/users/current` - Login/logout user
 
-## 🚨 Troubleshooting
+### Health
+- `GET /api/health` - Server health check
 
-### Backend Won't Start
+## Real-Time Updates
+The frontend automatically syncs with the backend API:
+- Player data updates
+- User authentication
+- Online status changes
+- Game statistics
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Port Already in Use
 ```bash
-# Check logs
-pm2 logs malabar-backend
-
-# Check if port is in use
+# Check what's using the port
 sudo netstat -tlnp | grep :3001
 
-# Restart service
-pm2 restart malabar-backend
+# Kill the process
+sudo kill -9 <PID>
 ```
 
-### Database Issues
+#### 2. API Connection Failed
+- Verify backend server is running on port 3001
+- Check firewall allows port 3001
+- Ensure CORS is properly configured
+
+#### 3. Database Errors
 ```bash
-# Check database file
-ls -la server/malabar.db
+# Check database file permissions
+ls -la /var/www/malabar/server/malabar.db
 
-# Recreate database (WARNING: loses all data)
-rm server/malabar.db
-pm2 restart malabar-backend
+# Recreate database if needed
+rm malabar.db
+node server.js
 ```
 
-### Frontend Can't Connect
+### Logs
 ```bash
-# Check firewall
-sudo ufw status
+# Backend logs
+tail -f /var/www/malabar/server/server.log
 
-# Test API endpoint
-curl -v http://your-vps-ip:3001/api/health
-
-# Check CORS settings in server.js
+# PM2 logs (if using PM2)
+pm2 logs malabar-backend
 ```
 
-## 🔒 Security Considerations
+## Security Considerations
 
-### Current Security
-- Basic CORS protection
-- Input validation
-- SQL injection protection via parameterized queries
+### Firewall
+- Only expose necessary ports (3000, 3001)
+- Use UFW for firewall management
+- Consider using a reverse proxy (Nginx)
 
-### Recommended Enhancements
-- Rate limiting
-- Authentication middleware
-- HTTPS enforcement
-- Input sanitization
+### Environment Variables
+- Store sensitive data in environment variables
+- Use `.env` files for local development
+- Never commit `.env` files to version control
 
-## 📈 Performance Optimization
+### CORS Configuration
+- Restrict CORS origins to your frontend domain
+- Consider implementing rate limiting
+- Validate all input data
+
+## Performance Optimization
 
 ### Database
-- SQLite for small to medium scale
-- Consider PostgreSQL for larger deployments
-- Add database indexes for frequently queried fields
+- Use database indexes for frequently queried fields
+- Implement connection pooling for high traffic
+- Consider database migrations for schema changes
 
-### API
-- Response caching
-- Database connection pooling
-- Compression middleware
+### Caching
+- Implement Redis for session storage
+- Cache frequently accessed data
+- Use CDN for static assets
 
-## 🔄 Migration from localStorage
+### Monitoring
+- Set up process monitoring with PM2
+- Monitor server resources (CPU, memory, disk)
+- Implement health checks and alerts
 
-### Automatic Migration
-- Backend creates default players on first run
-- Existing localStorage data can be imported manually
-- No data loss during transition
+## Nginx Configuration (Optional)
 
-### Manual Data Import
-```javascript
-// In browser console, export localStorage data
-const players = JSON.parse(localStorage.getItem('players'));
-console.log(JSON.stringify(players, null, 2));
+For production use, consider setting up Nginx as a reverse proxy:
 
-// Use this data to populate your database or
-// manually recreate players through the admin interface
-```
-
-## 🌐 Domain Configuration
-
-### With Domain
-```bash
-# Install nginx
-sudo apt install nginx
-
-# Configure reverse proxy
-sudo nano /etc/nginx/sites-available/malabar-event
-```
-
-**Nginx configuration:**
 ```nginx
+# Frontend (port 3000)
 server {
     listen 80;
     server_name your-domain.com;
-
+    
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
@@ -263,41 +248,49 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 }
+
+# Backend API (port 3001)
+server {
+    listen 80;
+    server_name api.your-domain.com;
+    
+    location / {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
 ```
 
-### Without Domain
-- Use VPS IP directly
-- Update `config/api.js` with your VPS IP
-- Access via `http://46.173.17.229:3000`
+## Migration from localStorage
 
-## ✅ Verification Checklist
+### Frontend Changes
+- Replace `localStorage.getItem()` with `apiService.getPlayers()`
+- Replace `localStorage.setItem()` with `apiService.updatePlayer()`
+- Update authentication to use backend API
 
-- [ ] Backend server running on port 3000
-- [ ] API health check returns success
-- [ ] Frontend can connect to backend
-- [ ] Players data loads from database
-- [ ] Changes persist between sessions
-- [ ] Multiple users see same data
-- [ ] Firewall allows port 3000
-- [ ] Database file created successfully
+### Data Migration
+- Export existing localStorage data
+- Import data to backend database
+- Verify data integrity after migration
 
-## 🆘 Support
+## Support
 
 If you encounter issues:
+1. Check the troubleshooting section
+2. Review server logs
+3. Verify network connectivity
+4. Test API endpoints individually
 
-1. Check the logs: `pm2 logs malabar-backend`
-2. Verify configuration: `config/api.js`
-3. Test API endpoints manually
-4. Check firewall and network settings
-5. Ensure Node.js version compatibility
+## Next Steps
 
-## 🎉 Success!
+After successful deployment:
+1. Set up SSL certificates (Let's Encrypt)
+2. Configure automatic backups
+3. Set up monitoring and alerts
+4. Implement CI/CD pipeline
 
-Once deployed, your site will:
-- ✅ Show the same data to all users
-- ✅ Save changes globally
-- ✅ Work reliably on your VPS
-- ✅ Scale to multiple users
-- ✅ Maintain data persistence
+---
 
-**Welcome to the global database era! 🌍**
+**Happy Deploying! 🚀**
