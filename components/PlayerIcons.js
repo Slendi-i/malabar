@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Tooltip } from '@mui/material';
 
 export default function PlayerIcons({ players, setPlayers, currentUser }) {
@@ -18,6 +18,10 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       y: Math.floor(i / 3) * 100 + 50
     }));
   });
+
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const containerRef = useRef(null);
 
   // Update positions when players data changes
   useEffect(() => {
@@ -52,61 +56,79 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     return currentUser.type === 'player' && currentUser.id === playerId;
   };
 
-  const handleDragStart = (e, index) => {
-    if (!safePlayers[index] || !safePlayers[index].id || !canDrag(safePlayers[index].id)) {
-      e.preventDefault();
-      return;
-    }
-    if (e.dataTransfer) {
-      e.dataTransfer.setData('index', index);
-    }
+  const handleMouseDown = (e, index) => {
+    if (!canDrag(safePlayers[index]?.id)) return;
+    
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+    
+    setDraggedIndex(index);
+    setDragOffset({ x: offsetX, y: offsetY });
+    
+    // Add global mouse event listeners
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    if (!e.dataTransfer) return;
+  const handleMouseMove = (e) => {
+    if (draggedIndex === null || !containerRef.current) return;
     
-    const index = parseInt(e.dataTransfer.getData('index'));
-    if (isNaN(index) || !safePlayers[index] || !safePlayers[index].id || !canDrag(safePlayers[index].id)) return;
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - containerRect.left - dragOffset.x;
+    const y = e.clientY - containerRect.top - dragOffset.y;
     
-    if (!e.currentTarget) return;
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    if (!rect || typeof rect.left !== 'number' || typeof rect.top !== 'number') return;
-    
-    const x = (e.clientX || 0) - rect.left - 32;
-    const y = (e.clientY || 0) - rect.top - 32 + (typeof window !== 'undefined' ? window.scrollY : 0);
-
-    // Update local positions
+    // Update position smoothly
     setPositions(prev => {
-      const newPos = Array.isArray(prev) ? [...prev] : [];
-      newPos[index] = { x, y };
+      const newPos = [...prev];
+      newPos[draggedIndex] = { x, y };
       return newPos;
     });
+  };
 
-    // Calculate new position based on coordinates
-    const newPosition = Math.floor(y / 100) * 3 + Math.floor(x / 100) + 1;
+  const handleMouseUp = (e) => {
+    if (draggedIndex === null) return;
+    
+    // Calculate final grid position
+    const finalPos = positions[draggedIndex];
+    const gridX = Math.floor((finalPos.x - 50) / 100);
+    const gridY = Math.floor((finalPos.y - 50) / 100);
+    const newPosition = gridY * 3 + gridX + 1;
+    
+    // Snap to grid
+    const snappedX = gridX * 100 + 50;
+    const snappedY = gridY * 100 + 50;
+    
+    setPositions(prev => {
+      const newPos = [...prev];
+      newPos[draggedIndex] = { x: snappedX, y: snappedY };
+      return newPos;
+    });
     
     // Update player data with new position
-    const updatedPlayers = Array.isArray(safePlayers) ? [...safePlayers] : [];
-    if (updatedPlayers[index]) {
-      updatedPlayers[index] = {
-        ...updatedPlayers[index],
+    const updatedPlayers = [...safePlayers];
+    if (updatedPlayers[draggedIndex]) {
+      updatedPlayers[draggedIndex] = {
+        ...updatedPlayers[draggedIndex],
         position: newPosition
       };
       
       // Update players state which will trigger API save
-      if (typeof setPlayers === 'function') {
-        setPlayers(updatedPlayers);
-      }
+      setPlayers(updatedPlayers);
     }
+    
+    // Clean up
+    setDraggedIndex(null);
+    setDragOffset({ x: 0, y: 0 });
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
   };
 
   return (
     <div 
+      ref={containerRef}
       className="relative w-full min-h-screen p-4"
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => handleDrop(e)}
       style={{
         minHeight: '120vh',
         paddingBottom: '100px'
@@ -118,21 +140,25 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
           return null;
         }
         
+        const isDragging = draggedIndex === index;
+        const canDragPlayer = canDrag(player.id);
+        
         return (
         <Tooltip key={player.id} title={player.name} arrow>
           <div
-            draggable={player.id ? canDrag(player.id) : false}
-            onDragStart={(e) => player.id ? handleDragStart(e, index) : e.preventDefault()}
+            onMouseDown={canDragPlayer ? (e) => handleMouseDown(e, index) : undefined}
             style={{
               position: 'absolute',
               left: `${positions[index]?.x || 0}px`,
               top: `${positions[index]?.y || 0}px`,
-              cursor: player.id && canDrag(player.id) ? 'grab' : 'default',
-              zIndex: 10,
-              transition: 'transform 0.2s ease'
+              cursor: canDragPlayer ? (isDragging ? 'grabbing' : 'grab') : 'default',
+              zIndex: isDragging ? 20 : 10,
+              transition: isDragging ? 'none' : 'transform 0.2s ease',
+              transform: isDragging ? 'scale(1.1)' : 'scale(1)',
+              userSelect: 'none'
             }}
             className={`w-16 h-16 rounded-full flex items-center justify-center ${
-              player.id && canDrag(player.id) 
+              canDragPlayer 
                 ? 'bg-blue-500 hover:bg-blue-600 shadow-lg' 
                 : 'bg-gray-500 hover:bg-gray-600'
             }`}
