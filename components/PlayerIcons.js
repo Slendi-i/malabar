@@ -6,40 +6,32 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   const safePlayers = Array.isArray(players) ? players : [];
   
   const [positions, setPositions] = useState(() => {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const saved = localStorage.getItem('playerPositions');
-        return saved ? JSON.parse(saved) : Array(12).fill().map((_, i) => ({
-          x: (i % 3) * 100 + 50,
-          y: Math.floor(i / 3) * 100 + 50
-        }));
-      }
-      return Array(12).fill().map((_, i) => ({
-        x: (i % 3) * 100 + 50,
-        y: Math.floor(i / 3) * 100 + 50
-      }));
-    } catch (error) {
-      console.error('Error parsing player positions:', error);
-      return Array(12).fill().map((_, i) => ({
-        x: (i % 3) * 100 + 50,
-        y: Math.floor(i / 3) * 100 + 50
+    // Initialize positions from player data or use defaults
+    if (Array.isArray(safePlayers) && safePlayers.length > 0) {
+      return safePlayers.map((player, index) => ({
+        x: player.position ? ((player.position - 1) % 3) * 100 + 50 : (index % 3) * 100 + 50,
+        y: player.position ? Math.floor((player.position - 1) / 3) * 100 + 50 : Math.floor(index / 3) * 100 + 50
       }));
     }
+    return Array(12).fill().map((_, i) => ({
+      x: (i % 3) * 100 + 50,
+      y: Math.floor(i / 3) * 100 + 50
+    }));
   });
 
+  // Update positions when players data changes
   useEffect(() => {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem('playerPositions', JSON.stringify(positions));
-      }
-    } catch (error) {
-      console.error('Error saving player positions:', error);
+    if (Array.isArray(safePlayers) && safePlayers.length > 0) {
+      setPositions(safePlayers.map((player, index) => ({
+        x: player.position ? ((player.position - 1) % 3) * 100 + 50 : (index % 3) * 100 + 50,
+        y: player.position ? Math.floor((player.position - 1) / 3) * 100 + 50 : Math.floor(index / 3) * 100 + 50
+      })));
     }
-  }, [positions]);
+  }, [safePlayers]);
 
   // Ensure positions array has the right length
   useEffect(() => {
-    if (Array.isArray(positions) && positions.length !== safePlayers.length && safePlayers.length > 0 && typeof setPositions === 'function') {
+    if (Array.isArray(positions) && positions.length !== safePlayers.length && safePlayers.length > 0) {
       setPositions(prev => {
         const newPos = Array.isArray(prev) ? [...prev] : [];
         while (newPos.length < safePlayers.length) {
@@ -55,7 +47,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   }, [safePlayers.length, positions.length]);
 
   const canDrag = (playerId) => {
-    if (!currentUser || !playerId || !currentUser.type || !currentUser.id) return false;
+    if (!currentUser || !playerId) return false;
     if (currentUser.type === 'admin') return true;
     return currentUser.type === 'player' && currentUser.id === playerId;
   };
@@ -85,23 +77,25 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     const x = (e.clientX || 0) - rect.left - 32;
     const y = (e.clientY || 0) - rect.top - 32 + (typeof window !== 'undefined' ? window.scrollY : 0);
 
-    if (typeof setPositions === 'function') {
-      setPositions(prev => {
-        const newPos = Array.isArray(prev) ? [...prev] : [];
-        newPos[index] = { x, y };
-        return newPos;
-      });
-    }
+    // Update local positions
+    setPositions(prev => {
+      const newPos = Array.isArray(prev) ? [...prev] : [];
+      newPos[index] = { x, y };
+      return newPos;
+    });
 
+    // Calculate new position based on coordinates
+    const newPosition = Math.floor(y / 100) * 3 + Math.floor(x / 100) + 1;
+    
+    // Update player data with new position
     const updatedPlayers = Array.isArray(safePlayers) ? [...safePlayers] : [];
-    if (updatedPlayers[index] && updatedPlayers[index].stats) {
-      updatedPlayers[index].stats.position = index + 1;
-      if (typeof setPlayers === 'function') {
-        setPlayers(updatedPlayers);
-      }
-    } else if (updatedPlayers[index]) {
-      // Ensure stats object exists
-      updatedPlayers[index].stats = { ...updatedPlayers[index].stats, position: index + 1 };
+    if (updatedPlayers[index]) {
+      updatedPlayers[index] = {
+        ...updatedPlayers[index],
+        position: newPosition
+      };
+      
+      // Update players state which will trigger API save
       if (typeof setPlayers === 'function') {
         setPlayers(updatedPlayers);
       }
@@ -112,9 +106,9 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     <div 
       className="relative w-full min-h-screen p-4"
       onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => handleDrop(e)}
+      onDrop={(e) => handleDrop(e)}
       style={{
-        minHeight: '120vh', // Увеличиваем высоту для скролла
+        minHeight: '120vh',
         paddingBottom: '100px'
       }}
     >
@@ -143,10 +137,10 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
                 : 'bg-gray-500 hover:bg-gray-600'
             }`}
           >
-            {player.image && typeof player.image === 'string' && player.image.trim() !== '' ? (
+            {player.avatar && typeof player.avatar === 'string' && player.avatar.trim() !== '' ? (
               <>
                 <img 
-                  src={player.image} 
+                  src={player.avatar} 
                   alt={player.name} 
                   className="w-full h-full rounded-full object-cover"
                   onError={(e) => {

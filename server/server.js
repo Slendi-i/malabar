@@ -88,7 +88,7 @@ db.serialize(() => {
 // Function to create players table
 function createPlayersTable() {
   db.run(`
-    CREATE TABLE players (
+    CREATE TABLE IF NOT EXISTS players (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       avatar TEXT,
@@ -96,14 +96,14 @@ function createPlayersTable() {
       stats TEXT,
       games TEXT,
       isOnline INTEGER DEFAULT 0,
+      position INTEGER DEFAULT 0,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `, (err) => {
     if (err) {
       console.error('Error creating players table:', err);
     } else {
-      console.log('Players table created successfully');
-      checkAndInsertPlayers();
+      console.log('Players table created/verified');
     }
   });
 }
@@ -218,18 +218,19 @@ function checkAndInsertPlayers() {
       ];
 
       const insertStmt = db.prepare(`
-        INSERT INTO players (name, avatar, socialLinks, stats, games, isOnline)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO players (name, avatar, socialLinks, stats, games, isOnline, position)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
 
-      defaultPlayers.forEach(player => {
+      defaultPlayers.forEach((player, index) => {
         insertStmt.run([
           player.name,
           player.avatar,
           player.socialLinks,
           player.stats,
           player.games,
-          player.isOnline
+          player.isOnline,
+          index + 1  // Position based on array index
         ]);
       });
 
@@ -253,21 +254,50 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Get all players
-app.get('/api/players', (req, res) => {
-  db.all('SELECT * FROM players ORDER BY id', (err, rows) => {
+// Real-time updates endpoint
+app.get('/api/players/updates', (req, res) => {
+  const lastUpdate = req.query.since || 0;
+  
+  db.all('SELECT * FROM players WHERE id > ? ORDER BY id', [lastUpdate], (err, rows) => {
     if (err) {
       console.error('Database error:', err);
       return res.status(500).json({ error: 'Database error' });
     }
     
-    // Parse JSON fields
+    // Parse JSON fields and add position
     const players = rows.map(row => ({
       ...row,
       socialLinks: JSON.parse(row.socialLinks || '{}'),
       stats: JSON.parse(row.stats || '{}'),
       games: JSON.parse(row.games || '[]'),
-      isOnline: Boolean(row.isOnline)
+      isOnline: Boolean(row.isOnline),
+      position: row.position || row.id
+    }));
+    
+    res.json({ 
+      players, 
+      timestamp: Date.now(),
+      lastUpdate: lastUpdate 
+    });
+  });
+});
+
+// Get all players with position sorting
+app.get('/api/players', (req, res) => {
+  db.all('SELECT * FROM players ORDER BY position ASC, id ASC', (err, rows) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    // Parse JSON fields and add position
+    const players = rows.map(row => ({
+      ...row,
+      socialLinks: JSON.parse(row.socialLinks || '{}'),
+      stats: JSON.parse(row.stats || '{}'),
+      games: JSON.parse(row.games || '[]'),
+      isOnline: Boolean(row.isOnline),
+      position: row.position || row.id
     }));
     
     res.json(players);
@@ -319,7 +349,7 @@ app.put('/api/players/:id', (req, res) => {
     // Update the specific player
     const sql = `
       UPDATE players 
-      SET name = ?, avatar = ?, socialLinks = ?, stats = ?, games = ?, isOnline = ?
+      SET name = ?, avatar = ?, socialLinks = ?, stats = ?, games = ?, isOnline = ?, position = ?
       WHERE id = ?
     `;
     
@@ -330,6 +360,7 @@ app.put('/api/players/:id', (req, res) => {
       JSON.stringify(updatedPlayer.stats || {}),
       JSON.stringify(updatedPlayer.games || []),
       updatedPlayer.isOnline ? 1 : 0,
+      updatedPlayer.position,
       playerId
     ];
     
@@ -356,7 +387,7 @@ app.put('/api/players', (req, res) => {
     return new Promise((resolve, reject) => {
       const sql = `
         UPDATE players 
-        SET name = ?, avatar = ?, socialLinks = ?, stats = ?, games = ?, isOnline = ?
+        SET name = ?, avatar = ?, socialLinks = ?, stats = ?, games = ?, isOnline = ?, position = ?
         WHERE id = ?
       `;
       
@@ -367,6 +398,7 @@ app.put('/api/players', (req, res) => {
         JSON.stringify(player.stats || {}),
         JSON.stringify(player.games || []),
         player.isOnline ? 1 : 0,
+        player.position,
         player.id
       ];
       
@@ -396,7 +428,7 @@ app.get('/api/users/current', (req, res) => {
     }
     
     if (!row) {
-      // Return default user instead of 404
+      // Return default user instead of error
       return res.json({
         id: -1,
         username: 'Guest',
