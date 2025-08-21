@@ -217,13 +217,15 @@ function checkAndInsertPlayers() {
         }
       ];
 
-      const insertStmt = db.prepare(`
-        INSERT INTO players (name, avatar, socialLinks, stats, games, isOnline, position)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `);
-
+      // Insert players one by one using db.run
+      let insertedCount = 0;
       defaultPlayers.forEach((player, index) => {
-        insertStmt.run([
+        const sql = `
+          INSERT INTO players (name, avatar, socialLinks, stats, games, isOnline, position)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `;
+        
+        const params = [
           player.name,
           player.avatar,
           player.socialLinks,
@@ -231,15 +233,18 @@ function checkAndInsertPlayers() {
           player.games,
           player.isOnline,
           index + 1  // Position based on array index
-        ]);
-      });
+        ];
 
-      insertStmt.finalize((err) => {
-        if (err) {
-          console.error('Error finalizing player insert:', err);
-        } else {
-          console.log('Default players inserted successfully');
-        }
+        db.run(sql, params, function(err) {
+          if (err) {
+            console.error('Error inserting player:', err);
+          } else {
+            insertedCount++;
+            if (insertedCount === defaultPlayers.length) {
+              console.log('Default players inserted successfully');
+            }
+          }
+        });
       });
     } else {
       console.log(`Database already has ${row.count} players`);
