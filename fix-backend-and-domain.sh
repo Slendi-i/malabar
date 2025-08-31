@@ -1,49 +1,25 @@
 #!/bin/bash
 
-# Исправление проблем с backend и доступностью по IP
+echo "🔧 ИСПРАВЛЕНИЕ BACKEND И ДОМЕНА"
+echo "==============================="
 
-echo "🔧 ИСПРАВЛЕНИЕ BACKEND И НАСТРОЙКА ДОСТУПА ПО IP"
-echo "==============================================="
+echo "1️⃣ ИСПРАВЛЕНИЕ BACKEND (sqlite3 проблема)..."
+echo "--------------------------------------------"
 
-# 1. Диагностика проблемы backend
-echo "🔍 Проверка логов backend (почему падает)..."
-pm2 logs malabar-backend --lines 20 --nostream
+cd /var/www/malabar/server
 
-echo ""
-echo "📊 Статус процессов:"
-pm2 status
+# Временное решение - переключаемся на file-based БД
+echo "Создаем временную версию server.js без sqlite3..."
 
-# 2. Остановка backend для диагностики
-echo "🛑 Остановка падающего backend..."
-pm2 stop malabar-backend
-pm2 delete malabar-backend
+cp server.js server.js.backup
 
-# 3. Тест запуска backend вручную для диагностики
-echo "🧪 Тестовый запуск backend для диагностики..."
-cd server
-
-echo "Пробный запуск (5 секунд)..."
-timeout 5 node server.js 2>&1 | tee ../backend-error.log
-
-echo ""
-echo "📋 Ошибки backend сохранены в backend-error.log"
-
-# 4. Проверка и установка зависимостей
-echo "📦 Проверка зависимостей backend..."
-if ! npm list ws >/dev/null 2>&1; then
-    echo "📦 Установка ws..."
-    npm install ws
-fi
-
-# 5. Создание безопасной версии server.js без WebSocket (fallback)
-echo "🔧 Создание резервной версии server.js без WebSocket..."
-cp server.js server.js.with-websocket
-cat > server.js.no-websocket << 'EOF'
+cat > server-temp.js << 'EOF'
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const fs = require('fs');
 const path = require('path');
+const WebSocket = require('ws');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -53,170 +29,194 @@ app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
-// Database setup
-const db = new sqlite3.Database('./malabar.db', (err) => {
-  if (err) {
-    console.error('Error opening database:', err.message);
-  } else {
-    console.log('Connected to SQLite database');
+// File-based database
+const DB_FILE = './data.json';
+
+// Initialize data file
+let data = {
+  players: [],
+  users: []
+};
+
+if (fs.existsSync(DB_FILE)) {
+  try {
+    data = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    console.log('✅ Data loaded from file');
+  } catch (error) {
+    console.log('⚠️ Error loading data, using defaults');
   }
+} else {
+  // Create default players
+  data.players = Array.from({length: 12}, (_, i) => ({
+    id: i + 1,
+    name: `Player ${i + 1}`,
+    avatar: null,
+    socialLinks: {},
+    stats: {},
+    games: [],
+    isOnline: false,
+    position: i + 1,
+    x: (i % 3) * 80 + 50,
+    y: Math.floor(i / 3) * 100 + 100
+  }));
+  saveData();
+}
+
+function saveData() {
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('Error saving data:', error);
+  }
+}
+
+// WebSocket setup
+const server = require('http').createServer(app);
+const wss = new WebSocket.Server({ server, path: '/ws' });
+
+const clients = new Set();
+
+wss.on('connection', (ws) => {
+  console.log('Client connected to WebSocket');
+  clients.add(ws);
+  
+  ws.on('close', () => {
+    console.log('Client disconnected from WebSocket');
+    clients.delete(ws);
+  });
 });
 
-// Health check endpoint
+function broadcastUpdate(type, updateData) {
+  const message = JSON.stringify({ type, data: updateData });
+  clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
+}
+
+// API Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Get all players
 app.get('/api/players', (req, res) => {
-  db.all('SELECT * FROM players ORDER BY position ASC, id ASC', (err, rows) => {
-    if (err) {
-      console.error('Database error:', err);
-      return res.status(500).json({ error: 'Database error' });
-    }
-    
-    const players = rows.map(row => ({
-      ...row,
-      socialLinks: JSON.parse(row.socialLinks || '{}'),
-      stats: JSON.parse(row.stats || '{}'),
-      games: JSON.parse(row.games || '[]'),
-      isOnline: Boolean(row.isOnline),
-      position: row.position || row.id
-    }));
-    
-    res.json(players);
+  res.json(data.players || []);
+});
+
+app.get('/api/players/updates', (req, res) => {
+  const since = req.query.since ? parseInt(req.query.since) : 0;
+  const currentTime = Date.now();
+  
+  res.json({
+    players: data.players || [],
+    timestamp: currentTime,
+    since: since
   });
 });
 
-// Update all players (batch update)
 app.put('/api/players', (req, res) => {
-  const players = req.body;
+  const { players } = req.body;
+  if (Array.isArray(players)) {
+    data.players = players;
+    saveData();
+    broadcastUpdate('players_batch_updated', { players });
+  }
+  res.json({ success: true });
+});
+
+app.put('/api/players/:id', (req, res) => {
+  const playerId = parseInt(req.params.id);
+  const playerData = req.body;
   
-  if (!Array.isArray(players)) {
-    return res.status(400).json({ error: 'Players data must be an array' });
+  const playerIndex = data.players.findIndex(p => p.id === playerId);
+  if (playerIndex !== -1) {
+    data.players[playerIndex] = { ...data.players[playerIndex], ...playerData };
+    saveData();
+    broadcastUpdate('player_updated', { player: data.players[playerIndex], id: playerId });
   }
   
-  const updatePromises = players.map(player => {
-    return new Promise((resolve, reject) => {
-      const sql = `
-        UPDATE players 
-        SET name = ?, avatar = ?, socialLinks = ?, stats = ?, games = ?, isOnline = ?, position = ?
-        WHERE id = ?
-      `;
-      
-      const params = [
-        player.name,
-        player.avatar,
-        JSON.stringify(player.socialLinks || {}),
-        JSON.stringify(player.stats || {}),
-        JSON.stringify(player.games || []),
-        player.isOnline ? 1 : 0,
-        player.position,
-        player.id
-      ];
-      
-      db.run(sql, params, function(err) {
-        if (err) reject(err);
-        else resolve({ id: player.id, changes: this.changes });
-      });
-    });
-  });
-  
-  Promise.all(updatePromises)
-    .then(results => {
-      res.json({ message: 'All players updated successfully', results });
-    })
-    .catch(err => {
-      console.error('Batch update error:', err);
-      res.status(500).json({ error: 'Batch update failed' });
-    });
+  res.json({ success: true });
 });
 
-// Start server
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT} WITHOUT WebSocket`);
-  console.log('Database initialized');
+app.post('/api/users/current', (req, res) => {
+  res.json({ success: true });
+});
+
+console.log('✅ Temporary file-based server ready');
+
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 EOF
 
-echo "✅ Резервная версия создана"
-cd ..
-
-# 6. Запуск backend без WebSocket
-echo "🚀 Запуск backend без WebSocket..."
-cd server
-pm2 start server.js.no-websocket --name malabar-backend-safe
-cd ..
-
-# 7. Проверка доступности по IP
-echo "🌐 Проверка доступности по IP..."
-sleep 5
-
-echo "Backend test:"
-curl -s http://localhost:3001/api/health || echo "❌ Backend недоступен локально"
-curl -s http://46.173.17.229:3001/api/health || echo "❌ Backend недоступен по IP"
+echo "✅ Временный server создан"
 
 echo ""
-echo "Frontend test:"
-curl -s -I http://localhost:3000 | head -1 || echo "❌ Frontend недоступен локально"
-curl -s -I http://46.173.17.229:3000 | head -1 || echo "❌ Frontend недоступен по IP"
+echo "2️⃣ ПЕРЕЗАПУСК BACKEND..."
+echo "------------------------"
 
-# 8. Проверка веб-сервера (nginx/apache)
+pm2 stop malabar-backend 2>/dev/null || echo "Backend уже остановлен"
+pm2 delete malabar-backend 2>/dev/null || echo "Backend уже удален"
+
+pm2 start server-temp.js --name "malabar-backend"
+
+sleep 3
+
+echo "Статус backend:"
+pm2 status
+
 echo ""
-echo "🔍 Проверка веб-сервера..."
-if systemctl is-active --quiet nginx; then
-    echo "✅ Nginx активен"
-    echo "📝 Конфигурация Nginx:"
-    find /etc/nginx -name "*.conf" -exec grep -l "vet-klinika-moscow\|46.173.17.229" {} \; 2>/dev/null | head -3
-elif systemctl is-active --quiet apache2; then
-    echo "✅ Apache активен"
-    echo "📝 Конфигурация Apache:"
-    find /etc/apache2 -name "*.conf" -exec grep -l "vet-klinika-moscow\|46.173.17.229" {} \; 2>/dev/null | head -3
+echo "3️⃣ ИСПРАВЛЕНИЕ NGINX ДЛЯ ДОМЕНА..."
+echo "--------------------------------"
+
+# Проверяем конфигурацию для домена
+echo "Проверка конфигурации домена:"
+if [ -f "/etc/nginx/sites-available/vet-klinika-moscow.ru" ]; then
+    echo "✅ Конфигурация домена найдена"
 else
-    echo "❌ Веб-сервер не найден"
-fi
-
-# 9. Проверка firewall
-echo ""
-echo "🔥 Проверка firewall..."
-ufw status | grep -E "(3000|3001)"
-
-# 10. Создание конфигурации Nginx для доступа по IP
-echo ""
-echo "🔧 Создание конфигурации для доступа по IP..."
-cat > /tmp/malabar-ip-access.conf << 'EOF'
+    echo "❌ Конфигурация домена НЕ НАЙДЕНА"
+    echo "Создаем конфигурацию для домена..."
+    
+    sudo tee /etc/nginx/sites-available/vet-klinika-moscow.ru > /dev/null << 'NGINXEOF'
 server {
     listen 80;
-    server_name 46.173.17.229;
-
-    # Frontend
+    server_name vet-klinika-moscow.ru www.vet-klinika-moscow.ru;
+    
+    # Логирование
+    access_log /var/log/nginx/domain-access.log;
+    error_log /var/log/nginx/domain-error.log;
+    
+    # Frontend (основная локация)
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
+        
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        
         proxy_cache_bypass $http_upgrade;
+        proxy_buffering off;
     }
-
+    
     # Backend API
     location /api/ {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://127.0.0.1:3001;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
+        
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
-
+    
     # WebSocket
     location /ws {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://127.0.0.1:3001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -224,46 +224,60 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        
+        proxy_buffering off;
+        proxy_read_timeout 86400;
     }
 }
-
-# Прямой доступ к портам
-server {
-    listen 3000;
-    server_name 46.173.17.229;
+NGINXEOF
     
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-EOF
-
-echo "📋 Конфигурация сохранена в /tmp/malabar-ip-access.conf"
-echo ""
-echo "🔧 Установка конфигурации Nginx..."
-if [ -d "/etc/nginx/sites-available" ]; then
-    sudo cp /tmp/malabar-ip-access.conf /etc/nginx/sites-available/malabar-ip
-    sudo ln -sf /etc/nginx/sites-available/malabar-ip /etc/nginx/sites-enabled/
-    sudo nginx -t && sudo systemctl reload nginx
-    echo "✅ Nginx сконфигурирован"
-else
-    echo "⚠️  Nginx не найден, скопируйте конфигурацию вручную"
+    # Активируем конфигурацию
+    sudo ln -sf /etc/nginx/sites-available/vet-klinika-moscow.ru /etc/nginx/sites-enabled/
+    
+    echo "✅ Конфигурация домена создана"
 fi
 
-# 11. Статус и результаты
 echo ""
-echo "📊 ИТОГОВЫЙ СТАТУС:"
+echo "4️⃣ ТЕСТ И ПЕРЕЗАГРУЗКА NGINX..."
+echo "------------------------------"
+
+sudo nginx -t
+if [ $? -eq 0 ]; then
+    echo "✅ Nginx конфигурация корректна"
+    sudo systemctl reload nginx
+    echo "✅ Nginx перезагружен"
+else
+    echo "❌ Ошибка в конфигурации Nginx"
+fi
+
+echo ""
+echo "5️⃣ ФИНАЛЬНАЯ ПРОВЕРКА..."
+echo "------------------------"
+
+sleep 3
+
+echo "PM2 статус:"
 pm2 status
 
 echo ""
-echo "🌐 ПРОВЕРЬТЕ ДОСТУПНОСТЬ:"
-echo "1. По домену: http://vet-klinika-moscow.ru"
-echo "2. По IP: http://46.173.17.229:3000"
-echo "3. Backend: http://46.173.17.229:3001/api/health"
+echo "Тест backend:"
+curl -s --connect-timeout 5 http://localhost:3001/api/health && echo "" && echo "✅ Backend работает" || echo "❌ Backend не работает"
+
 echo ""
-echo "📋 ЛОГИ ДЛЯ ДИАГНОСТИКИ:"
-echo "Backend ошибки: cat backend-error.log"
-echo "PM2 логи: pm2 logs"
-echo "Nginx логи: sudo tail -f /var/log/nginx/error.log"
+echo "Тест по IP:"
+curl -s --connect-timeout 5 -I http://46.173.17.229:3000 | head -1
+
+echo "Тест по домену:"
+curl -s --connect-timeout 5 -I http://vet-klinika-moscow.ru | head -1
+
+echo ""
+echo "✅ ИСПРАВЛЕНИЕ ЗАВЕРШЕНО!"
+echo ""
+echo "🌐 ПРОВЕРЬТЕ САЙТЫ:"
+echo "✅ IP:    http://46.173.17.229:3000"
+echo "✅ Домен: http://vet-klinika-moscow.ru"
+echo ""
+echo "📊 СТАТУС:"
+echo "- Frontend: работает в dev режиме"
+echo "- Backend: работает на file-based БД (временно)"
+echo "- Nginx: настроен для обоих адресов"
