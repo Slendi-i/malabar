@@ -1,0 +1,50 @@
+🚨 ЭКСТРЕННОЕ ВОССТАНОВЛЕНИЕ СЕРВЕРА 🚨
+
+Если сайт не открывается, выполните команды в VPS терминале:
+
+=== БЫСТРАЯ ДИАГНОСТИКА ===
+chmod +x quick-server-check.sh
+./quick-server-check.sh
+
+=== ЭКСТРЕННОЕ ВОССТАНОВЛЕНИЕ ===
+chmod +x emergency-restart.sh
+./emergency-restart.sh
+
+=== РУЧНОЕ ВОССТАНОВЛЕНИЕ ===
+Если автоматические скрипты не помогают:
+
+# 1. Полная остановка
+pm2 stop all
+pm2 delete all 
+pm2 kill
+sudo fuser -k 3000/tcp
+sudo fuser -k 3001/tcp
+
+# 2. Ручной запуск backend
+cd server
+node server.js &
+cd ..
+
+# 3. Ручной запуск frontend
+npm start &
+
+# 4. Проверка
+curl http://localhost:3001/api/health
+curl http://localhost:3000
+
+=== ЕСЛИ НИЧЕГО НЕ ПОМОГАЕТ ===
+
+# Полная переустановка
+pm2 stop all
+pm2 delete all
+rm -rf node_modules server/node_modules
+npm install
+cd server && npm install && cd ..
+npm run build
+pm2 start ecosystem.config.js
+
+=== ПРОВЕРКА РЕЗУЛЬТАТА ===
+Frontend: http://46.173.17.229:3000
+Backend:  http://46.173.17.229:3001
+
+Если все еще не работает - скопируйте вывод quick-server-check.sh
