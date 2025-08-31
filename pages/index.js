@@ -133,6 +133,7 @@ export default function Home() {
 
     const loadData = async () => {
       try {
+        console.log('🔄 Загрузка данных игроков...');
         // Load players from API
         const apiPlayers = await apiService.getPlayers();
         if (apiPlayers && Array.isArray(apiPlayers)) {
@@ -147,6 +148,7 @@ export default function Home() {
             }
           }));
           setPlayers(normalizedPlayers);
+          console.log('✅ Данные игроков загружены:', normalizedPlayers?.length || 0);
         } else {
           console.warn('No players data from API, using defaults');
           createDefaultPlayers();

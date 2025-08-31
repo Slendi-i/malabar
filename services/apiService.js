@@ -2,7 +2,7 @@ import { API_ENDPOINTS } from '../config/api';
 
 class ApiService {
   // Generic fetch wrapper with error handling
-  async fetchWithErrorHandling(url, options = {}) {
+    async fetchWithErrorHandling(url, options = {}) {
     try {
       const response = await fetch(url, {
         headers: {
@@ -11,14 +11,19 @@ class ApiService {
         },
         ...options
       });
-
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-
+      
       return await response.json();
     } catch (error) {
       console.error('API request failed:', error);
+      // Возвращаем пустые данные вместо краша для критических запросов
+      if (url.includes('/api/players') && !url.includes('/api/players/')) {
+        console.warn('🔄 Backend недоступен, возвращаем fallback данные для игроков');
+        return [];
+      }
       throw error;
     }
   }
