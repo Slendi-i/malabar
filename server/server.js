@@ -39,6 +39,7 @@ db.serialize(() => {
         
         const hasAvatar = columns.some(col => col.name === 'avatar');
         const hasImage = columns.some(col => col.name === 'image');
+        const hasPosition = columns.some(col => col.name === 'position');
         
         if (!hasAvatar && hasImage) {
           // Old table structure, recreate it
@@ -50,7 +51,34 @@ db.serialize(() => {
             }
             createPlayersTable();
           });
-        } else if (hasAvatar) {
+        } else if (!hasPosition) {
+          // Need to add position column
+          console.log('Adding position column to existing table...');
+          db.run('ALTER TABLE players ADD COLUMN position INTEGER DEFAULT 0', (err) => {
+            if (err) {
+              console.error('Error adding position column:', err);
+              // If adding column fails, recreate table
+              db.run('DROP TABLE players', (dropErr) => {
+                if (dropErr) {
+                  console.error('Error dropping table:', dropErr);
+                  return;
+                }
+                createPlayersTable();
+              });
+            } else {
+              console.log('Position column added successfully');
+              // Update existing players with default positions
+              db.run(`UPDATE players SET position = id WHERE position = 0`, (updateErr) => {
+                if (updateErr) {
+                  console.error('Error updating positions:', updateErr);
+                } else {
+                  console.log('Default positions set for existing players');
+                }
+              });
+              checkAndInsertPlayers();
+            }
+          });
+        } else if (hasAvatar && hasPosition) {
           // Table already has correct structure
           console.log('Players table structure is correct');
           checkAndInsertPlayers();
@@ -105,6 +133,7 @@ function createPlayersTable() {
       console.error('Error creating players table:', err);
     } else {
       console.log('Players table created/verified');
+      checkAndInsertPlayers();
     }
   });
 }

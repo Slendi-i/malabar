@@ -8,14 +8,17 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   const [positions, setPositions] = useState(() => {
     // Initialize positions from player data or use defaults
     if (Array.isArray(safePlayers) && safePlayers.length > 0) {
-      return safePlayers.map((player, index) => ({
-        x: player.position ? ((player.position - 1) % 3) * 100 + 50 : (index % 3) * 100 + 50,
-        y: player.position ? Math.floor((player.position - 1) / 3) * 100 + 50 : Math.floor(index / 3) * 100 + 50
-      }));
+      return safePlayers.map((player, index) => {
+        const pos = player.position || (index + 1);
+        return {
+          x: ((pos - 1) % 3) * 200 + 100,
+          y: Math.floor((pos - 1) / 3) * 200 + 100
+        };
+      });
     }
     return Array(12).fill().map((_, i) => ({
-      x: (i % 3) * 100 + 50,
-      y: Math.floor(i / 3) * 100 + 50
+      x: (i % 3) * 200 + 100,
+      y: Math.floor(i / 3) * 200 + 100
     }));
   });
 
@@ -25,13 +28,17 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
 
   // Update positions when players data changes
   useEffect(() => {
-    if (Array.isArray(safePlayers) && safePlayers.length > 0) {
-      setPositions(safePlayers.map((player, index) => ({
-        x: player.position ? ((player.position - 1) % 3) * 100 + 50 : (index % 3) * 100 + 50,
-        y: player.position ? Math.floor((player.position - 1) / 3) * 100 + 50 : Math.floor(index / 3) * 100 + 50
-      })));
+    if (Array.isArray(safePlayers) && safePlayers.length > 0 && draggedIndex === null) {
+      // Only update positions if not currently dragging
+      setPositions(safePlayers.map((player, index) => {
+        const pos = player.position || (index + 1);
+        return {
+          x: ((pos - 1) % 3) * 200 + 100,
+          y: Math.floor((pos - 1) / 3) * 200 + 100
+        };
+      }));
     }
-  }, [safePlayers]);
+  }, [safePlayers, draggedIndex]);
 
   // Ensure positions array has the right length
   useEffect(() => {
@@ -41,8 +48,8 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
         while (newPos.length < safePlayers.length) {
           const index = newPos.length;
           newPos.push({
-            x: (index % 3) * 100 + 50,
-            y: Math.floor(index / 3) * 100 + 50
+            x: (index % 3) * 200 + 100,
+            y: Math.floor(index / 3) * 200 + 100
           });
         }
         return newPos;
@@ -92,13 +99,13 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     
     // Calculate final grid position
     const finalPos = positions[draggedIndex];
-    const gridX = Math.floor((finalPos.x - 50) / 100);
-    const gridY = Math.floor((finalPos.y - 50) / 100);
+    const gridX = Math.max(0, Math.min(2, Math.floor((finalPos.x - 100) / 200)));
+    const gridY = Math.max(0, Math.floor((finalPos.y - 100) / 200));
     const newPosition = gridY * 3 + gridX + 1;
     
     // Snap to grid
-    const snappedX = gridX * 100 + 50;
-    const snappedY = gridY * 100 + 50;
+    const snappedX = gridX * 200 + 100;
+    const snappedY = gridY * 200 + 100;
     
     setPositions(prev => {
       const newPos = [...prev];
@@ -106,13 +113,16 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       return newPos;
     });
     
-    // Update player data with new position
-    const updatedPlayers = [...safePlayers];
-    if (updatedPlayers[draggedIndex]) {
+    // Update player data with new position only if it actually changed
+    const currentPlayer = safePlayers[draggedIndex];
+    if (currentPlayer && currentPlayer.position !== newPosition) {
+      const updatedPlayers = [...safePlayers];
       updatedPlayers[draggedIndex] = {
         ...updatedPlayers[draggedIndex],
         position: newPosition
       };
+      
+      console.log(`Moving player ${currentPlayer.name} to position ${newPosition}`);
       
       // Update players state which will trigger API save
       setPlayers(updatedPlayers);

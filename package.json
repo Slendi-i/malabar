@@ -7,7 +7,11 @@
     "dev:turbo": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "deploy": "chmod +x scripts/*.sh && ./scripts/deploy.sh",
+    "update": "chmod +x scripts/*.sh && ./scripts/update.sh",
+    "monitor": "chmod +x scripts/*.sh && ./scripts/monitor.sh",
+    "setup-vps": "chmod +x scripts/*.sh && ./scripts/setup-vps.sh"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

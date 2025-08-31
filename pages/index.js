@@ -26,6 +26,13 @@ export default function Home() {
   const handlePlayersUpdate = useCallback((type, data, playerId) => {
     console.log('Received real-time update:', type, data);
     
+    // Avoid updating if the change came from this client (to prevent conflicts during drag)
+    const timeSinceLastSave = Date.now() - lastSaveRef.current;
+    if (timeSinceLastSave < 2000) {
+      console.log('Skipping real-time update - recent save from this client');
+      return;
+    }
+    
     if (type === 'single' && playerId && data) {
       setPlayers(prev => prev.map(player => 
         player.id === playerId ? { ...player, ...data } : player
@@ -38,7 +45,7 @@ export default function Home() {
           wins: 0,
           rerolls: 0,
           drops: 0,
-          position: player.id
+          position: player.position || player.id
         }
       })));
     }

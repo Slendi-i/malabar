@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Modal, Box, Typography, TextField, Select, MenuItem, Button } from '@mui/material';
 
 export default function PlayerProfileModal({ player, open, onClose, setPlayers, players, currentUser }) {
-  const [image, setImage] = useState(player.image || '');
+  const [image, setImage] = useState(player.avatar || player.image || '');
   const [playerName, setPlayerName] = useState(player.name || '');
   const [socialLinks, setSocialLinks] = useState(player.socialLinks || {
     twitch: '', telegram: '', discord: ''
@@ -35,7 +35,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
 
   useEffect(() => {
     if (open) {
-      setImage(player.image || '');
+      setImage(player.avatar || player.image || '');
       setPlayerName(player.name || '');
       setSocialLinks(player.socialLinks || { twitch: '', telegram: '', discord: '' });
       setGames(player.games || []);
@@ -44,8 +44,14 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
 
   const updatePlayerData = (updatedData) => {
     const updatedPlayers = players.map(p => 
-      p.id === player.id ? { ...p, ...updatedData } : p
+      p.id === player.id ? { 
+        ...p, 
+        ...updatedData,
+        // Ensure avatar field is used consistently
+        avatar: updatedData.image || updatedData.avatar || p.avatar || p.image
+      } : p
     );
+    console.log('Updating player data:', { playerId: player.id, updatedData, updatedPlayer: updatedPlayers.find(p => p.id === player.id) });
     setPlayers(updatedPlayers);
   };
 
@@ -56,7 +62,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
       reader.onloadend = () => {
         const newImage = reader.result;
         setImage(newImage);
-        updatePlayerData({ image: newImage });
+        updatePlayerData({ avatar: newImage, image: newImage });
       };
       reader.readAsDataURL(file);
     }
@@ -183,6 +189,9 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                 objectFit: 'cover',
                 borderRadius: '8px',
                 border: '4px solid white'
+              }}
+              onError={(e) => {
+                e.target.src = '/default-avatar.png';
               }}
             />
             {canEditImage && (
