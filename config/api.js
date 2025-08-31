@@ -6,8 +6,10 @@ const API_BASE_URL = process.env.NODE_ENV === 'production'
 
 export const API_ENDPOINTS = {
   PLAYERS: `${API_BASE_URL}/api/players`,
+  PLAYERS_UPDATES: `${API_BASE_URL}/api/players/updates`,
   CURRENT_USER: `${API_BASE_URL}/api/users/current`,
-  HEALTH: `${API_BASE_URL}/api/health`
+  HEALTH: `${API_BASE_URL}/api/health`,
+  WEBSOCKET: API_BASE_URL.replace('http', 'ws') + '/ws'
 };
 
 export default API_BASE_URL;

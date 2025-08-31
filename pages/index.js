@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@mui/material';
 import Sidebar from '../components/Sidebar';
 import PlayerIcons from '../components/PlayerIcons';
 import AuthModal from '../components/AuthModal';
 import apiService from '../services/apiService';
+import { useRealTimeSync } from '../services/useRealTimeSync';
 
 export default function Home() {
   const [players, setPlayers] = useState([]);
@@ -15,8 +16,88 @@ export default function Home() {
     height: 600,
     ratio: 0.75
   });
+  const [syncStatus, setSyncStatus] = useState('disconnected');
   const containerRef = useRef(null);
   const imageRef = useRef(null);
+  const lastSaveRef = useRef(Date.now());
+  const saveTimeoutRef = useRef(null);
+
+  // Обработчики для real-time синхронизации
+  const handlePlayersUpdate = useCallback((type, data, playerId) => {
+    console.log('Received real-time update:', type, data);
+    
+    if (type === 'single' && playerId && data) {
+      setPlayers(prev => prev.map(player => 
+        player.id === playerId ? { ...player, ...data } : player
+      ));
+    } else if (type === 'batch' && Array.isArray(data)) {
+      setPlayers(data.map(player => ({
+        ...player,
+        games: Array.isArray(player.games) ? player.games : [],
+        stats: player.stats || {
+          wins: 0,
+          rerolls: 0,
+          drops: 0,
+          position: player.id
+        }
+      })));
+    }
+    
+    setSyncStatus('synchronized');
+  }, []);
+
+  const handleUserUpdate = useCallback((type, data) => {
+    console.log('Received user update:', type, data);
+    if (type === 'login' && data) {
+      // Можно добавить логику для отображения уведомлений о входе других пользователей
+    }
+  }, []);
+
+  // Optimized save function with debouncing
+  const debouncedSave = useCallback(async (playersToSave, userToSave) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        setSyncStatus('saving');
+        
+        if (playersToSave && playersToSave.length > 0) {
+          await apiService.batchUpdatePlayers(playersToSave);
+        }
+        
+        if (userToSave) {
+          await apiService.setCurrentUser(userToSave);
+        }
+        
+        lastSaveRef.current = Date.now();
+        setSyncStatus('synchronized');
+      } catch (error) {
+        console.warn('Failed to save data to API:', error);
+        setSyncStatus('error');
+        
+        // Retry after 5 seconds
+        setTimeout(() => {
+          if (playersToSave && playersToSave.length > 0) {
+            debouncedSave(playersToSave, userToSave);
+          }
+        }, 5000);
+      }
+    }, 1000); // 1 second debounce
+  }, []);
+
+  // Initialize WebSocket connection
+  const { isConnected, reconnect } = useRealTimeSync(handlePlayersUpdate, handleUserUpdate);
+
+  // Update sync status based on WebSocket connection
+  useEffect(() => {
+    if (isConnected) {
+      setSyncStatus(prevStatus => prevStatus === 'error' ? 'synchronized' : prevStatus);
+    } else {
+      setSyncStatus('disconnected');
+    }
+  }, [isConnected]);
 
   // Инициализация компонента
   useEffect(() => {
@@ -105,26 +186,12 @@ export default function Home() {
     }
   }, [imageDimensions.ratio]);
 
-  // Сохранение данных в API
+  // Optimized data saving with debouncing
   useEffect(() => {
     if (isMounted && players.length > 0) {
-      const saveData = async () => {
-        try {
-          // Save players to API
-          await apiService.batchUpdatePlayers(players);
-          
-          // Save current user to API
-          if (currentUser) {
-            await apiService.setCurrentUser(currentUser);
-          }
-        } catch (error) {
-          console.warn('Failed to save data to API:', error);
-        }
-      };
-      
-      saveData();
+      debouncedSave(players, currentUser);
     }
-  }, [players, currentUser, isMounted]);
+  }, [players, currentUser, isMounted, debouncedSave]);
 
   // Обработчики авторизации
   const handleLogin = async (login, password) => {
@@ -178,10 +245,47 @@ export default function Home() {
     setCurrentUser(null);
   };
 
+  // Cleanup function for timeouts
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
+
   if (!isMounted) return null;
 
   return (
     <div className="flex relative h-screen w-full bg-gray-100">
+      {/* Индикатор состояния синхронизации */}
+      <div className="absolute top-4 left-4 z-50">
+        <div className="flex items-center gap-2 bg-white bg-opacity-90 px-3 py-2 rounded-lg shadow-lg">
+          <div 
+            className={`w-3 h-3 rounded-full ${
+              syncStatus === 'synchronized' ? 'bg-green-500' :
+              syncStatus === 'saving' ? 'bg-yellow-500 animate-pulse' :
+              syncStatus === 'error' ? 'bg-red-500' :
+              'bg-gray-500'
+            }`}
+          />
+          <span className="text-sm font-medium text-gray-700">
+            {syncStatus === 'synchronized' ? 'Синхронизировано' :
+             syncStatus === 'saving' ? 'Сохранение...' :
+             syncStatus === 'error' ? 'Ошибка синхронизации' :
+             'Не подключен'}
+          </span>
+          {syncStatus === 'error' && (
+            <button 
+              onClick={reconnect}
+              className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
+            >
+              Повторить
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Кнопка авторизации */}
       <div className="absolute top-4 right-4 z-50">
         {currentUser ? (

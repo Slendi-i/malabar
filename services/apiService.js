@@ -52,13 +52,22 @@ class ApiService {
     return this.fetchWithErrorHandling(API_ENDPOINTS.HEALTH);
   }
 
-  // Batch update players (for efficiency)
+  // Batch update players (for efficiency) - Fixed to use single API call
   async batchUpdatePlayers(players) {
-    const updatePromises = players.map(player => 
-      this.updatePlayer(player.id, player)
-    );
-    
-    return Promise.allSettled(updatePromises);
+    return this.fetchWithErrorHandling(API_ENDPOINTS.PLAYERS, {
+      method: 'PUT',
+      body: JSON.stringify(players)
+    });
+  }
+
+  // Get real-time updates since timestamp
+  async getUpdates(since = 0) {
+    return this.fetchWithErrorHandling(`${API_ENDPOINTS.PLAYERS}/updates?since=${since}`);
+  }
+
+  // Get specific player by ID
+  async getPlayer(id) {
+    return this.fetchWithErrorHandling(`${API_ENDPOINTS.PLAYERS}/${id}`);
   }
 }
 

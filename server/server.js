@@ -3,6 +3,7 @@ const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
+const WebSocket = require('ws');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -375,6 +376,12 @@ app.put('/api/players/:id', (req, res) => {
         return res.status(500).json({ error: 'Update failed' });
       }
       
+      // Broadcast update to all connected clients
+      broadcastUpdate('player_updated', { 
+        id: playerId, 
+        player: updatedPlayer 
+      });
+      
       res.json({ message: 'Player updated successfully', id: playerId });
     });
   });
@@ -416,6 +423,12 @@ app.put('/api/players', (req, res) => {
   
   Promise.all(updatePromises)
     .then(results => {
+      // Broadcast batch update to all connected clients
+      broadcastUpdate('players_batch_updated', { 
+        players,
+        results 
+      });
+      
       res.json({ message: 'All players updated successfully', results });
     })
     .catch(err => {
@@ -466,6 +479,12 @@ app.post('/api/users/current', (req, res) => {
         return res.status(500).json({ error: 'Login failed' });
       }
       
+      // Broadcast user login to all connected clients
+      broadcastUpdate('user_logged_in', { 
+        username,
+        userId: this.lastID 
+      });
+      
       res.json({ message: 'Login successful', userId: this.lastID });
     });
   } else {
@@ -492,11 +511,46 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Start server
-app.listen(PORT, '0.0.0.0', () => {
+// Start server with WebSocket support
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   console.log('Database initialized');
 });
+
+// WebSocket server for real-time updates
+const wss = new WebSocket.Server({ server, path: '/ws' });
+
+const clients = new Set();
+
+wss.on('connection', (ws) => {
+  console.log('Client connected to WebSocket');
+  clients.add(ws);
+  
+  ws.on('close', () => {
+    console.log('Client disconnected from WebSocket');
+    clients.delete(ws);
+  });
+  
+  ws.on('error', (error) => {
+    console.error('WebSocket error:', error);
+    clients.delete(ws);
+  });
+});
+
+// Function to broadcast updates to all connected clients
+function broadcastUpdate(type, data) {
+  const message = JSON.stringify({ type, data, timestamp: Date.now() });
+  clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      try {
+        client.send(message);
+      } catch (error) {
+        console.error('Error broadcasting to client:', error);
+        clients.delete(client);
+      }
+    }
+  });
+}
 
 // Graceful shutdown
 process.on('SIGINT', () => {
