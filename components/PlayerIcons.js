@@ -65,18 +65,47 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   }, [safePlayers.length, positions.length]);
 
   const canDrag = (playerId) => {
-    if (!currentUser || !playerId) return false;
-    if (currentUser.type === 'admin') return true;
-    return currentUser.type === 'player' && currentUser.id === playerId;
+    if (!currentUser || !playerId) {
+      console.log('canDrag: Missing currentUser or playerId', { currentUser, playerId });
+      return false;
+    }
+    if (currentUser.type === 'admin') {
+      console.log('canDrag: Admin access granted');
+      return true;
+    }
+    // Приведение типов для сравнения
+    const userIdStr = String(currentUser.id);
+    const playerIdStr = String(playerId);
+    const canDragResult = currentUser.type === 'player' && userIdStr === playerIdStr;
+    console.log('canDrag check:', { 
+      userType: currentUser.type, 
+      userId: userIdStr, 
+      playerId: playerIdStr, 
+      result: canDragResult 
+    });
+    return canDragResult;
   };
 
   const handleMouseDown = (e, index) => {
-    if (!canDrag(safePlayers[index]?.id)) return;
+    const player = safePlayers[index];
+    const canDragThis = canDrag(player?.id);
+    
+    console.log(`Mouse down on player ${index}:`, {
+      player: player?.name,
+      playerId: player?.id,
+      canDrag: canDragThis,
+      currentUser: currentUser
+    });
+    
+    if (!canDragThis) {
+      console.log('Drag not allowed for this player');
+      return;
+    }
     
     e.preventDefault();
     e.stopPropagation();
     
-    console.log(`Starting drag for player ${index}:`, safePlayers[index]?.name);
+    console.log(`✅ Starting drag for player ${index}: ${player?.name}`);
     
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetX = e.clientX - rect.left;
@@ -98,6 +127,8 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     const containerRect = containerRef.current.getBoundingClientRect();
     const x = Math.max(0, Math.min(containerRect.width - 64, e.clientX - containerRect.left - dragOffset.x));
     const y = Math.max(0, e.clientY - containerRect.top - dragOffset.y);
+    
+    console.log(`🖱️ Moving player ${draggedIndex} to (${x}, ${y})`);
     
     // Update position smoothly
     setPositions(prev => {
@@ -138,7 +169,12 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       console.log(`Moving player ${currentPlayer.name} from position ${currentPlayer.position} to position ${newPosition}`);
       
       // Update players state which will trigger API save
-      setPlayers(updatedPlayers);
+      if (onPlayersUpdate) {
+        onPlayersUpdate(updatedPlayers);
+        console.log('📤 Players update sent successfully');
+      } else {
+        console.error('❌ onPlayersUpdate callback not available');
+      }
     } else {
       console.log('Position unchanged, not updating');
     }

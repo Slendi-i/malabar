@@ -289,9 +289,32 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Real-time updates endpoint
+// Updates endpoint for HTTP polling
 app.get('/api/players/updates', (req, res) => {
-  const lastUpdate = req.query.since || 0;
+  const since = req.query.since ? parseInt(req.query.since) : 0;
+  const currentTime = Date.now();
+  
+  console.log(`HTTP polling request - since: ${since}, current: ${currentTime}`);
+  
+  // Получаем всех игроков для HTTP polling
+  db.all('SELECT * FROM players ORDER BY id', (err, players) => {
+    if (err) {
+      console.error('Error fetching players for updates:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    // В простой реализации возвращаем всех игроков
+    // В реальности здесь можно добавить временные метки для фильтрации
+    res.json({
+      players: players || [],
+      timestamp: currentTime,
+      since: since
+    });
+  });
+});
+
+// Get all players (legacy endpoint)
+app.get('/api/players', (req, res) => {
   
   db.all('SELECT * FROM players WHERE id > ? ORDER BY id', [lastUpdate], (err, rows) => {
     if (err) {
@@ -317,8 +340,8 @@ app.get('/api/players/updates', (req, res) => {
   });
 });
 
-// Get all players with position sorting
-app.get('/api/players', (req, res) => {
+// Get player by ID
+app.get('/api/players/:id', (req, res) => {
   db.all('SELECT * FROM players ORDER BY position ASC, id ASC', (err, rows) => {
     if (err) {
       console.error('Database error:', err);
