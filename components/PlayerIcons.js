@@ -74,6 +74,10 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     if (!canDrag(safePlayers[index]?.id)) return;
     
     e.preventDefault();
+    e.stopPropagation();
+    
+    console.log(`Starting drag for player ${index}:`, safePlayers[index]?.name);
+    
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
@@ -89,9 +93,11 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   const handleMouseMove = (e) => {
     if (draggedIndex === null || !containerRef.current) return;
     
+    e.preventDefault();
+    
     const containerRect = containerRef.current.getBoundingClientRect();
-    const x = e.clientX - containerRect.left - dragOffset.x;
-    const y = e.clientY - containerRect.top - dragOffset.y;
+    const x = Math.max(0, Math.min(containerRect.width - 64, e.clientX - containerRect.left - dragOffset.x));
+    const y = Math.max(0, e.clientY - containerRect.top - dragOffset.y);
     
     // Update position smoothly
     setPositions(prev => {
@@ -172,9 +178,10 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
               top: `${positions[index]?.y || 0}px`,
               cursor: canDragPlayer ? (isDragging ? 'grabbing' : 'grab') : 'default',
               zIndex: isDragging ? 20 : 10,
-              transition: isDragging ? 'none' : 'transform 0.2s ease',
+              transition: isDragging ? 'none' : 'left 0.2s ease, top 0.2s ease',
               transform: isDragging ? 'scale(1.1)' : 'scale(1)',
-              userSelect: 'none'
+              userSelect: 'none',
+              pointerEvents: 'auto'
             }}
             className={`w-16 h-16 rounded-full flex items-center justify-center ${
               canDragPlayer 
