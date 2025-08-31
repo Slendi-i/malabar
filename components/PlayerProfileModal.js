@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Modal, Box, Typography, TextField, Select, MenuItem, Button } from '@mui/material';
+import apiService from '../services/apiService';
 
 export default function PlayerProfileModal({ player, open, onClose, setPlayers, players, currentUser }) {
   const [image, setImage] = useState(player.avatar || player.image || '');
@@ -42,17 +43,36 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
     }
   }, [open, player]);
 
-  const updatePlayerData = (updatedData) => {
+  const updatePlayerData = async (updatedData) => {
+    const updatedPlayer = { 
+      ...player, 
+      ...updatedData,
+      // Ensure avatar field is used consistently
+      avatar: updatedData.image || updatedData.avatar || player.avatar || player.image
+    };
+    
+    console.log('Updating player data:', { playerId: player.id, updatedData, updatedPlayer });
+    
+    // Update local state immediately for responsiveness
     const updatedPlayers = players.map(p => 
-      p.id === player.id ? { 
-        ...p, 
-        ...updatedData,
-        // Ensure avatar field is used consistently
-        avatar: updatedData.image || updatedData.avatar || p.avatar || p.image
-      } : p
+      p.id === player.id ? updatedPlayer : p
     );
-    console.log('Updating player data:', { playerId: player.id, updatedData, updatedPlayer: updatedPlayers.find(p => p.id === player.id) });
     setPlayers(updatedPlayers);
+    
+    // Send to API for persistence
+    try {
+      if (updatedData.games) {
+        await apiService.updatePlayerGames(player.id, updatedData.games);
+      } else if (updatedData.socialLinks) {
+        await apiService.updatePlayerSocial(player.id, updatedData.socialLinks);
+      } else {
+        await apiService.updatePlayerDetailed(player.id, updatedPlayer);
+      }
+      console.log('Player data saved to API successfully');
+    } catch (error) {
+      console.error('Failed to save player data to API:', error);
+      // Could add user notification here
+    }
   };
 
   const handleImageChange = (e) => {

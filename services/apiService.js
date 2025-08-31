@@ -60,6 +60,33 @@ class ApiService {
     });
   }
 
+  // Update single player with detailed data
+  async updatePlayerDetailed(id, playerData) {
+    console.log(`Updating player ${id} with data:`, playerData);
+    return this.fetchWithErrorHandling(`${API_ENDPOINTS.PLAYERS}/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(playerData)
+    });
+  }
+
+  // Update player games specifically
+  async updatePlayerGames(id, games) {
+    console.log(`Updating games for player ${id}:`, games);
+    return this.fetchWithErrorHandling(`${API_ENDPOINTS.PLAYERS}/${id}/games`, {
+      method: 'POST',
+      body: JSON.stringify({ games })
+    });
+  }
+
+  // Update player social links specifically
+  async updatePlayerSocial(id, socialLinks) {
+    console.log(`Updating social links for player ${id}:`, socialLinks);
+    return this.fetchWithErrorHandling(`${API_ENDPOINTS.PLAYERS}/${id}/social`, {
+      method: 'POST',
+      body: JSON.stringify({ socialLinks })
+    });
+  }
+
   // Get real-time updates since timestamp
   async getUpdates(since = 0) {
     return this.fetchWithErrorHandling(`${API_ENDPOINTS.PLAYERS}/updates?since=${since}`);

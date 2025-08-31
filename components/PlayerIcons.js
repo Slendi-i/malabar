@@ -30,15 +30,22 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   useEffect(() => {
     if (Array.isArray(safePlayers) && safePlayers.length > 0 && draggedIndex === null) {
       // Only update positions if not currently dragging
-      setPositions(safePlayers.map((player, index) => {
+      const newPositions = safePlayers.map((player, index) => {
         const pos = player.position || (index + 1);
         return {
           x: ((pos - 1) % 3) * 200 + 100,
           y: Math.floor((pos - 1) / 3) * 200 + 100
         };
-      }));
+      });
+      
+      // Only update if positions actually changed to avoid unnecessary re-renders
+      const positionsChanged = JSON.stringify(newPositions) !== JSON.stringify(positions);
+      if (positionsChanged) {
+        console.log('Updating positions from server data');
+        setPositions(newPositions);
+      }
     }
-  }, [safePlayers, draggedIndex]);
+  }, [safePlayers, draggedIndex, positions]);
 
   // Ensure positions array has the right length
   useEffect(() => {
@@ -122,10 +129,12 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
         position: newPosition
       };
       
-      console.log(`Moving player ${currentPlayer.name} to position ${newPosition}`);
+      console.log(`Moving player ${currentPlayer.name} from position ${currentPlayer.position} to position ${newPosition}`);
       
       // Update players state which will trigger API save
       setPlayers(updatedPlayers);
+    } else {
+      console.log('Position unchanged, not updating');
     }
     
     // Clean up

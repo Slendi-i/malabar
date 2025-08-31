@@ -35,7 +35,12 @@ export default function Home() {
     
     if (type === 'single' && playerId && data) {
       setPlayers(prev => prev.map(player => 
-        player.id === playerId ? { ...player, ...data } : player
+        player.id === playerId ? { 
+          ...player, 
+          ...data,
+          // Ensure position is preserved correctly
+          position: data.position !== undefined ? data.position : player.position
+        } : player
       ));
     } else if (type === 'batch' && Array.isArray(data)) {
       setPlayers(data.map(player => ({
@@ -46,7 +51,8 @@ export default function Home() {
           rerolls: 0,
           drops: 0,
           position: player.position || player.id
-        }
+        },
+        position: player.position || player.id
       })));
     }
     
