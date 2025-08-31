@@ -40,6 +40,8 @@ db.serialize(() => {
         const hasAvatar = columns.some(col => col.name === 'avatar');
         const hasImage = columns.some(col => col.name === 'image');
         const hasPosition = columns.some(col => col.name === 'position');
+        const hasX = columns.some(col => col.name === 'x');
+        const hasY = columns.some(col => col.name === 'y');
         
         if (!hasAvatar && hasImage) {
           // Old table structure, recreate it

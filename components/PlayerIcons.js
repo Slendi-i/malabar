@@ -31,10 +31,10 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     if (Array.isArray(safePlayers) && safePlayers.length > 0 && draggedIndex === null) {
       // Only update positions if not currently dragging
       const newPositions = safePlayers.map((player, index) => {
-        const pos = player.position || (index + 1);
+        // Используем сохраненные x,y координаты или дефолтные для новых игроков
         return {
-          x: ((pos - 1) % 3) * 200 + 100,
-          y: Math.floor((pos - 1) / 3) * 200 + 100
+          x: player.x !== undefined ? player.x : (index * 80 + 50),
+          y: player.y !== undefined ? player.y : 100
         };
       });
       
@@ -54,9 +54,10 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
         const newPos = Array.isArray(prev) ? [...prev] : [];
         while (newPos.length < safePlayers.length) {
           const index = newPos.length;
+          const player = safePlayers[index];
           newPos.push({
-            x: (index % 3) * 200 + 100,
-            y: Math.floor(index / 3) * 200 + 100
+            x: player?.x !== undefined ? player.x : (index * 80 + 50),
+            y: player?.y !== undefined ? player.y : 100
           });
         }
         return newPos;
@@ -141,32 +142,30 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   const handleMouseUp = (e) => {
     if (draggedIndex === null) return;
     
-    // Calculate final grid position
-    const finalPos = positions[draggedIndex];
-    const gridX = Math.max(0, Math.min(2, Math.floor((finalPos.x - 100) / 200)));
-    const gridY = Math.max(0, Math.floor((finalPos.y - 100) / 200));
-    const newPosition = gridY * 3 + gridX + 1;
+    // Свободное перетаскивание - сохраняем точную позицию без привязки к сетке
+    const currentPos = positions[draggedIndex];
+    const finalX = Math.max(0, currentPos.x);
+    const finalY = Math.max(0, currentPos.y);
     
-    // Snap to grid
-    const snappedX = gridX * 200 + 100;
-    const snappedY = gridY * 200 + 100;
+    console.log(`✅ Dropping player ${draggedIndex} at free position (${finalX}, ${finalY})`);
     
     setPositions(prev => {
       const newPos = [...prev];
-      newPos[draggedIndex] = { x: snappedX, y: snappedY };
+      newPos[draggedIndex] = { x: finalX, y: finalY };
       return newPos;
     });
     
-    // Update player data with new position only if it actually changed
+    // Сохраняем пиксельные координаты в базе данных
     const currentPlayer = safePlayers[draggedIndex];
-    if (currentPlayer && currentPlayer.position !== newPosition) {
+    if (currentPlayer) {
       const updatedPlayers = [...safePlayers];
       updatedPlayers[draggedIndex] = {
         ...updatedPlayers[draggedIndex],
-        position: newPosition
+        x: finalX,  // пиксельная координата X
+        y: finalY   // пиксельная координата Y
       };
       
-      console.log(`Moving player ${currentPlayer.name} from position ${currentPlayer.position} to position ${newPosition}`);
+      console.log(`📍 Moving player ${currentPlayer.name} to free position (${finalX}, ${finalY})`);
       
       // Update players state which will trigger API save
       if (onPlayersUpdate) {

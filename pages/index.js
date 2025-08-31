@@ -287,7 +287,7 @@ export default function Home() {
   return (
     <div className="flex relative h-screen w-full bg-gray-100">
       {/* Индикатор состояния синхронизации */}
-      <div className="absolute top-4 left-4 z-50">
+      <div className="absolute bottom-4 right-4 z-50">
         <div className="flex items-center gap-2 bg-white bg-opacity-90 px-3 py-2 rounded-lg shadow-lg">
           <div 
             className={`w-3 h-3 rounded-full ${
@@ -321,7 +321,7 @@ export default function Home() {
       </div>
 
       {/* Кнопка авторизации */}
-      <div className="absolute top-4 right-4 z-50">
+      <div className="absolute top-4 right-20 z-50">
         {currentUser ? (
           <Button 
             variant="contained" 
