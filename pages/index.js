@@ -95,16 +95,31 @@ export default function Home() {
   }, []);
 
   // Initialize WebSocket connection
-  const { isConnected, reconnect } = useRealTimeSync(handlePlayersUpdate, handleUserUpdate);
+  const { isConnected, connectionStatus, reconnect } = useRealTimeSync(handlePlayersUpdate, handleUserUpdate);
 
   // Update sync status based on WebSocket connection
   useEffect(() => {
     if (isConnected) {
-      setSyncStatus(prevStatus => prevStatus === 'error' ? 'synchronized' : prevStatus);
+      setSyncStatus('synchronized');
     } else {
-      setSyncStatus('disconnected');
+      switch (connectionStatus) {
+        case 'connecting':
+          setSyncStatus('connecting');
+          break;
+        case 'reconnecting':
+          setSyncStatus('reconnecting');
+          break;
+        case 'failed':
+          setSyncStatus('fallback');
+          break;
+        case 'error':
+          setSyncStatus('error');
+          break;
+        default:
+          setSyncStatus('disconnected');
+      }
     }
-  }, [isConnected]);
+  }, [isConnected, connectionStatus]);
 
   // Инициализация компонента
   useEffect(() => {
@@ -272,6 +287,9 @@ export default function Home() {
             className={`w-3 h-3 rounded-full ${
               syncStatus === 'synchronized' ? 'bg-green-500' :
               syncStatus === 'saving' ? 'bg-yellow-500 animate-pulse' :
+              syncStatus === 'connecting' ? 'bg-blue-500 animate-pulse' :
+              syncStatus === 'reconnecting' ? 'bg-orange-500 animate-pulse' :
+              syncStatus === 'fallback' ? 'bg-purple-500' :
               syncStatus === 'error' ? 'bg-red-500' :
               'bg-gray-500'
             }`}
@@ -279,15 +297,18 @@ export default function Home() {
           <span className="text-sm font-medium text-gray-700">
             {syncStatus === 'synchronized' ? 'Синхронизировано' :
              syncStatus === 'saving' ? 'Сохранение...' :
+             syncStatus === 'connecting' ? 'Подключение...' :
+             syncStatus === 'reconnecting' ? 'Переподключение...' :
+             syncStatus === 'fallback' ? 'HTTP режим' :
              syncStatus === 'error' ? 'Ошибка синхронизации' :
              'Не подключен'}
           </span>
-          {syncStatus === 'error' && (
+          {(syncStatus === 'error' || syncStatus === 'fallback') && (
             <button 
               onClick={reconnect}
               className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
             >
-              Повторить
+              {syncStatus === 'fallback' ? 'Восстановить WS' : 'Повторить'}
             </button>
           )}
         </div>

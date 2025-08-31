@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test для Malabar</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .connected { background-color: #d4edda; border: 1px solid #c3e6cb; }
+        .disconnected { background-color: #f8d7da; border: 1px solid #f5c6cb; }
+        .connecting { background-color: #fff3cd; border: 1px solid #ffeaa7; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        #log { background: #f8f9fa; padding: 10px; height: 300px; overflow-y: scroll; border: 1px solid #dee2e6; }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Test для Malabar Event Site</h1>
+    
+    <div id="status" class="status disconnected">
+        Статус: Не подключен
+    </div>
+    
+    <button onclick="connectWS()">Подключиться</button>
+    <button onclick="disconnectWS()">Отключиться</button>
+    <button onclick="clearLog()">Очистить лог</button>
+    
+    <h3>Тестируемые URL:</h3>
+    <ul>
+        <li>Production: ws://46.173.17.229:3001/ws</li>
+        <li>Local: ws://localhost:3001/ws</li>
+    </ul>
+    
+    <h3>Лог соединения:</h3>
+    <div id="log"></div>
+    
+    <script>
+        let ws = null;
+        const statusDiv = document.getElementById('status');
+        const logDiv = document.getElementById('log');
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        function updateStatus(status, className) {
+            statusDiv.textContent = `Статус: ${status}`;
+            statusDiv.className = `status ${className}`;
+        }
+        
+        function connectWS() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                log('WebSocket уже подключен');
+                return;
+            }
+            
+            const wsUrl = 'ws://46.173.17.229:3001/ws';
+            log(`Попытка подключения к: ${wsUrl}`);
+            updateStatus('Подключение...', 'connecting');
+            
+            try {
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = function(event) {
+                    log('✅ WebSocket подключен успешно!');
+                    updateStatus('Подключен', 'connected');
+                };
+                
+                ws.onmessage = function(event) {
+                    log(`📨 Получено сообщение: ${event.data}`);
+                };
+                
+                ws.onclose = function(event) {
+                    log(`🔌 WebSocket отключен. Код: ${event.code}, Причина: ${event.reason || 'Не указана'}`);
+                    updateStatus('Отключен', 'disconnected');
+                    
+                    // Расшифровка кодов закрытия
+                    const closeCodes = {
+                        1000: 'Нормальное закрытие',
+                        1001: 'Сервер недоступен',
+                        1002: 'Ошибка протокола',
+                        1003: 'Неподдерживаемый тип данных',
+                        1006: 'Аномальное закрытие',
+                        1011: 'Ошибка сервера',
+                        1015: 'Ошибка TLS'
+                    };
+                    
+                    if (closeCodes[event.code]) {
+                        log(`Расшифровка: ${closeCodes[event.code]}`);
+                    }
+                };
+                
+                ws.onerror = function(error) {
+                    log(`❌ Ошибка WebSocket: ${error.type}`);
+                    updateStatus('Ошибка', 'disconnected');
+                };
+                
+            } catch (error) {
+                log(`❌ Исключение при создании WebSocket: ${error.message}`);
+                updateStatus('Ошибка', 'disconnected');
+            }
+        }
+        
+        function disconnectWS() {
+            if (ws) {
+                ws.close(1000, 'Пользователь отключился');
+                ws = null;
+            }
+        }
+        
+        function clearLog() {
+            logDiv.innerHTML = '';
+        }
+        
+        // Автоматический тест при загрузке
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Страница загружена. Нажмите "Подключиться" для теста.');
+            
+            // Проверка поддержки WebSocket
+            if (typeof WebSocket !== 'undefined') {
+                log('✅ WebSocket поддерживается браузером');
+            } else {
+                log('❌ WebSocket НЕ поддерживается браузером');
+            }
+        });
+    </script>
+</body>
+</html>
