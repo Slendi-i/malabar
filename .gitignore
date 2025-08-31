@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/server/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -49,3 +50,11 @@ next-env.d.ts
 
 # PM2 runtime files
 .pm2/
+
+# Package lock files (uncomment if causing Git conflicts)
+# package-lock.json
+# server/package-lock.json
+
+# Backup files
+*.backup
+*.backup.*
