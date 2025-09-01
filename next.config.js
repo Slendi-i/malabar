@@ -17,8 +17,8 @@ const nextConfig = {
   },
   // Production optimizations
   poweredByHeader: false,
-  reactStrictMode: true,
-  swcMinify: true
+  reactStrictMode: true
+  // swcMinify is enabled by default in Next.js 15+
 };
 
 module.exports = nextConfig;

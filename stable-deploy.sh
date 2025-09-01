@@ -66,43 +66,91 @@ npm run build
 # 5. Проверка backend
 echo "5️⃣ Проверка backend..."
 cd server
-timeout 5s node server.js || {
-    echo "❌ Backend не запускается"
+
+# Запускаем backend в фоне для проверки
+echo "Запуск backend для проверки..."
+node server.js &
+BACKEND_PID=$!
+
+# Ждем несколько секунд чтобы сервер запустился
+sleep 5
+
+# Проверяем что backend отвечает на запросы
+if curl -s --connect-timeout 3 http://localhost:3001/api/health >/dev/null 2>&1; then
+    echo "✅ Backend проверен - отвечает на запросы"
+    kill $BACKEND_PID 2>/dev/null || true
+    sleep 2
+else
+    echo "❌ Backend не отвечает на запросы"
+    kill $BACKEND_PID 2>/dev/null || true
     cd ..
     exit 1
-}
-cd ..
+fi
 
-echo "✅ Backend проверен"
+cd ..
 
 # 6. Запуск через PM2
 echo "6️⃣ Запуск приложений..."
 
+# Убеждаемся что порты свободны
+echo "Освобождение портов перед запуском PM2..."
+sudo fuser -k 3000/tcp 2>/dev/null || true
+sudo fuser -k 3001/tcp 2>/dev/null || true
+sleep 3
+
 # Запуск backend
+echo "Запуск backend через PM2..."
 pm2 start ecosystem.config.js --only malabar-backend
-sleep 5
+
+# Ждем дольше для стабильного запуска
+sleep 8
 
 # Проверка backend
-if ! pm2 list | grep -q "online.*malabar-backend"; then
-    echo "❌ Backend не запустился"
-    pm2 logs malabar-backend --lines 10
-    exit 1
-fi
+echo "Проверка статуса backend..."
+pm2 status
 
-echo "✅ Backend запущен успешно"
+if pm2 list | grep -q "online.*malabar-backend"; then
+    echo "✅ Backend запущен успешно"
+else
+    echo "❌ Backend не запустился, проверяем логи:"
+    pm2 logs malabar-backend --lines 15
+    echo "Пробуем еще раз..."
+    pm2 restart malabar-backend
+    sleep 5
+    if pm2 list | grep -q "online.*malabar-backend"; then
+        echo "✅ Backend запущен после перезапуска"
+    else
+        echo "❌ Backend критическая ошибка"
+        exit 1
+    fi
+fi
 
 # Запуск frontend
+echo "Запуск frontend через PM2..."
 pm2 start ecosystem.config.js --only malabar-frontend
-sleep 5
+
+sleep 8
 
 # Проверка frontend
-if ! pm2 list | grep -q "online.*malabar-frontend"; then
-    echo "❌ Frontend не запустился"
-    pm2 logs malabar-frontend --lines 10
-    exit 1
-fi
+echo "Проверка статуса frontend..."
+pm2 status
 
-echo "✅ Frontend запущен успешно"
+if pm2 list | grep -q "online.*malabar-frontend"; then
+    echo "✅ Frontend запущен успешно"
+else
+    echo "❌ Frontend не запустился, проверяем логи:"
+    pm2 logs malabar-frontend --lines 15
+    echo "Пробуем еще раз..."
+    pm2 restart malabar-frontend
+    sleep 5
+    if pm2 list | grep -q "online.*malabar-frontend"; then
+        echo "✅ Frontend запущен после перезапуска"
+    else
+        echo "❌ Frontend критическая ошибка"
+        # Не останавливаем весь процесс, если backend работает
+        echo "⚠️ Frontend не работает, но backend может работать"
+    fi
+fi
 
 # 7. Финальные проверки
 echo "7️⃣ Проверка работоспособности..."

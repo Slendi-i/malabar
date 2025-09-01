@@ -91,6 +91,15 @@ else
     ((TESTS_FAILED++))
 fi
 
+# Проверка что swcMinify убран (устаревший в Next.js 15+)
+if ! grep -q "swcMinify.*true" next.config.js; then
+    echo "✅ Next.js swcMinify: Устаревший параметр убран"
+    ((TESTS_PASSED++))
+else
+    echo "❌ Next.js swcMinify: Устаревший параметр все еще есть"
+    ((TESTS_FAILED++))
+fi
+
 echo ""
 echo "4️⃣ ТЕСТИРОВАНИЕ ЗАВИСИМОСТЕЙ"
 echo "============================"
