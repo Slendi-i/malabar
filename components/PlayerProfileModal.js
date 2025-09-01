@@ -51,15 +51,11 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
       avatar: updatedData.image || updatedData.avatar || player.avatar || player.image
     };
     
-    console.log('Updating player data:', { playerId: player.id, updatedData, updatedPlayer });
+    console.log('💾 Сохранение данных игрока в БД:', { playerId: player.id, updatedData });
     
-    // Update local state immediately for responsiveness
-    const updatedPlayers = players.map(p => 
-      p.id === player.id ? updatedPlayer : p
-    );
-    setPlayers(updatedPlayers);
+    // НЕ обновляем локальное состояние - пусть БД будет источником истины!
+    // Отправляем только в API, real-time sync обновит состояние из БД
     
-    // Send to API for persistence
     try {
       if (updatedData.games) {
         await apiService.updatePlayerGames(player.id, updatedData.games);
@@ -68,10 +64,11 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
       } else {
         await apiService.updatePlayerDetailed(player.id, updatedPlayer);
       }
-      console.log('Player data saved to API successfully');
+      console.log('✅ Данные игрока сохранены в БД успешно');
     } catch (error) {
-      console.error('Failed to save player data to API:', error);
-      // Could add user notification here
+      console.error('❌ Ошибка сохранения данных игрока в БД:', error);
+      // Показываем ошибку пользователю
+      alert('Ошибка сохранения данных. Попробуйте еще раз.');
     }
   };
 

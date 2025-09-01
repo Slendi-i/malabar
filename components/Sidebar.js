@@ -47,93 +47,93 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
     }
   };
 
-  const handleRollComplete = (sum) => {
+  const handleRollComplete = async (sum) => {
     if (!currentUser || currentUser.type !== 'player') return;
     
-    setPlayers(prevPlayers => {
-      return prevPlayers.map(player => {
-        if (player.id === currentUser.id) {
-          const games = Array.isArray(player.games) ? [...player.games] : [];
-          
-          let gameToUpdate = games.find(g => 
-            g && g.status === 'В процессе' && 
-            (!g.dice || g.dice === 0) && 
-            !g.name
-          );
+    console.log('🎲 Сохранение результата броска в БД:', sum);
+    
+    // НЕ обновляем локальное состояние - отправляем сразу в БД
+    try {
+      const currentPlayer = players.find(p => p.id === currentUser.id);
+      if (!currentPlayer) return;
+      
+      const games = Array.isArray(currentPlayer.games) ? [...currentPlayer.games] : [];
+      
+      let gameToUpdate = games.find(g => 
+        g && g.status === 'В процессе' && 
+        (!g.dice || g.dice === 0) && 
+        !g.name
+      );
 
-          if (!gameToUpdate) {
-            gameToUpdate = games.find(g => g && g.status === 'В процессе');
-          }
+      if (!gameToUpdate) {
+        gameToUpdate = games.find(g => g && g.status === 'В процессе');
+      }
 
-          if (!gameToUpdate) {
-            gameToUpdate = {
-              name: '',
-              status: 'В процессе',
-              comment: '',
-              dice: sum
-            };
-            games.push(gameToUpdate);
-          } else {
-            gameToUpdate.dice = sum;
-          }
+      if (!gameToUpdate) {
+        gameToUpdate = {
+          name: '',
+          status: 'В процессе',
+          comment: '',
+          dice: sum
+        };
+        games.push(gameToUpdate);
+      } else {
+        gameToUpdate.dice = sum;
+      }
 
-          const stats = calculateStats(games);
-          
-          return {
-            ...player,
-            games,
-            stats: {
-              ...player.stats,
-              position: stats.position
-            }
-          };
-        }
-        return player;
-      });
-    });
+      // Отправляем в БД через API
+      await apiService.updatePlayerGames(currentUser.id, games);
+      console.log('✅ Результат броска сохранен в БД');
+    } catch (error) {
+      console.error('❌ Ошибка сохранения результата броска:', error);
+      alert('Ошибка сохранения результата броска. Попробуйте еще раз.');
+    }
   };
 
-  const handleGameSelect = (gameName) => {
+  const handleGameSelect = async (gameName) => {
     if (!currentUser || currentUser.type !== 'player') return;
     
-    setPlayers(prevPlayers => {
-      return prevPlayers.map(player => {
-        if (player.id === currentUser.id) {
-          const games = Array.isArray(player.games) ? [...player.games] : [];
-          
-          let gameToUpdate = games.find(g => 
-            g && g.status === 'В процессе' && 
-            g.dice > 0 && 
-            !g.name
-          );
+    console.log('🎮 Сохранение выбора игры в БД:', gameName);
+    
+    // НЕ обновляем локальное состояние - отправляем сразу в БД
+    try {
+      const currentPlayer = players.find(p => p.id === currentUser.id);
+      if (!currentPlayer) return;
+      
+      const games = Array.isArray(currentPlayer.games) ? [...currentPlayer.games] : [];
+      
+      let gameToUpdate = games.find(g => 
+        g && g.status === 'В процессе' && 
+        g.dice > 0 && 
+        !g.name
+      );
 
-          if (!gameToUpdate) {
-            gameToUpdate = games.find(g => 
-              g && g.status === 'В процессе' && 
-              !g.name
-            );
-          }
+      if (!gameToUpdate) {
+        gameToUpdate = games.find(g => 
+          g && g.status === 'В процессе' && 
+          !g.name
+        );
+      }
 
-          if (!gameToUpdate) {
-            gameToUpdate = {
-              name: gameName,
-              status: 'В процессе',
-              comment: '',
-              dice: 0
-            };
-            games.push(gameToUpdate);
-          } else {
-            gameToUpdate.name = gameName;
-          }
+      if (!gameToUpdate) {
+        gameToUpdate = {
+          name: gameName,
+          status: 'В процессе',
+          comment: '',
+          dice: 0
+        };
+        games.push(gameToUpdate);
+      } else {
+        gameToUpdate.name = gameName;
+      }
 
-          return {
-            ...player,
-            games
-          };
-        }
-        return player;
-      });
-    });
+      // Отправляем в БД через API
+      await apiService.updatePlayerGames(currentUser.id, games);
+      console.log('✅ Выбор игры сохранен в БД');
+    } catch (error) {
+      console.error('❌ Ошибка сохранения выбора игры:', error);
+      alert('Ошибка сохранения выбора игры. Попробуйте еще раз.');
+    }
   };
 
   return (

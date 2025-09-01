@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Tooltip } from '@mui/material';
+import apiService from '../services/apiService';
 
 export default function PlayerIcons({ players, setPlayers, currentUser }) {
   // Ensure players is an array and has the expected structure
@@ -166,18 +167,25 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     // Сохраняем пиксельные координаты в базе данных
     const currentPlayer = safePlayers[draggedIndex];
     if (currentPlayer) {
-      const updatedPlayers = [...safePlayers];
-      updatedPlayers[draggedIndex] = {
-        ...updatedPlayers[draggedIndex],
+      console.log(`📍 Сохранение позиции игрока ${currentPlayer.name} в БД: (${finalX}, ${finalY})`);
+      
+      // НЕ обновляем локальное состояние - отправляем сразу в БД
+      // Real-time sync обновит состояние из БД
+      const updatedPlayer = {
+        ...currentPlayer,
         x: finalX,  // пиксельная координата X
         y: finalY   // пиксельная координата Y
       };
       
-      console.log(`📍 Moving player ${currentPlayer.name} to free position (${finalX}, ${finalY})`);
-      
-      // Update players state which will trigger API save
-      setPlayers(updatedPlayers);
-      console.log('📤 Players update sent successfully');
+      // Отправляем в БД через API
+      apiService.updatePlayerDetailed(currentPlayer.id, updatedPlayer)
+        .then(() => {
+          console.log('✅ Позиция игрока сохранена в БД');
+        })
+        .catch(error => {
+          console.error('❌ Ошибка сохранения позиции игрока:', error);
+          alert('Ошибка сохранения позиции. Попробуйте еще раз.');
+        });
     } else {
       console.log('Position unchanged, not updating');
     }

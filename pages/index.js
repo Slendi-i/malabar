@@ -24,16 +24,13 @@ export default function Home() {
 
   // Обработчики для real-time синхронизации
   const handlePlayersUpdate = useCallback((type, data, playerId) => {
-    console.log('Received real-time update:', type, data);
+    console.log('🔄 Получено обновление из БД:', type, data);
     
-    // Avoid updating if the change came from this client (to prevent conflicts during drag)
-    const timeSinceLastSave = Date.now() - lastSaveRef.current;
-    if (timeSinceLastSave < 2000) {
-      console.log('Skipping real-time update - recent save from this client');
-      return;
-    }
+    // ВСЕГДА применяем обновления из БД - БД источник истины!
+    // Убираем проверку времени - это мешало синхронизации
     
     if (type === 'single' && playerId && data) {
+      console.log('📝 Обновление одного игрока из БД:', playerId, data);
       setPlayers(prev => prev.map(player => 
         player.id === playerId ? { 
           ...player, 
@@ -43,6 +40,7 @@ export default function Home() {
         } : player
       ));
     } else if (type === 'batch' && Array.isArray(data)) {
+      console.log('📝 Обновление всех игроков из БД:', data.length);
       setPlayers(data.map(player => ({
         ...player,
         games: Array.isArray(player.games) ? player.games : [],
