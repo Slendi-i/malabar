@@ -145,7 +145,10 @@ export default function Home() {
               rerolls: 0,
               drops: 0,
               position: player.id
-            }
+            },
+            // Сохраняем x,y координаты если они есть
+            x: player.x !== undefined ? player.x : ((player.position - 1) % 3) * 200 + 100,
+            y: player.y !== undefined ? player.y : Math.floor((player.position - 1) / 3) * 200 + 100
           }));
           setPlayers(normalizedPlayers);
           console.log('✅ Данные игроков загружены:', normalizedPlayers?.length || 0);

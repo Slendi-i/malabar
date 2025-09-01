@@ -24,6 +24,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
 
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef(null);
 
   // Update positions when players data changes
@@ -103,6 +104,12 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       return;
     }
     
+    // Если уже перетаскиваем, не начинаем новое перетаскивание
+    if (isDragging) {
+      console.log('Already dragging, ignoring mouse down');
+      return;
+    }
+    
     e.preventDefault();
     e.stopPropagation();
     
@@ -114,6 +121,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     
     setDraggedIndex(index);
     setDragOffset({ x: offsetX, y: offsetY });
+    setIsDragging(true);
     
     // Add global mouse event listeners
     document.addEventListener('mousemove', handleMouseMove);
@@ -140,7 +148,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   };
 
   const handleMouseUp = (e) => {
-    if (draggedIndex === null) return;
+    if (draggedIndex === null || !isDragging) return;
     
     // Свободное перетаскивание - сохраняем точную позицию без привязки к сетке
     const currentPos = positions[draggedIndex];
@@ -168,12 +176,8 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       console.log(`📍 Moving player ${currentPlayer.name} to free position (${finalX}, ${finalY})`);
       
       // Update players state which will trigger API save
-      if (onPlayersUpdate) {
-        onPlayersUpdate(updatedPlayers);
-        console.log('📤 Players update sent successfully');
-      } else {
-        console.error('❌ onPlayersUpdate callback not available');
-      }
+      setPlayers(updatedPlayers);
+      console.log('📤 Players update sent successfully');
     } else {
       console.log('Position unchanged, not updating');
     }
@@ -181,6 +185,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     // Clean up
     setDraggedIndex(null);
     setDragOffset({ x: 0, y: 0 });
+    setIsDragging(false);
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
   };
