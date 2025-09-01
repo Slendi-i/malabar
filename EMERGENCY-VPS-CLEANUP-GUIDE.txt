@@ -1,0 +1,118 @@
+===============================================
+    ЭКСТРЕННАЯ ОЧИСТКА VPS СЕРВЕРА
+===============================================
+
+ПРОБЛЕМА: Недостаток места на VPS сервере
+РЕШЕНИЕ: Быстрая очистка через команды в терминале
+
+===============================================
+ПОРЯДОК ДЕЙСТВИЙ НА VPS СЕРВЕРЕ:
+===============================================
+
+1. Подключитесь к VPS:
+   ssh ваш_пользователь@ваш_сервер
+
+2. Перейдите в папку проекта:
+   cd /path/to/your/project
+
+3. БЫСТРЫЙ BACKUP (рекомендуется):
+   
+   BACKUP_DIR="backup_$(date +%Y%m%d_%H%M)" && mkdir $BACKUP_DIR && cp malabar.db server/malabar.db package.json server/package.json .env next.config.js ecosystem.config.js $BACKUP_DIR/ 2>/dev/null && tar -czf ${BACKUP_DIR}.tar.gz $BACKUP_DIR && rm -rf $BACKUP_DIR && echo "✓ Backup: ${BACKUP_DIR}.tar.gz"
+
+4. ПРОВЕРКА МЕСТА ДО ОЧИСТКИ:
+   
+   df -h . && echo "--- Размеры папок ---" && du -sh node_modules server/node_modules .next out .git 2>/dev/null
+
+5. ОСНОВНАЯ ОЧИСТКА (выберите один вариант):
+
+   ВАРИАНТ A - Создать скрипт:
+   -------------------------
+   cat > cleanup.sh << 'EOF'
+#!/bin/bash
+echo "=== ОЧИСТКА VPS ==="
+df -h . | head -2
+rm -rf node_modules server/node_modules .next out 2>/dev/null && echo "✓ Удалены node_modules и build"
+npm cache clean --force 2>/dev/null && echo "✓ Очищен npm cache"
+find . -name "*.log" -delete 2>/dev/null && echo "✓ Удалены логи"
+pm2 flush 2>/dev/null && echo "✓ Очищены PM2 логи"
+df -h . | head -2
+echo "Переустанавливаем зависимости..."
+npm install --production --silent
+[ -d "server" ] && cd server && npm install --production --silent && cd ..
+pm2 restart all
+echo "✓ Готово!"
+EOF
+   
+   chmod +x cleanup.sh
+   ./cleanup.sh
+
+   ВАРИАНТ B - Прямые команды:
+   --------------------------
+   rm -rf node_modules server/node_modules .next out
+   npm cache clean --force
+   find . -name "*.log" -delete
+   pm2 flush
+   npm install --production
+   cd server && npm install --production && cd ..
+   pm2 restart all
+
+   ВАРИАНТ C - Одна строка:
+   -----------------------
+   rm -rf node_modules server/node_modules .next out && npm cache clean --force && find . -name "*.log" -delete && pm2 flush && npm install --production && cd server && npm install --production && cd .. && pm2 restart all
+
+6. ПРОВЕРКА РЕЗУЛЬТАТА:
+   
+   df -h .
+   pm2 status
+
+===============================================
+ЧТО БУДЕТ УДАЛЕНО:
+===============================================
+
+✓ node_modules (корень и server/) - 200-800 MB
+✓ .next (build кэш) - 50-300 MB  
+✓ out (static export) - 50-200 MB
+✓ npm cache - 100-500 MB
+✓ .log файлы и PM2 логи - 10-100 MB
+
+ИТОГО: 400 MB - 2 GB освобождено
+
+===============================================
+ЧТО НЕ БУДЕТ ЗАТРОНУТО:
+===============================================
+
+✓ malabar.db (база данных)
+✓ server/malabar.db (база данных сервера)
+✓ Исходный код (pages/, components/, services/)
+✓ Конфигурационные файлы
+✓ .env переменные окружения
+
+===============================================
+ЕСЛИ ЧТО-ТО ПОШЛО НЕ ТАК:
+===============================================
+
+1. Восстановите backup:
+   tar -xzf backup_*.tar.gz
+   
+2. Переустановите зависимости:
+   npm install && cd server && npm install
+
+3. Перезапустите приложение:
+   pm2 restart all
+
+===============================================
+ЭКСТРЕННЫЕ КОМАНДЫ:
+===============================================
+
+Проверить место: df -h .
+Статус PM2: pm2 status  
+Логи PM2: pm2 logs
+Перезапуск: pm2 restart all
+Проверка приложения: curl http://localhost:PORT
+
+===============================================
+
+⚠️  ВАЖНО: После очистки обязательно проверьте 
+    что приложение работает корректно!
+
+===============================================

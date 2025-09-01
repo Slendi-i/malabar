@@ -1,0 +1,85 @@
+# КОМАНДЫ ДЛЯ ВЫПОЛНЕНИЯ НА VPS СЕРВЕРЕ
+# Скопируйте и выполните эти команды по порядку на вашем VPS
+
+# ======================================
+# ВАРИАНТ 1: Создать скрипт на сервере
+# ======================================
+
+cat > emergency-cleanup.sh << 'EOF'
+#!/bin/bash
+echo "=== ЭКСТРЕННАЯ ОЧИСТКА VPS ==="
+echo "До очистки:"
+df -h . | head -2
+echo "Освобождаем место..."
+rm -rf node_modules server/node_modules .next out 2>/dev/null && echo "✓ Удалены node_modules и build файлы"
+npm cache clean --force 2>/dev/null && echo "✓ Очищен npm cache"
+find . -name "*.log" -delete 2>/dev/null && echo "✓ Удалены .log файлы"
+find . -name "*.tmp" -delete 2>/dev/null && echo "✓ Удалены .tmp файлы" 
+find . -name ".DS_Store" -delete 2>/dev/null
+pm2 flush 2>/dev/null && echo "✓ Очищены PM2 логи"
+echo "После очистки:"
+df -h . | head -2
+echo "Переустанавливаем зависимости..."
+npm install --production --silent
+if [ -d "server" ]; then
+  cd server && npm install --production --silent && cd ..
+fi
+echo "✓ Зависимости переустановлены"
+echo "✓ Готово! Перезапустите: pm2 restart all"
+EOF
+
+chmod +x emergency-cleanup.sh
+./emergency-cleanup.sh
+
+# ======================================
+# ВАРИАНТ 2: Прямое выполнение (если нет места для файла)
+# ======================================
+
+# Скопируйте и выполните эти команды одну за другой:
+
+echo "=== До очистки ==="
+df -h . | head -2
+
+echo "Удаляем node_modules..."
+rm -rf node_modules server/node_modules
+
+echo "Удаляем build кэш..."
+rm -rf .next out
+
+echo "Очищаем npm cache..."
+npm cache clean --force
+
+echo "Удаляем логи..."
+find . -name "*.log" -delete
+find . -name "*.tmp" -delete
+
+echo "Очищаем PM2 логи..."
+pm2 flush
+
+echo "=== После очистки ==="
+df -h . | head -2
+
+echo "Переустанавливаем зависимости..."
+npm install --production
+
+echo "Переустанавливаем зависимости сервера..."
+cd server && npm install --production && cd ..
+
+echo "Перезапускаем приложение..."
+pm2 restart all
+
+echo "✓ Очистка завершена!"
+
+# ======================================
+# ВАРИАНТ 3: Быстрая однострочная очистка
+# ======================================
+
+rm -rf node_modules server/node_modules .next out && npm cache clean --force && find . -name "*.log" -delete && pm2 flush && df -h . && npm install --production && cd server && npm install --production && cd .. && pm2 restart all
+
+# ======================================
+# ПРОВЕРКА РЕЗУЛЬТАТА
+# ======================================
+
+df -h .
+pm2 status
+npm --version

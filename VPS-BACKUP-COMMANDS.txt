@@ -1,0 +1,49 @@
+# КОМАНДЫ ДЛЯ СОЗДАНИЯ МИНИМАЛЬНОГО BACKUP НА VPS
+
+# ======================================
+# БЫСТРЫЙ BACKUP ВАЖНЫХ ФАЙЛОВ
+# ======================================
+
+# Создаем backup папку
+mkdir -p emergency_backup_$(date +%Y%m%d_%H%M)
+BACKUP_DIR="emergency_backup_$(date +%Y%m%d_%H%M)"
+
+# Копируем самые важные файлы
+cp malabar.db $BACKUP_DIR/ 2>/dev/null
+cp server/malabar.db $BACKUP_DIR/server_malabar.db 2>/dev/null
+cp package.json $BACKUP_DIR/ 2>/dev/null
+cp server/package.json $BACKUP_DIR/server_package.json 2>/dev/null
+cp .env $BACKUP_DIR/ 2>/dev/null
+cp next.config.js $BACKUP_DIR/ 2>/dev/null
+cp ecosystem.config.js $BACKUP_DIR/ 2>/dev/null
+
+# Создаем архив
+tar -czf ${BACKUP_DIR}.tar.gz $BACKUP_DIR
+rm -rf $BACKUP_DIR
+
+echo "✓ Backup создан: ${BACKUP_DIR}.tar.gz"
+ls -lh ${BACKUP_DIR}.tar.gz
+
+# ======================================
+# ОДНОСТРОЧНЫЙ BACKUP
+# ======================================
+
+BACKUP_DIR="backup_$(date +%Y%m%d_%H%M)" && mkdir $BACKUP_DIR && cp malabar.db server/malabar.db package.json server/package.json .env next.config.js ecosystem.config.js $BACKUP_DIR/ 2>/dev/null && tar -czf ${BACKUP_DIR}.tar.gz $BACKUP_DIR && rm -rf $BACKUP_DIR && echo "✓ Backup: ${BACKUP_DIR}.tar.gz" && ls -lh ${BACKUP_DIR}.tar.gz
+
+# ======================================
+# ПРОВЕРКА МЕСТА ДО ОЧИСТКИ
+# ======================================
+
+echo "=== АНАЛИЗ ДИСКОВОГО ПРОСТРАНСТВА ==="
+echo "Общее место:"
+df -h .
+
+echo "Размеры основных папок:"
+du -sh node_modules 2>/dev/null || echo "node_modules: не найден"
+du -sh server/node_modules 2>/dev/null || echo "server/node_modules: не найден"
+du -sh .next 2>/dev/null || echo ".next: не найден"
+du -sh out 2>/dev/null || echo "out: не найден"
+du -sh .git 2>/dev/null || echo ".git: не найден"
+
+echo "Топ-5 самых больших файлов:"
+find . -type f -exec du -h {} + 2>/dev/null | sort -rh | head -5
