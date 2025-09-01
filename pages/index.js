@@ -26,17 +26,20 @@ export default function Home() {
   const handlePlayersUpdate = useCallback((type, data, playerId) => {
     console.log('🔄 Получено обновление из БД:', type, data);
     
-    // ВСЕГДА применяем обновления из БД - БД источник истины!
-    // Убираем проверку времени - это мешало синхронизации
-    
+    // БД является источником истины - применяем все обновления
     if (type === 'single' && playerId && data) {
       console.log('📝 Обновление одного игрока из БД:', playerId, data);
       setPlayers(prev => prev.map(player => 
         player.id === playerId ? { 
           ...player, 
           ...data,
-          // Ensure position is preserved correctly
-          position: data.position !== undefined ? data.position : player.position
+          // Нормализуем данные
+          games: Array.isArray(data.games) ? data.games : player.games || [],
+          stats: data.stats || player.stats || { wins: 0, rerolls: 0, drops: 0 },
+          socialLinks: data.socialLinks || player.socialLinks || { twitch: '', telegram: '', discord: '' },
+          position: data.position !== undefined ? data.position : player.position,
+          x: data.x !== undefined ? data.x : player.x,
+          y: data.y !== undefined ? data.y : player.y
         } : player
       ));
     } else if (type === 'batch' && Array.isArray(data)) {
@@ -44,13 +47,11 @@ export default function Home() {
       setPlayers(data.map(player => ({
         ...player,
         games: Array.isArray(player.games) ? player.games : [],
-        stats: player.stats || {
-          wins: 0,
-          rerolls: 0,
-          drops: 0,
-          position: player.position || player.id
-        },
-        position: player.position || player.id
+        stats: player.stats || { wins: 0, rerolls: 0, drops: 0 },
+        socialLinks: player.socialLinks || { twitch: '', telegram: '', discord: '' },
+        position: player.position || player.id,
+        x: player.x !== undefined ? player.x : ((player.position - 1) % 3) * 200 + 100,
+        y: player.y !== undefined ? player.y : Math.floor((player.position - 1) / 3) * 200 + 100
       })));
     }
     
@@ -64,39 +65,8 @@ export default function Home() {
     }
   }, []);
 
-  // Optimized save function with debouncing
-  const debouncedSave = useCallback(async (playersToSave, userToSave) => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        setSyncStatus('saving');
-        
-        if (playersToSave && playersToSave.length > 0) {
-          await apiService.batchUpdatePlayers(playersToSave);
-        }
-        
-        if (userToSave) {
-          await apiService.setCurrentUser(userToSave);
-        }
-        
-        lastSaveRef.current = Date.now();
-        setSyncStatus('synchronized');
-      } catch (error) {
-        console.warn('Failed to save data to API:', error);
-        setSyncStatus('error');
-        
-        // Retry after 5 seconds
-        setTimeout(() => {
-          if (playersToSave && playersToSave.length > 0) {
-            debouncedSave(playersToSave, userToSave);
-          }
-        }, 5000);
-      }
-    }, 1000); // 1 second debounce
-  }, []);
+  // Убрали функцию debouncedSave - теперь сохранение происходит только через компоненты
+  // Это избегает конфликтов с real-time синхронизацией
 
   // Initialize WebSocket connection
   const { isConnected, connectionStatus, reconnect } = useRealTimeSync(handlePlayersUpdate, handleUserUpdate);
@@ -133,9 +103,11 @@ export default function Home() {
       try {
         console.log('🔄 Загрузка данных игроков...');
         // Load players from API
-        const apiPlayers = await apiService.getPlayers();
-        if (apiPlayers && Array.isArray(apiPlayers) && apiPlayers.length > 0) {
-          const normalizedPlayers = apiPlayers.map(player => ({
+        const response = await apiService.getPlayers();
+        
+        // Проверяем что получили корректный ответ с данными игроков
+        if (response && response.players && Array.isArray(response.players)) {
+          const normalizedPlayers = response.players.map(player => ({
             ...player,
             games: Array.isArray(player.games) ? player.games : [],
             stats: player.stats || {
@@ -148,18 +120,15 @@ export default function Home() {
             x: player.x !== undefined ? player.x : ((player.position - 1) % 3) * 200 + 100,
             y: player.y !== undefined ? player.y : Math.floor((player.position - 1) / 3) * 200 + 100
           }));
+          
           setPlayers(normalizedPlayers);
           console.log('✅ Данные игроков загружены из БД:', normalizedPlayers?.length || 0);
+          setSyncStatus('synchronized');
         } else {
-          console.warn('⚠️ БД пуста или недоступна, создаем дефолтных игроков только если БД действительно пуста');
-          // Проверяем, действительно ли БД пуста или это ошибка подключения
-          if (apiPlayers && Array.isArray(apiPlayers) && apiPlayers.length === 0) {
-            console.log('📝 БД пуста, создаем дефолтных игроков');
-            createDefaultPlayers();
-          } else {
-            console.error('❌ Ошибка загрузки из БД, НЕ перезаписываем данные');
-            setSyncStatus('error');
-          }
+          console.error('❌ Некорректный ответ от API:', response);
+          setSyncStatus('error');
+          // НЕ создаем дефолтных игроков - это может перезаписать БД!
+          console.log('🚫 Ожидаем восстановления связи с БД, НЕ создаем дефолтные данные');
         }
         
         // Load current user from API
@@ -174,32 +143,13 @@ export default function Home() {
       } catch (error) {
         console.error('❌ Критическая ошибка загрузки данных:', error);
         setSyncStatus('error');
-        // НЕ создаем дефолтных игроков при ошибке - это перезапишет БД!
-        console.log('🚫 НЕ перезаписываем БД дефолтными данными при ошибке');
+        console.log('🚫 Ошибка подключения к БД, НЕ перезаписываем данные');
       }
     };
 
-    const createDefaultPlayers = () => {
-      const defaultPlayers = Array.from({ length: 12 }, (_, i) => ({
-        id: i + 1,
-        name: `Player ${i + 1}`,
-        avatar: '/avatars/player' + (i + 1) + '.jpg',
-        socialLinks: { discord: '', twitter: '', instagram: '' },
-        stats: { wins: 0, losses: 0, draws: 0 },
-        games: [],
-        isOnline: false
-      }));
-      setPlayers(defaultPlayers);
-    };
-
-
-
     if (typeof window !== 'undefined') {
       loadData();
-      // Image dimensions are now handled by the img element's onLoad event
     }
-
-    // No cleanup needed for the new approach
   }, []);
 
   // Обновление размеров при изменении окна
@@ -226,12 +176,9 @@ export default function Home() {
     }
   }, [imageDimensions.ratio]);
 
-  // Optimized data saving with debouncing
-  useEffect(() => {
-    if (isMounted && players.length > 0) {
-      debouncedSave(players, currentUser);
-    }
-  }, [players, currentUser, isMounted, debouncedSave]);
+  // УБРАЛИ АВТОМАТИЧЕСКОЕ СОХРАНЕНИЕ - оно создавало бесконечные циклы!
+  // Теперь сохранение происходит только явно через компоненты (PlayerProfileModal, PlayerIcons)
+  // Real-time sync обновляет состояние из БД как источника истины
 
   // Обработчики авторизации
   const handleLogin = async (login, password) => {

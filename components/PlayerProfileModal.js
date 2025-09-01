@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Modal, Box, Typography, TextField, Select, MenuItem, Button } from '@mui/material';
 import apiService from '../services/apiService';
 
@@ -9,6 +9,10 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
     twitch: '', telegram: '', discord: ''
   });
   const [games, setGames] = useState(player.games || []);
+  
+  // Refs for debouncing
+  const saveTimeoutRef = useRef(null);
+  const socialTimeoutRef = useRef(null);
 
   // Рассчитываем статистику на основе игр
   const calculateStats = () => {
@@ -41,33 +45,59 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
       setSocialLinks(player.socialLinks || { twitch: '', telegram: '', discord: '' });
       setGames(player.games || []);
     }
+    
+    // Cleanup timers when modal closes
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      if (socialTimeoutRef.current) {
+        clearTimeout(socialTimeoutRef.current);
+      }
+    };
   }, [open, player]);
 
+  // Debounced save function
+  const debouncedSave = useCallback((updatedData, delay = 1000) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(async () => {
+      const updatedPlayer = { 
+        ...player, 
+        ...updatedData,
+        // Ensure avatar field is used consistently
+        avatar: updatedData.image || updatedData.avatar || player.avatar || player.image
+      };
+      
+      console.log('💾 Сохранение данных игрока в БД:', { playerId: player.id, updatedData });
+      
+      try {
+        await apiService.updatePlayerDetailed(player.id, updatedPlayer);
+        console.log('✅ Данные игрока сохранены в БД успешно');
+      } catch (error) {
+        console.error('❌ Ошибка сохранения данных игрока в БД:', error);
+        alert('Ошибка сохранения данных. Попробуйте еще раз.');
+      }
+    }, delay);
+  }, [player]);
+
+  // Immediate save for critical data (games, images)
   const updatePlayerData = async (updatedData) => {
     const updatedPlayer = { 
       ...player, 
       ...updatedData,
-      // Ensure avatar field is used consistently
       avatar: updatedData.image || updatedData.avatar || player.avatar || player.image
     };
     
-    console.log('💾 Сохранение данных игрока в БД:', { playerId: player.id, updatedData });
-    
-    // НЕ обновляем локальное состояние - пусть БД будет источником истины!
-    // Отправляем только в API, real-time sync обновит состояние из БД
+    console.log('💾 Немедленное сохранение данных игрока в БД:', { playerId: player.id, updatedData });
     
     try {
-      if (updatedData.games) {
-        await apiService.updatePlayerGames(player.id, updatedData.games);
-      } else if (updatedData.socialLinks) {
-        await apiService.updatePlayerSocial(player.id, updatedData.socialLinks);
-      } else {
-        await apiService.updatePlayerDetailed(player.id, updatedPlayer);
-      }
+      await apiService.updatePlayerDetailed(player.id, updatedPlayer);
       console.log('✅ Данные игрока сохранены в БД успешно');
     } catch (error) {
       console.error('❌ Ошибка сохранения данных игрока в БД:', error);
-      // Показываем ошибку пользователю
       alert('Ошибка сохранения данных. Попробуйте еще раз.');
     }
   };
@@ -88,13 +118,22 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
   const handleNameChange = (e) => {
     const newName = e.target.value;
     setPlayerName(newName);
-    updatePlayerData({ name: newName });
+    // Debounced save for name changes
+    debouncedSave({ name: newName });
   };
 
   const handleSocialChange = (platform, value) => {
     const newSocialLinks = { ...socialLinks, [platform]: value };
     setSocialLinks(newSocialLinks);
-    updatePlayerData({ socialLinks: newSocialLinks });
+    
+    // Debounced save for social links
+    if (socialTimeoutRef.current) {
+      clearTimeout(socialTimeoutRef.current);
+    }
+    
+    socialTimeoutRef.current = setTimeout(() => {
+      debouncedSave({ socialLinks: newSocialLinks }, 500);
+    }, 500);
   };
 
   const handleAddGame = () => {
