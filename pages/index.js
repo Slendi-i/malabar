@@ -136,7 +136,7 @@ export default function Home() {
         console.log('🔄 Загрузка данных игроков...');
         // Load players from API
         const apiPlayers = await apiService.getPlayers();
-        if (apiPlayers && Array.isArray(apiPlayers)) {
+        if (apiPlayers && Array.isArray(apiPlayers) && apiPlayers.length > 0) {
           const normalizedPlayers = apiPlayers.map(player => ({
             ...player,
             games: Array.isArray(player.games) ? player.games : [],
@@ -151,10 +151,17 @@ export default function Home() {
             y: player.y !== undefined ? player.y : Math.floor((player.position - 1) / 3) * 200 + 100
           }));
           setPlayers(normalizedPlayers);
-          console.log('✅ Данные игроков загружены:', normalizedPlayers?.length || 0);
+          console.log('✅ Данные игроков загружены из БД:', normalizedPlayers?.length || 0);
         } else {
-          console.warn('No players data from API, using defaults');
-          createDefaultPlayers();
+          console.warn('⚠️ БД пуста или недоступна, создаем дефолтных игроков только если БД действительно пуста');
+          // Проверяем, действительно ли БД пуста или это ошибка подключения
+          if (apiPlayers && Array.isArray(apiPlayers) && apiPlayers.length === 0) {
+            console.log('📝 БД пуста, создаем дефолтных игроков');
+            createDefaultPlayers();
+          } else {
+            console.error('❌ Ошибка загрузки из БД, НЕ перезаписываем данные');
+            setSyncStatus('error');
+          }
         }
         
         // Load current user from API
@@ -167,8 +174,10 @@ export default function Home() {
           console.warn('Failed to load user from API:', e);
         }
       } catch (error) {
-        console.error('Failed to load data from API:', error);
-        createDefaultPlayers();
+        console.error('❌ Критическая ошибка загрузки данных:', error);
+        setSyncStatus('error');
+        // НЕ создаем дефолтных игроков при ошибке - это перезапишет БД!
+        console.log('🚫 НЕ перезаписываем БД дефолтными данными при ошибке');
       }
     };
 
