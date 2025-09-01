@@ -317,8 +317,7 @@ app.get('/api/players/updates', (req, res) => {
 
 // Get all players (legacy endpoint)
 app.get('/api/players', (req, res) => {
-  
-  db.all('SELECT * FROM players WHERE id > ? ORDER BY id', [lastUpdate], (err, rows) => {
+  db.all('SELECT * FROM players ORDER BY position ASC, id ASC', (err, rows) => {
     if (err) {
       console.error('Database error:', err);
       return res.status(500).json({ error: 'Database error' });
@@ -336,31 +335,8 @@ app.get('/api/players', (req, res) => {
     
     res.json({ 
       players, 
-      timestamp: Date.now(),
-      lastUpdate: lastUpdate 
+      timestamp: Date.now()
     });
-  });
-});
-
-// Get player by ID
-app.get('/api/players/:id', (req, res) => {
-  db.all('SELECT * FROM players ORDER BY position ASC, id ASC', (err, rows) => {
-    if (err) {
-      console.error('Database error:', err);
-      return res.status(500).json({ error: 'Database error' });
-    }
-    
-    // Parse JSON fields and add position
-    const players = rows.map(row => ({
-      ...row,
-      socialLinks: JSON.parse(row.socialLinks || '{}'),
-      stats: JSON.parse(row.stats || '{}'),
-      games: JSON.parse(row.games || '[]'),
-      isOnline: Boolean(row.isOnline),
-      position: row.position || row.id
-    }));
-    
-    res.json(players);
   });
 });
 

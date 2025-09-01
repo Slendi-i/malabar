@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
+  // Removed 'output: export' to enable server mode for pm2
   trailingSlash: true,
   images: {
     unoptimized: true
@@ -14,7 +14,11 @@ const nextConfig = {
   // Minimal experimental options
   experimental: {
     webpackBuildWorker: false
-  }
+  },
+  // Production optimizations
+  poweredByHeader: false,
+  reactStrictMode: true,
+  swcMinify: true
 };
 
 module.exports = nextConfig;
