@@ -10,10 +10,13 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     // Initialize positions from player data or use defaults
     if (Array.isArray(safePlayers) && safePlayers.length > 0) {
       return safePlayers.map((player, index) => {
-        const pos = player.position || (index + 1);
+        // Используем сохраненные координаты или дефолтные
+        const defaultX = (index % 3) * 200 + 100;
+        const defaultY = Math.floor(index / 3) * 200 + 100;
+        
         return {
-          x: ((pos - 1) % 3) * 200 + 100,
-          y: Math.floor((pos - 1) / 3) * 200 + 100
+          x: player.x !== undefined && player.x !== null ? player.x : defaultX,
+          y: player.y !== undefined && player.y !== null ? player.y : defaultY
         };
       });
     }
@@ -34,9 +37,13 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       // Only update positions if not currently dragging
       const newPositions = safePlayers.map((player, index) => {
         // Используем сохраненные x,y координаты или дефолтные для новых игроков
+        // Если координаты не заданы, используем сетку 3x4
+        const defaultX = ((index) % 3) * 200 + 100;
+        const defaultY = Math.floor((index) / 3) * 200 + 100;
+        
         return {
-          x: player.x !== undefined ? player.x : (index * 80 + 50),
-          y: player.y !== undefined ? player.y : 100
+          x: player.x !== undefined && player.x !== null ? player.x : defaultX,
+          y: player.y !== undefined && player.y !== null ? player.y : defaultY
         };
       });
       
@@ -47,7 +54,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
         setPositions(newPositions);
       }
     }
-  }, [safePlayers, draggedIndex, positions]);
+  }, [safePlayers, draggedIndex]); // Убрали positions из зависимостей
 
   // Ensure positions array has the right length
   useEffect(() => {
@@ -57,15 +64,18 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
         while (newPos.length < safePlayers.length) {
           const index = newPos.length;
           const player = safePlayers[index];
+          const defaultX = ((index) % 3) * 200 + 100;
+          const defaultY = Math.floor((index) / 3) * 200 + 100;
+          
           newPos.push({
-            x: player?.x !== undefined ? player.x : (index * 80 + 50),
-            y: player?.y !== undefined ? player.y : 100
+            x: player?.x !== undefined && player?.x !== null ? player.x : defaultX,
+            y: player?.y !== undefined && player?.y !== null ? player.y : defaultY
           });
         }
         return newPos;
       });
     }
-  }, [safePlayers.length, positions.length]);
+  }, [safePlayers.length]); // Убрали positions.length из зависимостей
 
   const canDrag = (playerId) => {
     if (!currentUser || !playerId) {

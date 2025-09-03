@@ -3,6 +3,7 @@ import { Button } from '@mui/material';
 import PlayerProfileModal from './PlayerProfileModal';
 import DiceModal from './DiceModal';
 import GameRollModal from './GameRollModal';
+import apiService from '../services/apiService';
 
 const calculateStats = (games = []) => {
   const stats = {
@@ -59,12 +60,13 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
       
       const games = Array.isArray(currentPlayer.games) ? [...currentPlayer.games] : [];
       
+      // Ищем игру в процессе без результата броска
       let gameToUpdate = games.find(g => 
         g && g.status === 'В процессе' && 
-        (!g.dice || g.dice === 0) && 
-        !g.name
+        (!g.dice || g.dice === 0)
       );
 
+      // Если не найдена, ищем любую игру в процессе
       if (!gameToUpdate) {
         gameToUpdate = games.find(g => g && g.status === 'В процессе');
       }
@@ -102,16 +104,18 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
       
       const games = Array.isArray(currentPlayer.games) ? [...currentPlayer.games] : [];
       
+      // Ищем игру в процессе с результатом броска но без названия
       let gameToUpdate = games.find(g => 
         g && g.status === 'В процессе' && 
         g.dice > 0 && 
-        !g.name
+        (!g.name || g.name === '')
       );
 
+      // Если не найдена, ищем любую игру в процессе без названия
       if (!gameToUpdate) {
         gameToUpdate = games.find(g => 
           g && g.status === 'В процессе' && 
-          !g.name
+          (!g.name || g.name === '')
         );
       }
 
