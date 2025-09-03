@@ -34,6 +34,7 @@ export default function Home() {
           ...player, 
           ...data,
           // Нормализуем данные
+          avatar: data.avatar || player.avatar || '',
           games: Array.isArray(data.games) ? data.games : player.games || [],
           stats: data.stats || player.stats || { wins: 0, rerolls: 0, drops: 0 },
           socialLinks: data.socialLinks || player.socialLinks || { twitch: '', telegram: '', discord: '' },
@@ -46,6 +47,8 @@ export default function Home() {
       console.log('📝 Обновление всех игроков из БД:', data.length);
       setPlayers(data.map(player => ({
         ...player,
+        // Нормализуем аватар 
+        avatar: player.avatar || '',
         games: Array.isArray(player.games) ? player.games : [],
         stats: player.stats || { wins: 0, rerolls: 0, drops: 0 },
         socialLinks: player.socialLinks || { twitch: '', telegram: '', discord: '' },
@@ -109,6 +112,8 @@ export default function Home() {
         if (response && response.players && Array.isArray(response.players)) {
           const normalizedPlayers = response.players.map(player => ({
             ...player,
+            // Нормализуем аватар - убираем дублирование полей image/avatar
+            avatar: player.avatar || '',
             games: Array.isArray(player.games) ? player.games : [],
             stats: player.stats || {
               wins: 0,

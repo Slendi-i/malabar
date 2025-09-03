@@ -5,9 +5,58 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
   const ws = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
-  const baseReconnectDelay = 1000; // 1 second
+  const maxReconnectAttempts = 10; // Увеличено количество попыток
+  const baseReconnectDelay = 500; // Уменьшена базовая задержка
+  const heartbeatIntervalRef = useRef(null);
+  const lastHeartbeatRef = useRef(Date.now());
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
+
+  // Функция для запуска heartbeat
+  const startHeartbeat = useCallback(() => {
+    // Очищаем предыдущий интервал если есть
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+    }
+    
+    lastHeartbeatRef.current = Date.now();
+    
+    heartbeatIntervalRef.current = setInterval(() => {
+      const now = Date.now();
+      const timeSinceLastHeartbeat = now - lastHeartbeatRef.current;
+      
+      // Если давно не было сообщений (более 30 секунд), отправляем ping
+      if (timeSinceLastHeartbeat > 30000) {
+        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+          try {
+            ws.current.send(JSON.stringify({ type: 'ping', timestamp: now }));
+            console.log('Sent heartbeat ping');
+          } catch (error) {
+            console.error('Failed to send heartbeat ping:', error);
+            // Принудительно переподключаемся при ошибке ping
+            if (ws.current) {
+              ws.current.close();
+            }
+          }
+        }
+      }
+      
+      // Если очень давно не было сообщений (более 60 секунд), переподключаемся
+      if (timeSinceLastHeartbeat > 60000) {
+        console.warn('Connection seems dead, forcing reconnection');
+        if (ws.current) {
+          ws.current.close();
+        }
+      }
+    }, 15000); // Проверяем каждые 15 секунд
+  }, []);
+
+  // Функция для остановки heartbeat
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+  }, []);
 
   const connect = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -27,11 +76,17 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
         console.log('WebSocket connected for real-time sync');
         setConnectionStatus('connected');
         reconnectAttempts.current = 0;
+        
+        // Запускаем heartbeat для проверки соединения
+        startHeartbeat();
       };
 
       ws.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          
+          // Обновляем время последнего сообщения (heartbeat)
+          lastHeartbeatRef.current = Date.now();
           
           switch (message.type) {
             case 'player_updated':
@@ -52,6 +107,17 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
               }
               break;
               
+            case 'ping':
+              // Отвечаем на ping сервера
+              if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+                ws.current.send(JSON.stringify({ type: 'pong' }));
+              }
+              break;
+              
+            case 'pong':
+              // Получен ответ на наш ping
+              break;
+              
             default:
               console.log('Unknown WebSocket message type:', message.type);
           }
@@ -64,9 +130,12 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
         console.log('WebSocket disconnected:', event.code, event.reason);
         setConnectionStatus('disconnected');
         
+        // Останавливаем heartbeat
+        stopHeartbeat();
+        
         // Attempt to reconnect if not manually closed
         if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = baseReconnectDelay * Math.pow(2, reconnectAttempts.current);
+          const delay = Math.min(baseReconnectDelay * Math.pow(1.5, reconnectAttempts.current), 10000); // Максимум 10 секунд
           console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
           setConnectionStatus('reconnecting');
           
@@ -125,13 +194,16 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
       reconnectTimeoutRef.current = null;
     }
     
+    // Останавливаем heartbeat
+    stopHeartbeat();
+    
     if (ws.current) {
       ws.current.close(1000, 'Component unmounting');
       ws.current = null;
     }
     
     setConnectionStatus('disconnected');
-  }, []);
+  }, [stopHeartbeat]);
 
   // Connect on mount, disconnect on unmount
   useEffect(() => {

@@ -77,10 +77,18 @@ db.serialize(() => {
                   console.log('Default positions set for existing players');
                 }
               });
-              checkAndInsertPlayers();
+              // Check if we need to add x, y columns
+              if (!hasX || !hasY) {
+                addCoordinateColumns();
+              } else {
+                checkAndInsertPlayers();
+              }
             }
           });
-        } else if (hasAvatar && hasPosition) {
+        } else if (!hasX || !hasY) {
+          // Need to add coordinate columns
+          addCoordinateColumns();
+        } else if (hasAvatar && hasPosition && hasX && hasY) {
           // Table already has correct structure
           console.log('Players table structure is correct');
           checkAndInsertPlayers();
@@ -116,6 +124,47 @@ db.serialize(() => {
   });
 });
 
+// Function to add coordinate columns to existing table
+function addCoordinateColumns() {
+  console.log('Adding coordinate columns to existing table...');
+  
+  db.run('ALTER TABLE players ADD COLUMN x REAL DEFAULT NULL', (err) => {
+    if (err) {
+      console.error('Error adding x column:', err);
+      // If adding column fails, recreate table
+      db.run('DROP TABLE players', (dropErr) => {
+        if (dropErr) {
+          console.error('Error dropping table:', dropErr);
+          return;
+        }
+        createPlayersTable();
+      });
+      return;
+    }
+    
+    console.log('X column added successfully');
+    
+    db.run('ALTER TABLE players ADD COLUMN y REAL DEFAULT NULL', (err2) => {
+      if (err2) {
+        console.error('Error adding y column:', err2);
+        // If adding column fails, recreate table
+        db.run('DROP TABLE players', (dropErr) => {
+          if (dropErr) {
+            console.error('Error dropping table:', dropErr);
+            return;
+          }
+          createPlayersTable();
+        });
+        return;
+      }
+      
+      console.log('Y column added successfully');
+      console.log('Coordinate columns added to existing table');
+      checkAndInsertPlayers();
+    });
+  });
+}
+
 // Function to create players table
 function createPlayersTable() {
   db.run(`
@@ -128,6 +177,8 @@ function createPlayersTable() {
       games TEXT,
       isOnline INTEGER DEFAULT 0,
       position INTEGER DEFAULT 0,
+      x REAL DEFAULT NULL,
+      y REAL DEFAULT NULL,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `, (err) => {
@@ -253,8 +304,8 @@ function checkAndInsertPlayers() {
       let insertedCount = 0;
       defaultPlayers.forEach((player, index) => {
         const sql = `
-          INSERT INTO players (name, avatar, socialLinks, stats, games, isOnline, position)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO players (name, avatar, socialLinks, stats, games, isOnline, position, x, y)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         
         const params = [
@@ -264,7 +315,9 @@ function checkAndInsertPlayers() {
           player.stats,
           player.games,
           player.isOnline,
-          index + 1  // Position based on array index
+          index + 1,  // Position based on array index
+          null, // x coordinate - will be set later through UI
+          null  // y coordinate - will be set later through UI
         ];
 
         db.run(sql, params, function(err) {
@@ -385,7 +438,7 @@ app.put('/api/players/:id', (req, res) => {
     // Update the specific player
     const sql = `
       UPDATE players 
-      SET name = ?, avatar = ?, socialLinks = ?, stats = ?, games = ?, isOnline = ?, position = ?
+      SET name = ?, avatar = ?, socialLinks = ?, stats = ?, games = ?, isOnline = ?, position = ?, x = ?, y = ?
       WHERE id = ?
     `;
     
@@ -397,6 +450,8 @@ app.put('/api/players/:id', (req, res) => {
       JSON.stringify(updatedPlayer.games || []),
       updatedPlayer.isOnline ? 1 : 0,
       updatedPlayer.position,
+      updatedPlayer.x !== undefined ? updatedPlayer.x : null,
+      updatedPlayer.y !== undefined ? updatedPlayer.y : null,
       playerId
     ];
     
@@ -429,7 +484,7 @@ app.put('/api/players', (req, res) => {
     return new Promise((resolve, reject) => {
       const sql = `
         UPDATE players 
-        SET name = ?, avatar = ?, socialLinks = ?, stats = ?, games = ?, isOnline = ?, position = ?
+        SET name = ?, avatar = ?, socialLinks = ?, stats = ?, games = ?, isOnline = ?, position = ?, x = ?, y = ?
         WHERE id = ?
       `;
       
@@ -441,6 +496,8 @@ app.put('/api/players', (req, res) => {
         JSON.stringify(player.games || []),
         player.isOnline ? 1 : 0,
         player.position,
+        player.x !== undefined ? player.x : null,
+        player.y !== undefined ? player.y : null,
         player.id
       ];
       
@@ -556,6 +613,23 @@ wss.on('connection', (ws) => {
   console.log('Client connected to WebSocket');
   clients.add(ws);
   
+  // Handle incoming messages (including heartbeat)
+  ws.on('message', (data) => {
+    try {
+      const message = JSON.parse(data.toString());
+      
+      if (message.type === 'ping') {
+        // Отвечаем на ping клиента
+        ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+      } else if (message.type === 'pong') {
+        // Клиент ответил на наш ping - обновляем время последней активности
+        ws.lastActivity = Date.now();
+      }
+    } catch (error) {
+      console.error('Error parsing WebSocket message:', error);
+    }
+  });
+  
   ws.on('close', () => {
     console.log('Client disconnected from WebSocket');
     clients.delete(ws);
@@ -565,19 +639,59 @@ wss.on('connection', (ws) => {
     console.error('WebSocket error:', error);
     clients.delete(ws);
   });
+  
+  // Устанавливаем начальную метку активности
+  ws.lastActivity = Date.now();
 });
+
+// Heartbeat механизм для очистки неактивных соединений
+setInterval(() => {
+  const now = Date.now();
+  clients.forEach(ws => {
+    if (ws.readyState === WebSocket.OPEN) {
+      const timeSinceLastActivity = now - (ws.lastActivity || now);
+      
+      // Если давно не было активности (более 2 минут), отправляем ping
+      if (timeSinceLastActivity > 120000) {
+        try {
+          ws.send(JSON.stringify({ type: 'ping', timestamp: now }));
+        } catch (error) {
+          console.error('Failed to send heartbeat ping to client:', error);
+          clients.delete(ws);
+        }
+      }
+      
+      // Если очень давно не было активности (более 5 минут), закрываем соединение
+      if (timeSinceLastActivity > 300000) {
+        console.log('Closing inactive WebSocket connection');
+        ws.close();
+        clients.delete(ws);
+      }
+    } else {
+      // Удаляем закрытые соединения
+      clients.delete(ws);
+    }
+  });
+}, 60000); // Проверяем каждую минуту
 
 // Function to broadcast updates to all connected clients
 function broadcastUpdate(type, data) {
   const message = JSON.stringify({ type, data, timestamp: Date.now() });
+  const now = Date.now();
+  
   clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       try {
         client.send(message);
+        // Обновляем метку активности при успешной отправке
+        client.lastActivity = now;
       } catch (error) {
         console.error('Error broadcasting to client:', error);
         clients.delete(client);
       }
+    } else {
+      // Удаляем неактивные соединения
+      clients.delete(client);
     }
   });
 }

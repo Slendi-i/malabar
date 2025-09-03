@@ -3,7 +3,7 @@ import { Modal, Box, Typography, TextField, Select, MenuItem, Button } from '@mu
 import apiService from '../services/apiService';
 
 export default function PlayerProfileModal({ player, open, onClose, setPlayers, players, currentUser }) {
-  const [image, setImage] = useState(player.avatar || player.image || '');
+  const [image, setImage] = useState(player.avatar || '');
   const [playerName, setPlayerName] = useState(player.name || '');
   const [socialLinks, setSocialLinks] = useState(player.socialLinks || {
     twitch: '', telegram: '', discord: ''
@@ -40,7 +40,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
 
   useEffect(() => {
     if (open) {
-      setImage(player.avatar || player.image || '');
+      setImage(player.avatar || '');
       setPlayerName(player.name || '');
       setSocialLinks(player.socialLinks || { twitch: '', telegram: '', discord: '' });
       setGames(player.games || []);
@@ -68,7 +68,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
         ...player, 
         ...updatedData,
         // Ensure avatar field is used consistently
-        avatar: updatedData.image || updatedData.avatar || player.avatar || player.image
+        avatar: updatedData.avatar || player.avatar
       };
       
       console.log('💾 Сохранение данных игрока в БД:', { playerId: player.id, updatedData });
@@ -88,7 +88,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
     const updatedPlayer = { 
       ...player, 
       ...updatedData,
-      avatar: updatedData.image || updatedData.avatar || player.avatar || player.image
+      avatar: updatedData.avatar || player.avatar
     };
     
     console.log('💾 Немедленное сохранение данных игрока в БД:', { playerId: player.id, updatedData });
@@ -109,7 +109,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
       reader.onloadend = () => {
         const newImage = reader.result;
         setImage(newImage);
-        updatePlayerData({ avatar: newImage, image: newImage });
+        updatePlayerData({ avatar: newImage });
       };
       reader.readAsDataURL(file);
     }
