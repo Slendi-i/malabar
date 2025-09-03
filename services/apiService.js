@@ -98,6 +98,15 @@ class ApiService {
   async getPlayer(id) {
     return this.fetchWithErrorHandling(`${API_ENDPOINTS.PLAYERS}/${id}`);
   }
+
+  // Update player coordinates specifically (for piece dragging)
+  async updatePlayerCoordinates(id, x, y) {
+    console.log(`Updating coordinates for player ${id}: (${x}, ${y})`);
+    return this.fetchWithErrorHandling(`${API_ENDPOINTS.PLAYERS}/${id}/coordinates`, {
+      method: 'POST',
+      body: JSON.stringify({ x, y })
+    });
+  }
 }
 
 export default new ApiService();

@@ -524,6 +524,185 @@ app.put('/api/players', (req, res) => {
     });
 });
 
+// Update player games specifically
+app.post('/api/players/:id/games', (req, res) => {
+  const playerId = parseInt(req.params.id);
+  const { games } = req.body;
+  
+  console.log(`Updating games for player ${playerId}:`, games);
+  
+  db.get('SELECT * FROM players WHERE id = ?', [playerId], (err, player) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    if (!player) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+    
+    // Update only the games field
+    const sql = 'UPDATE players SET games = ? WHERE id = ?';
+    const params = [JSON.stringify(games || []), playerId];
+    
+    db.run(sql, params, function(err) {
+      if (err) {
+        console.error('Update games error:', err);
+        return res.status(500).json({ error: 'Update games failed' });
+      }
+      
+      // Get the updated player to broadcast
+      db.get('SELECT * FROM players WHERE id = ?', [playerId], (err, updatedPlayer) => {
+        if (err) {
+          console.error('Error fetching updated player:', err);
+          return res.status(500).json({ error: 'Error fetching updated player' });
+        }
+        
+        const playerWithParsedData = {
+          ...updatedPlayer,
+          socialLinks: JSON.parse(updatedPlayer.socialLinks || '{}'),
+          stats: JSON.parse(updatedPlayer.stats || '{}'),
+          games: JSON.parse(updatedPlayer.games || '[]'),
+          isOnline: Boolean(updatedPlayer.isOnline)
+        };
+        
+        // Broadcast update to all connected clients
+        broadcastUpdate('player_updated', { 
+          id: playerId, 
+          player: playerWithParsedData 
+        });
+        
+        res.json({ 
+          message: 'Player games updated successfully', 
+          id: playerId,
+          games: JSON.parse(updatedPlayer.games || '[]')
+        });
+      });
+    });
+  });
+});
+
+// Update player social links specifically  
+app.post('/api/players/:id/social', (req, res) => {
+  const playerId = parseInt(req.params.id);
+  const { socialLinks } = req.body;
+  
+  console.log(`Updating social links for player ${playerId}:`, socialLinks);
+  
+  db.get('SELECT * FROM players WHERE id = ?', [playerId], (err, player) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    if (!player) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+    
+    // Update only the social links field
+    const sql = 'UPDATE players SET socialLinks = ? WHERE id = ?';
+    const params = [JSON.stringify(socialLinks || {}), playerId];
+    
+    db.run(sql, params, function(err) {
+      if (err) {
+        console.error('Update social links error:', err);
+        return res.status(500).json({ error: 'Update social links failed' });
+      }
+      
+      // Get the updated player to broadcast
+      db.get('SELECT * FROM players WHERE id = ?', [playerId], (err, updatedPlayer) => {
+        if (err) {
+          console.error('Error fetching updated player:', err);
+          return res.status(500).json({ error: 'Error fetching updated player' });
+        }
+        
+        const playerWithParsedData = {
+          ...updatedPlayer,
+          socialLinks: JSON.parse(updatedPlayer.socialLinks || '{}'),
+          stats: JSON.parse(updatedPlayer.stats || '{}'),
+          games: JSON.parse(updatedPlayer.games || '[]'),
+          isOnline: Boolean(updatedPlayer.isOnline)
+        };
+        
+        // Broadcast update to all connected clients
+        broadcastUpdate('player_updated', { 
+          id: playerId, 
+          player: playerWithParsedData 
+        });
+        
+        res.json({ 
+          message: 'Player social links updated successfully', 
+          id: playerId,
+          socialLinks: JSON.parse(updatedPlayer.socialLinks || '{}')
+        });
+      });
+    });
+  });
+});
+
+// Update player coordinates specifically (for piece dragging)
+app.post('/api/players/:id/coordinates', (req, res) => {
+  const playerId = parseInt(req.params.id);
+  const { x, y } = req.body;
+  
+  console.log(`Updating coordinates for player ${playerId}: (${x}, ${y})`);
+  
+  db.get('SELECT * FROM players WHERE id = ?', [playerId], (err, player) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    if (!player) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+    
+    // Update only the coordinates
+    const sql = 'UPDATE players SET x = ?, y = ? WHERE id = ?';
+    const params = [
+      x !== undefined ? x : null,
+      y !== undefined ? y : null,
+      playerId
+    ];
+    
+    db.run(sql, params, function(err) {
+      if (err) {
+        console.error('Update coordinates error:', err);
+        return res.status(500).json({ error: 'Update coordinates failed' });
+      }
+      
+      // Get the updated player to broadcast
+      db.get('SELECT * FROM players WHERE id = ?', [playerId], (err, updatedPlayer) => {
+        if (err) {
+          console.error('Error fetching updated player:', err);
+          return res.status(500).json({ error: 'Error fetching updated player' });
+        }
+        
+        const playerWithParsedData = {
+          ...updatedPlayer,
+          socialLinks: JSON.parse(updatedPlayer.socialLinks || '{}'),
+          stats: JSON.parse(updatedPlayer.stats || '{}'),
+          games: JSON.parse(updatedPlayer.games || '[]'),
+          isOnline: Boolean(updatedPlayer.isOnline)
+        };
+        
+        // Broadcast update to all connected clients
+        broadcastUpdate('player_updated', { 
+          id: playerId, 
+          player: playerWithParsedData 
+        });
+        
+        res.json({ 
+          message: 'Player coordinates updated successfully', 
+          id: playerId,
+          x: updatedPlayer.x,
+          y: updatedPlayer.y
+        });
+      });
+    });
+  });
+});
+
 // Get current user
 app.get('/api/users/current', (req, res) => {
   db.get('SELECT * FROM users WHERE isLoggedIn = 1 ORDER BY lastLogin DESC LIMIT 1', (err, row) => {

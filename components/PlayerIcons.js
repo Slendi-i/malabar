@@ -171,14 +171,8 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       
       // НЕ обновляем локальное состояние - отправляем сразу в БД
       // Real-time sync обновит состояние из БД
-      const updatedPlayer = {
-        ...currentPlayer,
-        x: finalX,  // пиксельная координата X
-        y: finalY   // пиксельная координата Y
-      };
-      
-      // Отправляем в БД через API
-      apiService.updatePlayerDetailed(currentPlayer.id, updatedPlayer)
+      // Отправляем координаты в БД через специальный API
+      apiService.updatePlayerCoordinates(currentPlayer.id, finalX, finalY)
         .then(() => {
           console.log('✅ Позиция игрока сохранена в БД');
         })
