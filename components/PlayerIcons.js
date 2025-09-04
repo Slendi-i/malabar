@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Tooltip } from '@mui/material';
 import apiService from '../services/apiService';
 
@@ -28,7 +28,6 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
         const x = padding + col * spacing;
         const y = padding + row * spacing;
         
-        console.log(`🎯 Создание фиксированной позиции для игрока ${index} (${player.name}): (${x}, ${y})`);
         return { x, y };
       });
     }
@@ -69,7 +68,6 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       // Only update if positions actually changed to avoid unnecessary re-renders
       const positionsChanged = JSON.stringify(newPositions) !== JSON.stringify(positions);
       if (positionsChanged) {
-        console.log('Updating positions from server data (using fixed grid for new players)');
         setPositions(newPositions);
       }
     }
@@ -109,82 +107,29 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     }
   }, [safePlayers.length]); // Убрали positions.length из зависимостей
 
-  const canDrag = (playerId) => {
-    console.log('🔍 canDrag called with:', { 
-      currentUser, 
-      playerId,
-      hasCurrentUser: !!currentUser,
-      currentUserType: currentUser?.type,
-      currentUserId: currentUser?.id
-    });
-    
-    if (!currentUser) {
-      console.log('❌ canDrag: No currentUser - login required');
-      return false;
-    }
-    
-    if (!playerId) {
-      console.log('❌ canDrag: No playerId provided');
-      return false;
-    }
+  const canDrag = useCallback((playerId) => {
+    if (!currentUser || !playerId) return false;
     
     // Администратор может перетаскивать все фишки
-    if (currentUser.type === 'admin') {
-      console.log('✅ canDrag: Admin access granted for all pieces');
-      return true;
-    }
+    if (currentUser.type === 'admin') return true;
     
     // Игрок может перетаскивать только свою фишку
     if (currentUser.type === 'player') {
-      // Приведение типов для сравнения
-      const userIdStr = String(currentUser.id);
-      const playerIdStr = String(playerId);
-      const canDragResult = userIdStr === playerIdStr;
-      console.log('🔍 canDrag player check:', { 
-        userType: currentUser.type, 
-        userId: userIdStr, 
-        playerId: playerIdStr, 
-        result: canDragResult 
-      });
-      return canDragResult;
+      return String(currentUser.id) === String(playerId);
     }
     
     // Зрители не могут перетаскивать фишки
-    console.log('❌ canDrag: Viewer cannot drag pieces');
     return false;
-  };
+  }, [currentUser]);
 
-  const handleMouseDown = (e, index) => {
+  const handleMouseDown = useCallback((e, index) => {
     const player = safePlayers[index];
     const canDragThis = canDrag(player?.id);
     
-    console.log(`🖱️ Mouse down on player ${index}:`, {
-      player: player?.name,
-      playerId: player?.id,
-      canDrag: canDragThis,
-      currentUser: currentUser,
-      event: {
-        button: e.button,
-        clientX: e.clientX,
-        clientY: e.clientY
-      }
-    });
-    
-    if (!canDragThis) {
-      console.log('❌ Drag not allowed for this player');
-      return;
-    }
-    
-    // Если уже перетаскиваем, не начинаем новое перетаскивание
-    if (isDragging) {
-      console.log('Already dragging, ignoring mouse down');
-      return;
-    }
+    if (!canDragThis || isDragging) return;
     
     e.preventDefault();
     e.stopPropagation();
-    
-    console.log(`✅ Starting drag for player ${index}: ${player?.name}`);
     
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetX = e.clientX - rect.left;
@@ -197,9 +142,9 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     // Add global mouse event listeners
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  };
+  }, [safePlayers, canDrag, isDragging, handleMouseMove, handleMouseUp]);
 
-  const handleMouseMove = (e) => {
+  const handleMouseMove = useCallback((e) => {
     if (draggedIndex === null || !containerRef.current) return;
     
     e.preventDefault();
@@ -212,17 +157,15 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     const newX = Math.max(padding, Math.min(containerRect.width - iconSize - padding, e.clientX - containerRect.left - dragOffset.x));
     const newY = Math.max(padding, Math.min(containerRect.height - iconSize - padding, e.clientY - containerRect.top - dragOffset.y));
     
-    console.log(`🖱️ Moving player ${draggedIndex} to (${newX}, ${newY})`);
-    
     // Update position smoothly
     setPositions(prev => {
       const newPos = [...prev];
       newPos[draggedIndex] = { x: newX, y: newY };
       return newPos;
     });
-  };
+  }, [draggedIndex, dragOffset]);
 
-  const handleMouseUp = (e) => {
+  const handleMouseUp = useCallback((e) => {
     if (draggedIndex === null || !isDragging) return;
     
     // Свободное перетаскивание - сохраняем точную позицию без привязки к сетке
@@ -240,8 +183,6 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       finalY = Math.min(containerRect.height - iconSize - padding, finalY);
     }
     
-    console.log(`✅ Dropping player ${draggedIndex} at free position (${finalX}, ${finalY})`);
-    
     setPositions(prev => {
       const newPos = [...prev];
       newPos[draggedIndex] = { x: finalX, y: finalY };
@@ -251,21 +192,10 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     // Сохраняем пиксельные координаты в базе данных
     const currentPlayer = safePlayers[draggedIndex];
     if (currentPlayer) {
-      console.log(`📍 Сохранение позиции игрока ${currentPlayer.name} в БД: (${finalX}, ${finalY})`);
-      
-      // НЕ обновляем локальное состояние - отправляем сразу в БД
-      // Real-time sync обновит состояние из БД
-      // Отправляем координаты в БД через специальный API
       apiService.updatePlayerCoordinates(currentPlayer.id, finalX, finalY)
-        .then(() => {
-          console.log('✅ Позиция игрока сохранена в БД');
-        })
         .catch(error => {
-          console.error('❌ Ошибка сохранения позиции игрока:', error);
-          alert('Ошибка сохранения позиции. Попробуйте еще раз.');
+          console.error('Ошибка сохранения позиции игрока:', error);
         });
-    } else {
-      console.log('Position unchanged, not updating');
     }
     
     // Clean up
@@ -274,7 +204,15 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     setIsDragging(false);
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
-  };
+  }, [draggedIndex, isDragging, positions, safePlayers, handleMouseMove]);
+
+  // Cleanup event listeners when component unmounts or drag ends
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [handleMouseMove, handleMouseUp]);
 
   return (
     <div 
@@ -296,15 +234,6 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
         const isDragging = draggedIndex === index;
         const canDragPlayer = canDrag(player.id);
         
-        console.log(`🎨 Rendering player ${index}:`, {
-          name: player.name,
-          id: player.id,
-          canDragPlayer,
-          hasMouseDownHandler: !!canDragPlayer,
-          currentUserType: currentUser?.type,
-          currentUserId: currentUser?.id,
-          position: { x: positions[index]?.x, y: positions[index]?.y }
-        });
         
         return (
         <Tooltip key={player.id} title={player.name} arrow>
