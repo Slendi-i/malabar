@@ -6,6 +6,11 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   // Ensure players is an array and has the expected structure
   const safePlayers = Array.isArray(players) ? players : [];
   
+  // 🎯 КОНСТАНТЫ ДЛЯ ГРАНИЦ
+  const SIDEBAR_WIDTH = 420; // Ширина сайдбара из Sidebar.js
+  const ICON_SIZE = 64; // Размер фишки
+  const PADDING = 10; // Отступ от границ
+  
   const containerRef = useRef(null);
   const playerRefs = useRef([]); // Ссылки на DOM элементы фишек
   const positions = useRef({}); // Позиции храним в ref по player.id
@@ -63,15 +68,17 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
           safePlayers.forEach((player, index) => {
             const currentPos = getPlayerPosition(player.id);
             if (currentPos.x === 0 && currentPos.y === 0) {
-              const padding = 100;
+              // 🎯 НАЧАЛЬНАЯ СЕТКА С УЧЕТОМ ГРАНИЦ
               const spacing = 150;
               const columns = 4;
+              const startX = SIDEBAR_WIDTH + 50; // Начинаем после сайдбара
+              const startY = 100;
               
               const col = index % columns;
               const row = Math.floor(index / columns);
               
-              const x = padding + col * spacing;
-              const y = padding + row * spacing;
+              const x = startX + col * spacing;
+              const y = startY + row * spacing;
               
               // console.log(`🆕 DOM: Игрок ${player.name} - новая позиция в сетке: (${x}, ${y})`);
               setPlayerPosition(player.id, x, y);
@@ -94,6 +101,33 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     
     return () => clearInterval(interval);
   }, []);
+  
+  // 🎯 АДАПТИВНОСТЬ: Пересчет позиций при изменении размера окна
+  useEffect(() => {
+    const handleResize = () => {
+      const minX = SIDEBAR_WIDTH + PADDING;
+      const maxX = window.innerWidth - ICON_SIZE - PADDING;
+      const minY = PADDING;
+      const maxY = Math.max(window.innerHeight, document.documentElement.scrollHeight) - ICON_SIZE - PADDING;
+      
+      // Пересчитываем позиции всех фишек, чтобы они остались в новых boundaries
+      safePlayers.forEach(player => {
+        const currentPos = getPlayerPosition(player.id);
+        if (currentPos.x !== 0 || currentPos.y !== 0) {
+          const newX = Math.max(minX, Math.min(maxX, currentPos.x));
+          const newY = Math.max(minY, Math.min(maxY, currentPos.y));
+          
+          if (newX !== currentPos.x || newY !== currentPos.y) {
+            // console.log(`📐 RESIZE: Корректировка позиции ${player.name}: (${currentPos.x}, ${currentPos.y}) -> (${newX}, ${newY})`);
+            setPlayerPosition(player.id, newX, newY);
+          }
+        }
+      });
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [safePlayers]);
 
   const canDrag = (playerId) => {
     if (!currentUser || !playerId) return false;
@@ -117,13 +151,22 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     
     e.preventDefault();
     
-    // 🚨 МАКСИМАЛЬНО РАДИКАЛЬНО: УБИРАЕМ ВСЕ ОГРАНИЧЕНИЯ И ГРАНИЦЫ
-    // Фишки могут двигаться ВЕЗДЕ без ограничений!
+    // 🎯 РАЗУМНЫЕ ГРАНИЦЫ: Учитываем сайдбар и края экрана
+    // Вычисляем границы
+    const minX = SIDEBAR_WIDTH + PADDING; // Слева - за сайдбаром
+    const maxX = window.innerWidth - ICON_SIZE - PADDING; // Справа - край экрана
+    const minY = PADDING; // Сверху - край экрана  
+    const maxY = Math.max(
+      window.innerHeight,
+      document.documentElement.scrollHeight,
+      document.body.scrollHeight
+    ) - ICON_SIZE - PADDING; // Снизу - конец документа
     
-    const newX = e.pageX - dragOffset.x;
-    const newY = e.pageY - dragOffset.y;
+    // Применяем границы
+    const newX = Math.max(minX, Math.min(maxX, e.pageX - dragOffset.x));
+    const newY = Math.max(minY, Math.min(maxY, e.pageY - dragOffset.y));
     
-    // console.log(`🎯 АБСОЛЮТНАЯ СВОБОДА: pageX=${e.pageX}, pageY=${e.pageY}, newX=${newX}, newY=${newY}`);
+    // console.log(`🎯 РАЗУМНЫЕ ГРАНИЦЫ: pageX=${e.pageX}, pageY=${e.pageY}, newX=${newX}, newY=${newY}, границы: X(${minX}-${maxX}), Y(${minY}-${maxY})`);
     
     // Напрямую обновляем позицию в DOM
     const player = safePlayers[draggedIndex];
@@ -143,13 +186,22 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     // Получаем текущую позицию из ref
     const currentPos = getPlayerPosition(currentPlayer.id);
     
-    // 🚨 МАКСИМАЛЬНО РАДИКАЛЬНО: НИКАКИХ ОГРАНИЧЕНИЙ ВООБЩЕ!
-    // Фишки могут быть где угодно - даже за пределами экрана
+    // 🎯 РАЗУМНЫЕ ГРАНИЦЫ: Финальная проверка позиции
+    // Границы
+    const minX = SIDEBAR_WIDTH + PADDING;
+    const maxX = window.innerWidth - ICON_SIZE - PADDING;
+    const minY = PADDING;
+    const maxY = Math.max(
+      window.innerHeight,
+      document.documentElement.scrollHeight,
+      document.body.scrollHeight
+    ) - ICON_SIZE - PADDING;
     
-    let finalX = currentPos.x;
-    let finalY = currentPos.y;
+    // Применяем границы к финальной позиции
+    let finalX = Math.max(minX, Math.min(maxX, currentPos.x));
+    let finalY = Math.max(minY, Math.min(maxY, currentPos.y));
     
-    // console.log(`🚀 АБСОЛЮТНО СВОБОДНОЕ ПОЗИЦИОНИРОВАНИЕ: (${finalX}, ${finalY})`);
+    // console.log(`🚀 ПОЗИЦИОНИРОВАНИЕ С ГРАНИЦАМИ: (${finalX}, ${finalY})`);
     
     // Устанавливаем финальную позицию в DOM
     setPlayerPosition(currentPlayer.id, finalX, finalY);
