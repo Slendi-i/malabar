@@ -6,33 +6,8 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   // Ensure players is an array and has the expected structure
   const safePlayers = Array.isArray(players) ? players : [];
   
-  const [positions, setPositions] = useState(() => {
-    // Initialize positions from player data or use fixed grid layout
-    if (Array.isArray(safePlayers) && safePlayers.length > 0) {
-      return safePlayers.map((player, index) => {
-        // Используем сохраненные координаты БД если они есть и валидны
-        if (typeof player.x === 'number' && typeof player.y === 'number' && 
-            player.x !== null && player.y !== null && 
-            !isNaN(player.x) && !isNaN(player.y)) {
-          return { x: player.x, y: player.y };
-        }
-        
-        // Для новых игроков используем фиксированные позиции в сетке (НЕ случайные!)
-        const padding = 100;
-        const spacing = 150; // расстояние между фишками
-        const columns = 4; // количество колонок
-        
-        const col = index % columns;
-        const row = Math.floor(index / columns);
-        
-        const x = padding + col * spacing;
-        const y = padding + row * spacing;
-        
-        return { x, y };
-      });
-    }
-    return [];
-  });
+  const [positions, setPositions] = useState([]);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const containerRef = useRef(null);
   const dragState = useRef({
@@ -41,81 +16,40 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     dragOffset: { x: 0, y: 0 },
     initialPosition: { x: 0, y: 0 }
   });
-  // Храним ID игроков, которых уже перемещали локально
-  const locallyMovedPlayers = useRef(new Set());
-
-  // Update positions when players data changes
+  // ЕДИНСТВЕННАЯ инициализация позиций - больше НИКТО их не трогает автоматически!
   useEffect(() => {
-    if (Array.isArray(safePlayers) && safePlayers.length > 0 && !dragState.current.isDragging) {
+    if (Array.isArray(safePlayers) && safePlayers.length > 0 && !isInitialized) {
+      console.log('🎯 ИНИЦИАЛИЗАЦИЯ позиций для', safePlayers.length, 'игроков');
       
-      setPositions(prevPositions => {
-        const newPositions = safePlayers.map((player, index) => {
-          // Если игрока уже перемещали локально, используем текущую позицию
-          if (locallyMovedPlayers.current.has(player.id) && prevPositions[index]) {
-            return prevPositions[index];
-          }
-          
-          // Используем сохраненные x,y координаты из БД если они есть и валидны
-          if (typeof player.x === 'number' && typeof player.y === 'number' && 
-              player.x !== null && player.y !== null && 
-              !isNaN(player.x) && !isNaN(player.y)) {
-            return { x: player.x, y: player.y };
-          }
-          
-          // Для новых игроков используем фиксированные позиции в сетке
-          const padding = 100;
-          const spacing = 150;
-          const columns = 4;
-          
-          const col = index % columns;
-          const row = Math.floor(index / columns);
-          
-          const x = padding + col * spacing;
-          const y = padding + row * spacing;
-          
-          return { x, y };
-        });
-        
-        // Only update if positions actually changed
-        const positionsChanged = JSON.stringify(newPositions) !== JSON.stringify(prevPositions);
-        return positionsChanged ? newPositions : prevPositions;
-      });
-    }
-  }, [safePlayers]);
-
-  // Ensure positions array has the right length
-  useEffect(() => {
-    if (Array.isArray(positions) && positions.length !== safePlayers.length && safePlayers.length > 0) {
-      setPositions(prev => {
-        const newPos = Array.isArray(prev) ? [...prev] : [];
-        while (newPos.length < safePlayers.length) {
-          const index = newPos.length;
-          const player = safePlayers[index];
-          
-          // Используем сохраненные координаты или фиксированные позиции для новых игроков
-          if (typeof player?.x === 'number' && typeof player?.y === 'number' && 
-              player.x !== null && player.y !== null && 
-              !isNaN(player.x) && !isNaN(player.y)) {
-            newPos.push({ x: player.x, y: player.y });
-          } else {
-            // Фиксированные позиции в сетке
-            const padding = 100;
-            const spacing = 150;
-            const columns = 4;
-            
-            const col = index % columns;
-            const row = Math.floor(index / columns);
-            
-            const x = padding + col * spacing;
-            const y = padding + row * spacing;
-            
-            newPos.push({ x, y });
-          }
+      const initialPositions = safePlayers.map((player, index) => {
+        // Используем сохраненные координаты БД если они есть и валидны
+        if (typeof player.x === 'number' && typeof player.y === 'number' && 
+            player.x !== null && player.y !== null && 
+            !isNaN(player.x) && !isNaN(player.y)) {
+          console.log(`🗄️ Игрок ${player.name} - позиция из БД: (${player.x}, ${player.y})`);
+          return { x: player.x, y: player.y };
         }
-        return newPos;
+        
+        // Для новых игроков используем фиксированные позиции в сетке
+        const padding = 100;
+        const spacing = 150;
+        const columns = 4;
+        
+        const col = index % columns;
+        const row = Math.floor(index / columns);
+        
+        const x = padding + col * spacing;
+        const y = padding + row * spacing;
+        
+        console.log(`🆕 Игрок ${player.name} - новая позиция: (${x}, ${y})`);
+        return { x, y };
       });
+      
+      setPositions(initialPositions);
+      setIsInitialized(true);
+      console.log('✅ Инициализация завершена, автообновления ОТКЛЮЧЕНЫ');
     }
-  }, [safePlayers.length]); // Убрали positions.length из зависимостей
+  }, [safePlayers, isInitialized]);
 
   const canDrag = (playerId) => {
     if (!currentUser || !playerId) return false;
@@ -181,18 +115,21 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     setPositions(prev => {
       const newPos = [...prev];
       newPos[draggedIndex] = { x: finalX, y: finalY };
+      console.log(`✅ ФИНАЛЬНАЯ позиция игрока ${draggedIndex}: (${finalX}, ${finalY})`);
       return newPos;
     });
     
     // Сохраняем пиксельные координаты в базе данных
     const currentPlayer = safePlayers[draggedIndex];
     if (currentPlayer) {
-      // Добавляем игрока в список локально перемещенных
-      locallyMovedPlayers.current.add(currentPlayer.id);
+      console.log(`💾 Сохранение в БД: ${currentPlayer.name} -> (${finalX}, ${finalY})`);
       
       apiService.updatePlayerCoordinates(currentPlayer.id, finalX, finalY)
+        .then(() => {
+          console.log(`✅ Сохранено в БД: ${currentPlayer.name}`);
+        })
         .catch(error => {
-          console.error('Ошибка сохранения позиции игрока:', error);
+          console.error('❌ Ошибка сохранения позиции игрока:', error);
         });
     }
     
