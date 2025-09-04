@@ -297,9 +297,9 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
                 overflow: 'hidden',
                 flexShrink: 0
               }}>
-                {player.image ? (
+                {player.avatar ? (
                   <img 
-                    src={player.image} 
+                    src={player.avatar} 
                     alt="Аватар" 
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
