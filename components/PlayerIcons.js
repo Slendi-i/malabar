@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Tooltip } from '@mui/material';
 import apiService from '../services/apiService';
 
-export default function PlayerIcons({ players, setPlayers, currentUser }) {
+export default function PlayerIcons({ players, setPlayers, currentUser, setDraggedPlayerId }) {
   // Ensure players is an array and has the expected structure
   const safePlayers = Array.isArray(players) ? players : [];
   
@@ -30,6 +30,20 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   // Получить текущую позицию фишки
   const getPlayerPosition = (playerId) => {
     return positions.current[playerId] || { x: 0, y: 0 };
+  };
+  
+  // Функция для синхронизации DOM позиций с данными игроков (для WebSocket обновлений)
+  const syncDOMWithPlayerData = () => {
+    safePlayers.forEach(player => {
+      if (player.x !== undefined && player.y !== undefined && player.x !== null && player.y !== null) {
+        const currentDOMPos = getPlayerPosition(player.id);
+        // Обновляем DOM только если позиции отличаются
+        if (currentDOMPos.x !== player.x || currentDOMPos.y !== player.y) {
+          console.log(`🔄 DOM: Синхронизация позиции игрока ${player.name} из WebSocket: (${player.x}, ${player.y})`);
+          setPlayerPosition(player.id, player.x, player.y);
+        }
+      }
+    });
   };
 
   // Инициализация позиций только один раз при загрузке игроков
@@ -74,6 +88,13 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       }, 50); // Минимальная задержка для создания DOM
     }
   }, [safePlayers]);
+  
+  // Синхронизация DOM позиций при изменении данных игроков (WebSocket обновления)
+  useEffect(() => {
+    if (Array.isArray(safePlayers) && safePlayers.length > 0) {
+      syncDOMWithPlayerData();
+    }
+  }, [safePlayers]);
 
   const canDrag = (playerId) => {
     if (!currentUser || !playerId) return false;
@@ -101,16 +122,29 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     const iconSize = 64;
     const padding = 10;
     
-    // Используем максимальную доступную высоту (viewport или документ)
+    // Используем максимальную доступную высоту (полный документ)
     const maxHeight = Math.max(
       containerRect.height, 
       window.innerHeight, 
       document.documentElement.scrollHeight
     );
     
-    // Вычисляем новые координаты с учетом границ (по X - контейнер, по Y - полная высота документа)
-    const newX = Math.max(padding, Math.min(containerRect.width - iconSize - padding, e.clientX - containerRect.left - dragOffset.x));
-    const newY = Math.max(padding, Math.min(maxHeight - iconSize - padding, e.clientY - containerRect.top - dragOffset.y));
+    // Учитываем scroll offset для корректного позиционирования
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+    
+    // Конвертируем позицию контейнера в координаты документа
+    const containerTopInDocument = containerRect.top + scrollTop;
+    const containerLeftInDocument = containerRect.left + scrollLeft;
+    
+    // Вычисляем новые координаты с учетом полной прокрутки
+    const newX = Math.max(padding, Math.min(containerRect.width - iconSize - padding, e.pageX - containerLeftInDocument - dragOffset.x));
+    const newY = Math.max(padding, Math.min(maxHeight - iconSize - padding, e.pageY - containerTopInDocument - dragOffset.y));
+    
+    // Отладочная информация для scroll
+    if (scrollTop > 0) {
+      console.log(`📜 SCROLL: pageY=${e.pageY}, scrollTop=${scrollTop}, containerTop=${containerRect.top}, newY=${newY}, maxHeight=${maxHeight}`);
+    }
     
     // Напрямую обновляем позицию в DOM
     const player = safePlayers[draggedIndex];
@@ -174,6 +208,12 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       initialPosition: { x: 0, y: 0 }
     };
     
+    // Уведомляем родительский компонент об окончании перетаскивания
+    if (setDraggedPlayerId) {
+      setDraggedPlayerId(null);
+      console.log(`🔓 WebSocket: Разблокировка координат для всех игроков`);
+    }
+    
     // Remove event listeners
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
@@ -189,8 +229,18 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     e.stopPropagation();
     
     const rect = e.currentTarget.getBoundingClientRect();
-    const offsetX = e.clientX - rect.left;
-    const offsetY = e.clientY - rect.top;
+    // Учитываем scroll offset для консистентности с handleMouseMove
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+    
+    // Конвертируем в координаты документа для консистентности
+    const rectTopInDocument = rect.top + scrollTop;
+    const rectLeftInDocument = rect.left + scrollLeft;
+    
+    const offsetX = e.pageX - rectLeftInDocument;
+    const offsetY = e.pageY - rectTopInDocument;
+    
+    console.log(`🚀 НАЧАЛО ПЕРЕТАСКИВАНИЯ: pageX=${e.pageX}, pageY=${e.pageY}, scrollTop=${scrollTop}, offsetX=${offsetX}, offsetY=${offsetY}`);
     
     // Set drag state
     dragState.current = {
@@ -199,6 +249,12 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       dragOffset: { x: offsetX, y: offsetY },
       initialPosition: getPlayerPosition(player.id)
     };
+    
+    // Уведомляем родительский компонент о начале перетаскивания
+    if (setDraggedPlayerId) {
+      setDraggedPlayerId(player.id);
+      console.log(`🔒 WebSocket: Блокировка координат для игрока ${player.id} (${player.name})`);
+    }
     
     console.log(`🖱️ DOM: Начало перетаскивания игрока ${player.name}`);
     

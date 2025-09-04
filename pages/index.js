@@ -17,6 +17,7 @@ export default function Home() {
     ratio: 0.75
   });
   const [syncStatus, setSyncStatus] = useState('disconnected');
+  const [draggedPlayerId, setDraggedPlayerId] = useState(null); // Отслеживаем перетаскиваемого игрока
   const containerRef = useRef(null);
   const imageRef = useRef(null);
   const lastSaveRef = useRef(Date.now());
@@ -26,7 +27,7 @@ export default function Home() {
   const handlePlayersUpdate = useCallback((type, data, playerId) => {
     console.log('🔄 Получено обновление из БД:', type, data);
     
-    // БД является источником истины, НО координаты игнорируем если обновление только по координатам
+    // БД является источником истины, НО координаты игнорируем ТОЛЬКО для перетаскиваемого игрока
     if (type === 'single' && playerId && data) {
       // Проверяем, это обновление только координат или других данных
       const isCoordinatesOnlyUpdate = 
@@ -34,9 +35,22 @@ export default function Home() {
         Object.keys(data).filter(key => key !== 'x' && key !== 'y' && key !== 'id').length === 0;
         
       if (isCoordinatesOnlyUpdate) {
-        console.log('🚫 Игнорируем обновление координат из WebSocket для игрока', playerId);
-        // НЕ обновляем состояние - позиции управляются локально
-        return;
+        // Игнорируем координаты ТОЛЬКО для игрока, который сейчас перетаскивается
+        if (draggedPlayerId === playerId) {
+          console.log('🚫 Игнорируем обновление координат из WebSocket для перетаскиваемого игрока', playerId);
+          return;
+        } else {
+          console.log('✅ Принимаем обновление координат из WebSocket для игрока', playerId, 'x:', data.x, 'y:', data.y);
+          // Обновляем координаты для НЕ перетаскиваемых игроков
+          setPlayers(prev => prev.map(player => 
+            player.id === playerId ? { 
+              ...player, 
+              x: data.x,
+              y: data.y
+            } : player
+          ));
+          return;
+        }
       }
       
       console.log('📝 Обновление одного игрока из БД:', playerId, data);
@@ -75,7 +89,7 @@ export default function Home() {
     }
     
     setSyncStatus('synchronized');
-  }, []);
+  }, [draggedPlayerId]);
 
   const handleUserUpdate = useCallback((type, data) => {
     console.log('Received user update:', type, data);
@@ -495,6 +509,7 @@ export default function Home() {
               players={players} 
               setPlayers={setPlayers}
               currentUser={currentUser}
+              setDraggedPlayerId={setDraggedPlayerId}
             />
           </div>
         </div>
