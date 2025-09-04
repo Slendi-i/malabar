@@ -105,17 +105,24 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   // 🎯 АДАПТИВНОСТЬ: Пересчет позиций при изменении размера окна
   useEffect(() => {
     const handleResize = () => {
-      // 🎯 ГИБРИДНЫЕ ГРАНИЦЫ: Рабочие границы + исправленная нижняя
-      const minX = SIDEBAR_WIDTH + PADDING; // Слева - за сайдбаром (работало)
-      const maxX = window.innerWidth - ICON_SIZE - PADDING; // Справа - край экрана (работало)
-      const minY = PADDING; // Сверху - край экрана (работало)
+      // 🎯 ГРАНИЦЫ ПО ИЗОБРАЖЕНИЮ: Все границы относительно изображения игрового поля
+      if (!containerRef.current) return;
       
-      // 🚨 ИСПРАВЛЕННАЯ НИЖНЯЯ ГРАНИЦА: Используем высоту документа с учетом scroll
-      const maxY = Math.max(
-        window.innerHeight,
-        document.documentElement.scrollHeight,
-        document.body.scrollHeight
-      ) - ICON_SIZE - PADDING;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+      
+      // Конвертируем границы контейнера в координаты документа
+      const containerLeftInDocument = containerRect.left + scrollLeft;
+      const containerTopInDocument = containerRect.top + scrollTop;
+      const containerRightInDocument = containerRect.right + scrollLeft;
+      const containerBottomInDocument = containerRect.bottom + scrollTop;
+      
+      // Границы по краям изображения игрового поля
+      const minX = containerLeftInDocument + PADDING; // Слева - начало изображения
+      const maxX = containerRightInDocument - ICON_SIZE - PADDING; // Справа - конец изображения
+      const minY = containerTopInDocument + PADDING; // Сверху - начало изображения
+      const maxY = containerBottomInDocument - ICON_SIZE - PADDING; // Снизу - конец изображения
       
       // Пересчитываем позиции всех фишек, чтобы они остались в новых boundaries
       safePlayers.forEach(player => {
@@ -158,23 +165,30 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     
     e.preventDefault();
     
-    // 🎯 ГИБРИДНЫЕ ГРАНИЦЫ: Рабочие границы + исправленная нижняя
-    const minX = SIDEBAR_WIDTH + PADDING; // Слева - за сайдбаром (работало)
-    const maxX = window.innerWidth - ICON_SIZE - PADDING; // Справа - край экрана (работало)
-    const minY = PADDING; // Сверху - край экрана (работало)
+    // 🎯 ГРАНИЦЫ ПО ИЗОБРАЖЕНИЮ: Все границы относительно изображения игрового поля
+    if (!containerRef.current) return;
     
-    // 🚨 ИСПРАВЛЕННАЯ НИЖНЯЯ ГРАНИЦА: Используем высоту документа с учетом scroll
-    const maxY = Math.max(
-      window.innerHeight,
-      document.documentElement.scrollHeight,
-      document.body.scrollHeight
-    ) - ICON_SIZE - PADDING;
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+    
+    // Конвертируем границы контейнера в координаты документа
+    const containerLeftInDocument = containerRect.left + scrollLeft;
+    const containerTopInDocument = containerRect.top + scrollTop;
+    const containerRightInDocument = containerRect.right + scrollLeft;
+    const containerBottomInDocument = containerRect.bottom + scrollTop;
+    
+    // Границы по краям изображения игрового поля
+    const minX = containerLeftInDocument + PADDING; // Слева - начало изображения
+    const maxX = containerRightInDocument - ICON_SIZE - PADDING; // Справа - конец изображения
+    const minY = containerTopInDocument + PADDING; // Сверху - начало изображения
+    const maxY = containerBottomInDocument - ICON_SIZE - PADDING; // Снизу - конец изображения
     
     // Применяем границы
     const newX = Math.max(minX, Math.min(maxX, e.pageX - dragOffset.x));
     const newY = Math.max(minY, Math.min(maxY, e.pageY - dragOffset.y));
     
-    // console.log(`🎯 ГИБРИДНЫЕ ГРАНИЦЫ: pageX=${e.pageX}, pageY=${e.pageY}, newX=${newX}, newY=${newY}, границы: X(${minX}-${maxX}), Y(${minY}-${maxY})`);
+    // console.log(`🎯 ГРАНИЦЫ ПО ИЗОБРАЖЕНИЮ: pageX=${e.pageX}, pageY=${e.pageY}, newX=${newX}, newY=${newY}, границы: X(${minX}-${maxX}), Y(${minY}-${maxY})`);
     
     // Напрямую обновляем позицию в DOM
     const player = safePlayers[draggedIndex];
@@ -194,23 +208,30 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     // Получаем текущую позицию из ref
     const currentPos = getPlayerPosition(currentPlayer.id);
     
-    // 🎯 ГИБРИДНЫЕ ГРАНИЦЫ: Финальная проверка позиции
-    const minX = SIDEBAR_WIDTH + PADDING; // Слева - за сайдбаром (работало)
-    const maxX = window.innerWidth - ICON_SIZE - PADDING; // Справа - край экрана (работало)
-    const minY = PADDING; // Сверху - край экрана (работало)
+    // 🎯 ГРАНИЦЫ ПО ИЗОБРАЖЕНИЮ: Финальная проверка позиции
+    if (!containerRef.current) return;
     
-    // 🚨 ИСПРАВЛЕННАЯ НИЖНЯЯ ГРАНИЦА: Используем высоту документа с учетом scroll
-    const maxY = Math.max(
-      window.innerHeight,
-      document.documentElement.scrollHeight,
-      document.body.scrollHeight
-    ) - ICON_SIZE - PADDING;
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+    
+    // Конвертируем границы контейнера в координаты документа
+    const containerLeftInDocument = containerRect.left + scrollLeft;
+    const containerTopInDocument = containerRect.top + scrollTop;
+    const containerRightInDocument = containerRect.right + scrollLeft;
+    const containerBottomInDocument = containerRect.bottom + scrollTop;
+    
+    // Границы по краям изображения игрового поля
+    const minX = containerLeftInDocument + PADDING; // Слева - начало изображения
+    const maxX = containerRightInDocument - ICON_SIZE - PADDING; // Справа - конец изображения
+    const minY = containerTopInDocument + PADDING; // Сверху - начало изображения
+    const maxY = containerBottomInDocument - ICON_SIZE - PADDING; // Снизу - конец изображения
     
     // Применяем границы к финальной позиции
     let finalX = Math.max(minX, Math.min(maxX, currentPos.x));
     let finalY = Math.max(minY, Math.min(maxY, currentPos.y));
     
-    // console.log(`🚀 ГИБРИДНОЕ ПОЗИЦИОНИРОВАНИЕ: (${finalX}, ${finalY}), границы: X(${minX}-${maxX}), Y(${minY}-${maxY})`);
+    // console.log(`🚀 ПОЗИЦИОНИРОВАНИЕ ПО ИЗОБРАЖЕНИЮ: (${finalX}, ${finalY}), границы: X(${minX}-${maxX}), Y(${minY}-${maxY})`);
     
     // Устанавливаем финальную позицию в DOM
     setPlayerPosition(currentPlayer.id, finalX, finalY);
