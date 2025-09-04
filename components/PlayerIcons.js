@@ -113,33 +113,17 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   const handleMouseMove = (e) => {
     const { isDragging, draggedIndex, dragOffset } = dragState.current;
     
-    if (!isDragging || draggedIndex === null || !containerRef.current) return;
+    if (!isDragging || draggedIndex === null) return;
     
     e.preventDefault();
     
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const iconSize = 64;
-    const padding = 10;
+    // 🚨 МАКСИМАЛЬНО РАДИКАЛЬНО: УБИРАЕМ ВСЕ ОГРАНИЧЕНИЯ И ГРАНИЦЫ
+    // Фишки могут двигаться ВЕЗДЕ без ограничений!
     
-    // 🚨 РАДИКАЛЬНО: Используем ПОЛНУЮ область viewport без ограничений контейнера
-    const maxWidth = window.innerWidth;
-    const maxHeight = Math.max(
-      window.innerHeight, 
-      document.documentElement.scrollHeight,
-      document.body.scrollHeight
-    );
+    const newX = e.pageX - dragOffset.x;
+    const newY = e.pageY - dragOffset.y;
     
-    // Учитываем scroll offset для корректного позиционирования
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-    
-    // 🚨 РАДИКАЛЬНО: Вычисляем координаты относительно ВСЕГО документа без привязки к контейнеру
-    const newX = Math.max(padding, Math.min(maxWidth - iconSize - padding, e.pageX - dragOffset.x));
-    const newY = Math.max(padding, Math.min(maxHeight - iconSize - padding, e.pageY - dragOffset.y));
-    
-    // Отладочная информация для scroll (отключена для уменьшения спама)
-    // if (scrollTop > 0) {
-    //   console.log(`📜 РАДИКАЛЬНЫЙ SCROLL: pageY=${e.pageY}, scrollTop=${scrollTop}, newY=${newY}, maxHeight=${maxHeight}, maxWidth=${maxWidth}`);
-    // }
+    // console.log(`🎯 АБСОЛЮТНАЯ СВОБОДА: pageX=${e.pageX}, pageY=${e.pageY}, newX=${newX}, newY=${newY}`);
     
     // Напрямую обновляем позицию в DOM
     const player = safePlayers[draggedIndex];
@@ -159,21 +143,13 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     // Получаем текущую позицию из ref
     const currentPos = getPlayerPosition(currentPlayer.id);
     
-    const iconSize = 64;
-    const padding = 10;
+    // 🚨 МАКСИМАЛЬНО РАДИКАЛЬНО: НИКАКИХ ОГРАНИЧЕНИЙ ВООБЩЕ!
+    // Фишки могут быть где угодно - даже за пределами экрана
     
-    // 🚨 РАДИКАЛЬНО: Убеждаемся, что позиция находится в пределах ПОЛНОГО viewport
-    const maxWidth = window.innerWidth;
-    const maxHeight = Math.max(
-      window.innerHeight, 
-      document.documentElement.scrollHeight,
-      document.body.scrollHeight
-    );
+    let finalX = currentPos.x;
+    let finalY = currentPos.y;
     
-    let finalX = Math.max(padding, Math.min(maxWidth - iconSize - padding, currentPos.x));
-    let finalY = Math.max(padding, Math.min(maxHeight - iconSize - padding, currentPos.y));
-    
-    // console.log(`📏 DOM: РАДИКАЛЬНЫЕ границы - ширина: ${maxWidth}, высота: ${maxHeight}`);
+    // console.log(`🚀 АБСОЛЮТНО СВОБОДНОЕ ПОЗИЦИОНИРОВАНИЕ: (${finalX}, ${finalY})`);
     
     // Устанавливаем финальную позицию в DOM
     setPlayerPosition(currentPlayer.id, finalX, finalY);
@@ -214,19 +190,14 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     e.preventDefault();
     e.stopPropagation();
     
-    const rect = e.currentTarget.getBoundingClientRect();
-    // Учитываем scroll offset для консистентности с handleMouseMove
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+    // 🚨 РАДИКАЛЬНО УПРОЩАЕМ: Используем текущую позицию элемента напрямую из DOM
+    const currentPosition = getPlayerPosition(player.id);
     
-    // Конвертируем в координаты документа для консистентности
-    const rectTopInDocument = rect.top + scrollTop;
-    const rectLeftInDocument = rect.left + scrollLeft;
+    // Вычисляем offset относительно текущей позиции элемента в DOM
+    const offsetX = e.pageX - currentPosition.x;
+    const offsetY = e.pageY - currentPosition.y;
     
-    const offsetX = e.pageX - rectLeftInDocument;
-    const offsetY = e.pageY - rectTopInDocument;
-    
-    console.log(`🚀 РАДИКАЛЬНОЕ НАЧАЛО: pageX=${e.pageX}, pageY=${e.pageY}, offsetX=${offsetX}, offsetY=${offsetY}`);
+    // console.log(`🚀 НАЧАЛО БЕЗ ГРАНИЦ: pageX=${e.pageX}, pageY=${e.pageY}, currentPos=(${currentPosition.x}, ${currentPosition.y}), offset=(${offsetX}, ${offsetY})`);
     
     // Set drag state
     dragState.current = {
@@ -285,7 +256,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
               left: '0px', // Начальная позиция, будет установлена через setPlayerPosition
               top: '0px',
               cursor: canDragPlayer ? (isDragging ? 'grabbing' : 'grab') : 'default',
-              zIndex: isDragging ? 1000 : 10,
+              zIndex: isDragging ? 9999 : 100, // Еще выше для гарантии поверх всего
               transition: isDragging ? 'none' : 'all 0.3s ease',
               transform: isDragging ? 'scale(1.1) rotate(5deg)' : 'scale(1)',
               userSelect: 'none',
