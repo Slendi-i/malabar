@@ -17,7 +17,7 @@ export default function Home() {
     ratio: 0.75
   });
   const [syncStatus, setSyncStatus] = useState('disconnected');
-  const [draggedPlayerId, setDraggedPlayerId] = useState(null); // Отслеживаем перетаскиваемого игрока
+  // 🚨 РАДИКАЛЬНО: Убрали draggedPlayerId - больше не нужен
   const containerRef = useRef(null);
   const imageRef = useRef(null);
   const lastSaveRef = useRef(Date.now());
@@ -27,7 +27,8 @@ export default function Home() {
   const handlePlayersUpdate = useCallback((type, data, playerId) => {
     console.log('🔄 Получено обновление из БД:', type, data);
     
-    // БД является источником истины, НО координаты игнорируем ТОЛЬКО для перетаскиваемого игрока
+    // 🚨 РАДИКАЛЬНО: ПОЛНОСТЬЮ ИГНОРИРУЕМ ВСЕ ОБНОВЛЕНИЯ КООРДИНАТ ИЗ WEBSOCKET
+    // Координаты теперь управляются только через DOM и прямые вызовы API
     if (type === 'single' && playerId && data) {
       // Проверяем, это обновление только координат или других данных
       const isCoordinatesOnlyUpdate = 
@@ -35,22 +36,9 @@ export default function Home() {
         Object.keys(data).filter(key => key !== 'x' && key !== 'y' && key !== 'id').length === 0;
         
       if (isCoordinatesOnlyUpdate) {
-        // Игнорируем координаты ТОЛЬКО для игрока, который сейчас перетаскивается
-        if (draggedPlayerId === playerId) {
-          console.log('🚫 Игнорируем обновление координат из WebSocket для перетаскиваемого игрока', playerId);
-          return;
-        } else {
-          console.log('✅ Принимаем обновление координат из WebSocket для игрока', playerId, 'x:', data.x, 'y:', data.y);
-          // Обновляем координаты для НЕ перетаскиваемых игроков
-          setPlayers(prev => prev.map(player => 
-            player.id === playerId ? { 
-              ...player, 
-              x: data.x,
-              y: data.y
-            } : player
-          ));
-          return;
-        }
+        console.log('🚫 РАДИКАЛЬНО: Игнорируем ВСЕ обновления координат из WebSocket для игрока', playerId);
+        // Координаты больше НЕ синхронизируются через WebSocket - только через DOM
+        return;
       }
       
       console.log('📝 Обновление одного игрока из БД:', playerId, data);
@@ -63,10 +51,8 @@ export default function Home() {
           games: Array.isArray(data.games) ? data.games : player.games || [],
           stats: data.stats || player.stats || { wins: 0, rerolls: 0, drops: 0 },
           socialLinks: data.socialLinks || player.socialLinks || { twitch: '', telegram: '', discord: '' },
-          position: data.position !== undefined ? data.position : player.position,
-          // Координаты НЕ обновляем из WebSocket - они управляются локально
-          x: player.x,
-          y: player.y
+          position: data.position !== undefined ? data.position : player.position
+          // 🚨 РАДИКАЛЬНО: ВООБЩЕ НЕ ХРАНИМ КООРДИНАТЫ В REACT STATE
         } : player
       ));
     } else if (type === 'batch' && Array.isArray(data)) {
@@ -80,16 +66,14 @@ export default function Home() {
           games: Array.isArray(player.games) ? player.games : [],
           stats: player.stats || { wins: 0, rerolls: 0, drops: 0 },
           socialLinks: player.socialLinks || { twitch: '', telegram: '', discord: '' },
-          position: player.position || player.id,
-          // Используем ЛОКАЛЬНЫЕ координаты если есть, иначе из БД
-          x: existing?.x !== undefined ? existing.x : (player.x !== undefined ? player.x : null),
-          y: existing?.y !== undefined ? existing.y : (player.y !== undefined ? player.y : null)
+          position: player.position || player.id
+          // 🚨 РАДИКАЛЬНО: КООРДИНАТЫ ВООБЩЕ НЕ ХРАНИМ В REACT STATE
         };
       }));
     }
     
     setSyncStatus('synchronized');
-  }, [draggedPlayerId]);
+  }, []); // Убрали зависимость от draggedPlayerId
 
   const handleUserUpdate = useCallback((type, data) => {
     console.log('Received user update:', type, data);
@@ -176,9 +160,8 @@ export default function Home() {
               drops: 0,
               position: player.id
             },
-            // Сохраняем x,y координаты если они есть, иначе null (позиция будет установлена в PlayerIcons)
-            x: player.x !== undefined ? player.x : null,
-            y: player.y !== undefined ? player.y : null
+            // 🚨 РАДИКАЛЬНО: НЕ ЗАГРУЖАЕМ КООРДИНАТЫ В REACT STATE
+            // Позиции будут загружены напрямую в DOM через API в PlayerIcons
           }));
           
           setPlayers(normalizedPlayers);
@@ -509,7 +492,6 @@ export default function Home() {
               players={players} 
               setPlayers={setPlayers}
               currentUser={currentUser}
-              setDraggedPlayerId={setDraggedPlayerId}
             />
           </div>
         </div>
