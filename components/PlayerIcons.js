@@ -41,43 +41,47 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     dragOffset: { x: 0, y: 0 },
     initialPosition: { x: 0, y: 0 }
   });
-  const justMovedRef = useRef(false);
+  // Храним ID игроков, которых уже перемещали локально
+  const locallyMovedPlayers = useRef(new Set());
 
   // Update positions when players data changes
   useEffect(() => {
-    // Не обновляем позиции если только что переместили фишку или сейчас перетаскиваем
-    if (Array.isArray(safePlayers) && safePlayers.length > 0 && 
-        !dragState.current.isDragging && !justMovedRef.current) {
+    if (Array.isArray(safePlayers) && safePlayers.length > 0 && !dragState.current.isDragging) {
       
-      const newPositions = safePlayers.map((player, index) => {
-        // Используем сохраненные x,y координаты из БД если они есть и валидны
-        if (typeof player.x === 'number' && typeof player.y === 'number' && 
-            player.x !== null && player.y !== null && 
-            !isNaN(player.x) && !isNaN(player.y)) {
-          return { x: player.x, y: player.y };
-        }
+      setPositions(prevPositions => {
+        const newPositions = safePlayers.map((player, index) => {
+          // Если игрока уже перемещали локально, используем текущую позицию
+          if (locallyMovedPlayers.current.has(player.id) && prevPositions[index]) {
+            return prevPositions[index];
+          }
+          
+          // Используем сохраненные x,y координаты из БД если они есть и валидны
+          if (typeof player.x === 'number' && typeof player.y === 'number' && 
+              player.x !== null && player.y !== null && 
+              !isNaN(player.x) && !isNaN(player.y)) {
+            return { x: player.x, y: player.y };
+          }
+          
+          // Для новых игроков используем фиксированные позиции в сетке
+          const padding = 100;
+          const spacing = 150;
+          const columns = 4;
+          
+          const col = index % columns;
+          const row = Math.floor(index / columns);
+          
+          const x = padding + col * spacing;
+          const y = padding + row * spacing;
+          
+          return { x, y };
+        });
         
-        // Для новых игроков используем фиксированные позиции в сетке (НЕ случайные!)
-        const padding = 100;
-        const spacing = 150;
-        const columns = 4;
-        
-        const col = index % columns;
-        const row = Math.floor(index / columns);
-        
-        const x = padding + col * spacing;
-        const y = padding + row * spacing;
-        
-        return { x, y };
+        // Only update if positions actually changed
+        const positionsChanged = JSON.stringify(newPositions) !== JSON.stringify(prevPositions);
+        return positionsChanged ? newPositions : prevPositions;
       });
-      
-      // Only update if positions actually changed to avoid unnecessary re-renders
-      const positionsChanged = JSON.stringify(newPositions) !== JSON.stringify(positions);
-      if (positionsChanged) {
-        setPositions(newPositions);
-      }
     }
-  }, [safePlayers]); // убрали positions из зависимостей
+  }, [safePlayers]);
 
   // Ensure positions array has the right length
   useEffect(() => {
@@ -183,19 +187,14 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     // Сохраняем пиксельные координаты в базе данных
     const currentPlayer = safePlayers[draggedIndex];
     if (currentPlayer) {
+      // Добавляем игрока в список локально перемещенных
+      locallyMovedPlayers.current.add(currentPlayer.id);
+      
       apiService.updatePlayerCoordinates(currentPlayer.id, finalX, finalY)
         .catch(error => {
           console.error('Ошибка сохранения позиции игрока:', error);
         });
     }
-    
-    // Устанавливаем флаг что только что переместили фишку
-    justMovedRef.current = true;
-    
-    // Сбрасываем флаг через 1 секунду (достаточно времени для API ответа)
-    setTimeout(() => {
-      justMovedRef.current = false;
-    }, 1000);
     
     // Clean up drag state
     dragState.current = {
