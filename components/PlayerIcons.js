@@ -122,28 +122,6 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     return false;
   }, [currentUser]);
 
-  const handleMouseDown = useCallback((e, index) => {
-    const player = safePlayers[index];
-    const canDragThis = canDrag(player?.id);
-    
-    if (!canDragThis || isDragging) return;
-    
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const offsetX = e.clientX - rect.left;
-    const offsetY = e.clientY - rect.top;
-    
-    setDraggedIndex(index);
-    setDragOffset({ x: offsetX, y: offsetY });
-    setIsDragging(true);
-    
-    // Add global mouse event listeners
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  }, [safePlayers, canDrag, isDragging, handleMouseMove, handleMouseUp]);
-
   const handleMouseMove = useCallback((e) => {
     if (draggedIndex === null || !containerRef.current) return;
     
@@ -204,9 +182,31 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     setIsDragging(false);
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
-  }, [draggedIndex, isDragging, positions, safePlayers, handleMouseMove]);
+  }, [draggedIndex, isDragging, positions, safePlayers]);
 
-  // Cleanup event listeners when component unmounts or drag ends
+  const handleMouseDown = useCallback((e, index) => {
+    const player = safePlayers[index];
+    const canDragThis = canDrag(player?.id);
+    
+    if (!canDragThis || isDragging) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+    
+    setDraggedIndex(index);
+    setDragOffset({ x: offsetX, y: offsetY });
+    setIsDragging(true);
+    
+    // Add global mouse event listeners
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [safePlayers, canDrag, isDragging, handleMouseMove, handleMouseUp]);
+
+  // Cleanup event listeners when component unmounts
   useEffect(() => {
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
