@@ -101,9 +101,16 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     const iconSize = 64;
     const padding = 10;
     
-    // Вычисляем новые координаты с учетом границ контейнера
+    // Используем максимальную доступную высоту (viewport или документ)
+    const maxHeight = Math.max(
+      containerRect.height, 
+      window.innerHeight, 
+      document.documentElement.scrollHeight
+    );
+    
+    // Вычисляем новые координаты с учетом границ (по X - контейнер, по Y - полная высота документа)
     const newX = Math.max(padding, Math.min(containerRect.width - iconSize - padding, e.clientX - containerRect.left - dragOffset.x));
-    const newY = Math.max(padding, Math.min(containerRect.height - iconSize - padding, e.clientY - containerRect.top - dragOffset.y));
+    const newY = Math.max(padding, Math.min(maxHeight - iconSize - padding, e.clientY - containerRect.top - dragOffset.y));
     
     // Напрямую обновляем позицию в DOM
     const player = safePlayers[draggedIndex];
@@ -126,14 +133,22 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     const iconSize = 64;
     const padding = 10;
     
-    // Убеждаемся, что позиция находится в пределах контейнера
+    // Убеждаемся, что позиция находится в пределах (по X - контейнер, по Y - полная высота)
     let finalX = Math.max(padding, currentPos.x);
     let finalY = Math.max(padding, currentPos.y);
     
     if (containerRef.current) {
       const containerRect = containerRef.current.getBoundingClientRect();
+      const maxHeight = Math.max(
+        containerRect.height, 
+        window.innerHeight, 
+        document.documentElement.scrollHeight
+      );
+      
       finalX = Math.min(containerRect.width - iconSize - padding, finalX);
-      finalY = Math.min(containerRect.height - iconSize - padding, finalY);
+      finalY = Math.min(maxHeight - iconSize - padding, finalY);
+      
+      console.log(`📏 DOM: Границы перетаскивания - ширина: ${containerRect.width}, высота: ${maxHeight}`);
     }
     
     // Устанавливаем финальную позицию в DOM
@@ -206,6 +221,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       className="relative w-full h-full"
       style={{
         minHeight: '100vh',
+        height: 'auto', // Позволяем контейнеру расширяться
         backgroundColor: 'transparent', // убираем белый фон
         paddingBottom: '100px',
         boxSizing: 'border-box'
