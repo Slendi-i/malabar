@@ -165,12 +165,15 @@ export default function Home() {
         if (!restoredUser) {
           try {
             const apiUser = await apiService.getCurrentUser();
-            if (apiUser) {
+            // Игнорируем Guest пользователя - это означает что никто не залогинен
+            if (apiUser && apiUser.username !== 'Guest' && apiUser.isLoggedIn) {
               setCurrentUser(apiUser);
               // Сохраняем в localStorage
               if (typeof window !== 'undefined') {
                 localStorage.setItem('currentUser', JSON.stringify(apiUser));
               }
+            } else {
+              console.log('API вернул Guest или незалогиненного пользователя, оставляем кнопку "Войти"');
             }
           } catch (e) {
             console.warn('Failed to load user from API:', e);
@@ -236,8 +239,11 @@ export default function Home() {
         }
       }
       
-      // Save user to API
-      await apiService.setCurrentUser(userData);
+      // Save user to API (fix format for server)
+      await apiService.setCurrentUser({
+        username: userData.name,
+        isLoggedIn: true
+      });
       setCurrentUser(userData);
       
       // Сохраняем в localStorage для persistence
@@ -270,12 +276,26 @@ export default function Home() {
         localStorage.setItem('currentUser', JSON.stringify(fallbackUserData));
         console.log('✅ Fallback пользователь сохранен в localStorage:', fallbackUserData);
       }
+      
+      // Пытаемся сохранить в API тоже (для fallback случая)
+      try {
+        await apiService.setCurrentUser({
+          username: fallbackUserData.name,
+          isLoggedIn: true
+        });
+      } catch (apiError) {
+        console.warn('Fallback API save failed, using localStorage only:', apiError);
+      }
     }
   };
 
   const handleLogout = async () => {
     try {
-      await apiService.setCurrentUser(null);
+      // Правильный формат для API logout
+      await apiService.setCurrentUser({
+        username: '',
+        isLoggedIn: false
+      });
     } catch (error) {
       console.error('Logout failed:', error);
     }

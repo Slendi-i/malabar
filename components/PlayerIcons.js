@@ -96,19 +96,34 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   }, [safePlayers.length]); // Убрали positions.length из зависимостей
 
   const canDrag = (playerId) => {
-    if (!currentUser || !playerId) {
-      console.log('canDrag: Missing currentUser or playerId', { currentUser, playerId });
+    console.log('🔍 canDrag called with:', { 
+      currentUser, 
+      playerId,
+      hasCurrentUser: !!currentUser,
+      currentUserType: currentUser?.type,
+      currentUserId: currentUser?.id
+    });
+    
+    if (!currentUser) {
+      console.log('❌ canDrag: No currentUser - login required');
       return false;
     }
+    
+    if (!playerId) {
+      console.log('❌ canDrag: No playerId provided');
+      return false;
+    }
+    
     if (currentUser.type === 'admin') {
-      console.log('canDrag: Admin access granted');
+      console.log('✅ canDrag: Admin access granted');
       return true;
     }
+    
     // Приведение типов для сравнения
     const userIdStr = String(currentUser.id);
     const playerIdStr = String(playerId);
     const canDragResult = currentUser.type === 'player' && userIdStr === playerIdStr;
-    console.log('canDrag check:', { 
+    console.log('🔍 canDrag player check:', { 
       userType: currentUser.type, 
       userId: userIdStr, 
       playerId: playerIdStr, 
@@ -121,15 +136,20 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     const player = safePlayers[index];
     const canDragThis = canDrag(player?.id);
     
-    console.log(`Mouse down on player ${index}:`, {
+    console.log(`🖱️ Mouse down on player ${index}:`, {
       player: player?.name,
       playerId: player?.id,
       canDrag: canDragThis,
-      currentUser: currentUser
+      currentUser: currentUser,
+      event: {
+        button: e.button,
+        clientX: e.clientX,
+        clientY: e.clientY
+      }
     });
     
     if (!canDragThis) {
-      console.log('Drag not allowed for this player');
+      console.log('❌ Drag not allowed for this player');
       return;
     }
     
@@ -252,6 +272,14 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
         
         const isDragging = draggedIndex === index;
         const canDragPlayer = canDrag(player.id);
+        
+        console.log(`🎨 Rendering player ${index}:`, {
+          name: player.name,
+          id: player.id,
+          canDragPlayer,
+          hasMouseDownHandler: !!canDragPlayer,
+          currentUserForRender: currentUser
+        });
         
         return (
         <Tooltip key={player.id} title={player.name} arrow>
