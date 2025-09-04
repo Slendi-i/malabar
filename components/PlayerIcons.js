@@ -6,59 +6,74 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   // Ensure players is an array and has the expected structure
   const safePlayers = Array.isArray(players) ? players : [];
   
-  const [positions, setPositions] = useState([]);
-  const [isInitialized, setIsInitialized] = useState(false);
-
   const containerRef = useRef(null);
+  const playerRefs = useRef([]); // Ссылки на DOM элементы фишек
+  const positions = useRef({}); // Позиции храним в ref по player.id
   const dragState = useRef({
     isDragging: false,
     draggedIndex: null,
     dragOffset: { x: 0, y: 0 },
     initialPosition: { x: 0, y: 0 }
   });
-  // Инициализация позиций при первой загрузке и при изменении количества игроков
+
+  // Функция для установки позиции фишки напрямую в DOM
+  const setPlayerPosition = (playerId, x, y) => {
+    const playerElement = document.querySelector(`[data-player-id="${playerId}"]`);
+    if (playerElement) {
+      playerElement.style.left = `${x}px`;
+      playerElement.style.top = `${y}px`;
+      positions.current[playerId] = { x, y };
+      console.log(`🎯 DOM: Установлена позиция для игрока ${playerId}: (${x}, ${y})`);
+    }
+  };
+
+  // Получить текущую позицию фишки
+  const getPlayerPosition = (playerId) => {
+    return positions.current[playerId] || { x: 0, y: 0 };
+  };
+
+  // Инициализация позиций только один раз при загрузке игроков
   useEffect(() => {
     if (Array.isArray(safePlayers) && safePlayers.length > 0) {
-      // Инициализируем или обновляем позиции только для новых игроков
-      setPositions(prevPositions => {
-        const newPositions = safePlayers.map((player, index) => {
-          // Если уже есть позиция для этого индекса, оставляем её
-          if (prevPositions[index]) {
-            return prevPositions[index];
+      console.log('🎯 НОВЫЙ ПОДХОД: Инициализация позиций через DOM для', safePlayers.length, 'игроков');
+      
+      // Ждем, пока DOM элементы будут созданы
+      setTimeout(() => {
+        safePlayers.forEach((player, index) => {
+          // Пропускаем если позиция уже установлена
+          if (positions.current[player.id]) {
+            return;
           }
+          
+          let x, y;
           
           // Используем сохраненные координаты БД если они есть и валидны
           if (typeof player.x === 'number' && typeof player.y === 'number' && 
               player.x !== null && player.y !== null && 
               !isNaN(player.x) && !isNaN(player.y)) {
-            console.log(`🗄️ Игрок ${player.name} - позиция из БД: (${player.x}, ${player.y})`);
-            return { x: player.x, y: player.y };
+            x = player.x;
+            y = player.y;
+            console.log(`🗄️ DOM: Игрок ${player.name} - позиция из БД: (${x}, ${y})`);
+          } else {
+            // Для новых игроков используем фиксированные позиции в сетке
+            const padding = 100;
+            const spacing = 150;
+            const columns = 4;
+            
+            const col = index % columns;
+            const row = Math.floor(index / columns);
+            
+            x = padding + col * spacing;
+            y = padding + row * spacing;
+            
+            console.log(`🆕 DOM: Игрок ${player.name} - новая позиция: (${x}, ${y})`);
           }
           
-          // Для новых игроков используем фиксированные позиции в сетке
-          const padding = 100;
-          const spacing = 150;
-          const columns = 4;
-          
-          const col = index % columns;
-          const row = Math.floor(index / columns);
-          
-          const x = padding + col * spacing;
-          const y = padding + row * spacing;
-          
-          console.log(`🆕 Игрок ${player.name} - новая позиция: (${x}, ${y})`);
-          return { x, y };
+          setPlayerPosition(player.id, x, y);
         });
-        
-        return newPositions;
-      });
-      
-      if (!isInitialized) {
-        setIsInitialized(true);
-        console.log('✅ Инициализация завершена');
-      }
+      }, 50); // Минимальная задержка для создания DOM
     }
-  }, [safePlayers.length, isInitialized]); // Реагируем только на изменение количества игроков
+  }, [safePlayers]);
 
   const canDrag = (playerId) => {
     if (!currentUser || !playerId) return false;
@@ -90,12 +105,11 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     const newX = Math.max(padding, Math.min(containerRect.width - iconSize - padding, e.clientX - containerRect.left - dragOffset.x));
     const newY = Math.max(padding, Math.min(containerRect.height - iconSize - padding, e.clientY - containerRect.top - dragOffset.y));
     
-    // Update position smoothly
-    setPositions(prev => {
-      const newPos = [...prev];
-      newPos[draggedIndex] = { x: newX, y: newY };
-      return newPos;
-    });
+    // Напрямую обновляем позицию в DOM
+    const player = safePlayers[draggedIndex];
+    if (player) {
+      setPlayerPosition(player.id, newX, newY);
+    }
   };
 
   const handleMouseUp = (e) => {
@@ -103,9 +117,11 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     
     if (!isDragging || draggedIndex === null) return;
     
-    // Get current position
-    const currentPos = positions[draggedIndex];
-    if (!currentPos) return;
+    const currentPlayer = safePlayers[draggedIndex];
+    if (!currentPlayer) return;
+    
+    // Получаем текущую позицию из ref
+    const currentPos = getPlayerPosition(currentPlayer.id);
     
     const iconSize = 64;
     const padding = 10;
@@ -120,27 +136,20 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       finalY = Math.min(containerRect.height - iconSize - padding, finalY);
     }
     
-    // Update final position
-    setPositions(prev => {
-      const newPos = [...prev];
-      newPos[draggedIndex] = { x: finalX, y: finalY };
-      console.log(`✅ ФИНАЛЬНАЯ позиция игрока ${draggedIndex}: (${finalX}, ${finalY})`);
-      return newPos;
-    });
+    // Устанавливаем финальную позицию в DOM
+    setPlayerPosition(currentPlayer.id, finalX, finalY);
+    console.log(`✅ DOM: ФИНАЛЬНАЯ позиция игрока ${currentPlayer.name}: (${finalX}, ${finalY})`);
     
     // Сохраняем пиксельные координаты в базе данных
-    const currentPlayer = safePlayers[draggedIndex];
-    if (currentPlayer) {
-      console.log(`💾 Сохранение в БД: ${currentPlayer.name} -> (${finalX}, ${finalY})`);
-      
-      apiService.updatePlayerCoordinates(currentPlayer.id, finalX, finalY)
-        .then(() => {
-          console.log(`✅ Сохранено в БД: ${currentPlayer.name}`);
-        })
-        .catch(error => {
-          console.error('❌ Ошибка сохранения позиции игрока:', error);
-        });
-    }
+    console.log(`💾 DOM: Сохранение в БД: ${currentPlayer.name} -> (${finalX}, ${finalY})`);
+    
+    apiService.updatePlayerCoordinates(currentPlayer.id, finalX, finalY)
+      .then(() => {
+        console.log(`✅ DOM: Сохранено в БД: ${currentPlayer.name}`);
+      })
+      .catch(error => {
+        console.error('❌ DOM: Ошибка сохранения позиции игрока:', error);
+      });
     
     // Clean up drag state
     dragState.current = {
@@ -173,8 +182,10 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       isDragging: true,
       draggedIndex: index,
       dragOffset: { x: offsetX, y: offsetY },
-      initialPosition: positions[index] || { x: 0, y: 0 }
+      initialPosition: getPlayerPosition(player.id)
     };
+    
+    console.log(`🖱️ DOM: Начало перетаскивания игрока ${player.name}`);
     
     // Add global mouse event listeners
     document.addEventListener('mousemove', handleMouseMove);
@@ -213,11 +224,12 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
         return (
         <Tooltip key={player.id} title={player.name} arrow>
           <div
+            data-player-id={player.id} // Важно! Для поиска элемента в DOM
             onMouseDown={canDragPlayer ? (e) => handleMouseDown(e, index) : undefined}
             style={{
               position: 'absolute',
-              left: `${positions[index]?.x || 0}px`,
-              top: `${positions[index]?.y || 0}px`,
+              left: '0px', // Начальная позиция, будет установлена через setPlayerPosition
+              top: '0px',
               cursor: canDragPlayer ? (isDragging ? 'grabbing' : 'grab') : 'default',
               zIndex: isDragging ? 1000 : 10,
               transition: isDragging ? 'none' : 'all 0.3s ease',
