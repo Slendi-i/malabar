@@ -102,8 +102,33 @@ export default function Home() {
   useEffect(() => {
     setIsMounted(true);
 
+    // Восстанавливаем пользователя из localStorage
+    const restoreUserFromStorage = () => {
+      // Проверяем, что мы в браузере
+      if (typeof window === 'undefined') return null;
+      
+      try {
+        const savedUser = localStorage.getItem('currentUser');
+        if (savedUser) {
+          const userData = JSON.parse(savedUser);
+          console.log('🔄 Восстановление пользователя из localStorage:', userData);
+          setCurrentUser(userData);
+          return userData;
+        }
+      } catch (error) {
+        console.error('Ошибка восстановления пользователя из localStorage:', error);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('currentUser'); // Очищаем поврежденные данные
+        }
+      }
+      return null;
+    };
+
     const loadData = async () => {
       try {
+        // Сначала восстанавливаем пользователя
+        const restoredUser = restoreUserFromStorage();
+        
         console.log('🔄 Загрузка данных игроков...');
         // Load players from API
         const response = await apiService.getPlayers();
@@ -136,14 +161,20 @@ export default function Home() {
           console.log('🚫 Ожидаем восстановления связи с БД, НЕ создаем дефолтные данные');
         }
         
-        // Load current user from API
-        try {
-          const apiUser = await apiService.getCurrentUser();
-          if (apiUser) {
-            setCurrentUser(apiUser);
+        // Пытаемся загрузить пользователя из API только если не восстановили из localStorage
+        if (!restoredUser) {
+          try {
+            const apiUser = await apiService.getCurrentUser();
+            if (apiUser) {
+              setCurrentUser(apiUser);
+              // Сохраняем в localStorage
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('currentUser', JSON.stringify(apiUser));
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to load user from API:', e);
           }
-        } catch (e) {
-          console.warn('Failed to load user from API:', e);
         }
       } catch (error) {
         console.error('❌ Критическая ошибка загрузки данных:', error);
@@ -208,22 +239,36 @@ export default function Home() {
       // Save user to API
       await apiService.setCurrentUser(userData);
       setCurrentUser(userData);
+      
+      // Сохраняем в localStorage для persistence
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('currentUser', JSON.stringify(userData));
+        console.log('✅ Пользователь сохранен в localStorage:', userData);
+      }
     } catch (error) {
       console.error('Login failed:', error);
       // Fallback to local state if API fails
+      let fallbackUserData;
       if (login === 'admin' && password === 'admin') {
-        setCurrentUser({ type: 'admin', id: 0, name: 'Администратор' });
+        fallbackUserData = { type: 'admin', id: 0, name: 'Администратор' };
       } else {
         const playerNumber = parseInt(login.replace('Player', ''));
         if (!isNaN(playerNumber) && login === `Player${playerNumber}` && password === `Player${playerNumber}`) {
-          setCurrentUser({
+          fallbackUserData = {
             type: 'player',
             id: playerNumber,
             name: `Игрок ${playerNumber}`
-          });
+          };
         } else {
-          setCurrentUser({ type: 'viewer', id: -1, name: 'Зритель' });
+          fallbackUserData = { type: 'viewer', id: -1, name: 'Зритель' };
         }
+      }
+      
+      setCurrentUser(fallbackUserData);
+      // Сохраняем fallback данные в localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('currentUser', JSON.stringify(fallbackUserData));
+        console.log('✅ Fallback пользователь сохранен в localStorage:', fallbackUserData);
       }
     }
   };
@@ -234,7 +279,13 @@ export default function Home() {
     } catch (error) {
       console.error('Logout failed:', error);
     }
+    
+    // Очищаем состояние и localStorage
     setCurrentUser(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('currentUser');
+      console.log('✅ Пользователь вышел из системы, localStorage очищен');
+    }
   };
 
   // Cleanup function for timeouts

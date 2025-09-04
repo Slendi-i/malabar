@@ -11,9 +11,31 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Webpack configuration to fix __webpack_require__.a error
+  webpack: (config, { isServer }) => {
+    // Fix for __webpack_require__.a is not a function error
+    config.experiments = {
+      ...config.experiments,
+      asyncWebAssembly: true,
+      layers: true,
+      topLevelAwait: true
+    };
+    
+    // Ensure proper module resolution
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
+      crypto: false,
+    };
+    
+    return config;
+  },
   // Minimal experimental options
   experimental: {
-    webpackBuildWorker: false
+    webpackBuildWorker: false,
+    esmExternals: true
   },
   // Production optimizations
   poweredByHeader: false,
