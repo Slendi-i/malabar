@@ -7,30 +7,29 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   const safePlayers = Array.isArray(players) ? players : [];
   
   const [positions, setPositions] = useState(() => {
-    // Initialize positions from player data or use defaults
+    // Initialize positions from player data or use fixed grid layout
     if (Array.isArray(safePlayers) && safePlayers.length > 0) {
       return safePlayers.map((player, index) => {
-        // Используем сохраненные координаты или случайные позиции для новых игроков
-        if (player.x !== undefined && player.x !== null && player.y !== undefined && player.y !== null) {
+        // Используем сохраненные координаты БД если они есть и валидны
+        if (typeof player.x === 'number' && typeof player.y === 'number' && 
+            player.x !== null && player.y !== null && 
+            !isNaN(player.x) && !isNaN(player.y)) {
           return { x: player.x, y: player.y };
         }
         
-        // Для новых игроков создаем случайные позиции, избегая наложений
+        // Для новых игроков используем фиксированные позиции в сетке (НЕ случайные!)
         const padding = 100;
-        const iconSize = 64;
-        const minDistance = 120;
+        const spacing = 150; // расстояние между фишками
+        const columns = 4; // количество колонок
         
-        let newX, newY;
-        let attempts = 0;
-        const maxAttempts = 50;
+        const col = index % columns;
+        const row = Math.floor(index / columns);
         
-        do {
-          newX = padding + Math.random() * (800 - iconSize - padding * 2);
-          newY = padding + Math.random() * (600 - iconSize - padding * 2);
-          attempts++;
-        } while (attempts < maxAttempts);
+        const x = padding + col * spacing;
+        const y = padding + row * spacing;
         
-        return { x: newX, y: newY };
+        console.log(`🎯 Создание фиксированной позиции для игрока ${index} (${player.name}): (${x}, ${y})`);
+        return { x, y };
       });
     }
     return [];
@@ -46,24 +45,31 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     if (Array.isArray(safePlayers) && safePlayers.length > 0 && draggedIndex === null) {
       // Only update positions if not currently dragging
       const newPositions = safePlayers.map((player, index) => {
-        // Используем сохраненные x,y координаты или случайные позиции для новых игроков
-        if (player.x !== undefined && player.x !== null && player.y !== undefined && player.y !== null) {
+        // Используем сохраненные x,y координаты из БД если они есть и валидны
+        if (typeof player.x === 'number' && typeof player.y === 'number' && 
+            player.x !== null && player.y !== null && 
+            !isNaN(player.x) && !isNaN(player.y)) {
           return { x: player.x, y: player.y };
         }
         
-        // Для новых игроков создаем случайные позиции
+        // Для новых игроков используем фиксированные позиции в сетке (НЕ случайные!)
         const padding = 100;
-        const iconSize = 64;
-        const defaultX = padding + Math.random() * (800 - iconSize - padding * 2);
-        const defaultY = padding + Math.random() * (600 - iconSize - padding * 2);
+        const spacing = 150;
+        const columns = 4;
         
-        return { x: defaultX, y: defaultY };
+        const col = index % columns;
+        const row = Math.floor(index / columns);
+        
+        const x = padding + col * spacing;
+        const y = padding + row * spacing;
+        
+        return { x, y };
       });
       
       // Only update if positions actually changed to avoid unnecessary re-renders
       const positionsChanged = JSON.stringify(newPositions) !== JSON.stringify(positions);
       if (positionsChanged) {
-        console.log('Updating positions from server data');
+        console.log('Updating positions from server data (using fixed grid for new players)');
         setPositions(newPositions);
       }
     }
@@ -78,16 +84,24 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
           const index = newPos.length;
           const player = safePlayers[index];
           
-          // Используем сохраненные координаты или создаем случайные для новых игроков
-          if (player?.x !== undefined && player?.x !== null && player?.y !== undefined && player?.y !== null) {
+          // Используем сохраненные координаты или фиксированные позиции для новых игроков
+          if (typeof player?.x === 'number' && typeof player?.y === 'number' && 
+              player.x !== null && player.y !== null && 
+              !isNaN(player.x) && !isNaN(player.y)) {
             newPos.push({ x: player.x, y: player.y });
           } else {
+            // Фиксированные позиции в сетке
             const padding = 100;
-            const iconSize = 64;
-            const defaultX = padding + Math.random() * (800 - iconSize - padding * 2);
-            const defaultY = padding + Math.random() * (600 - iconSize - padding * 2);
+            const spacing = 150;
+            const columns = 4;
             
-            newPos.push({ x: defaultX, y: defaultY });
+            const col = index % columns;
+            const row = Math.floor(index / columns);
+            
+            const x = padding + col * spacing;
+            const y = padding + row * spacing;
+            
+            newPos.push({ x, y });
           }
         }
         return newPos;
@@ -114,22 +128,30 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       return false;
     }
     
+    // Администратор может перетаскивать все фишки
     if (currentUser.type === 'admin') {
-      console.log('✅ canDrag: Admin access granted');
+      console.log('✅ canDrag: Admin access granted for all pieces');
       return true;
     }
     
-    // Приведение типов для сравнения
-    const userIdStr = String(currentUser.id);
-    const playerIdStr = String(playerId);
-    const canDragResult = currentUser.type === 'player' && userIdStr === playerIdStr;
-    console.log('🔍 canDrag player check:', { 
-      userType: currentUser.type, 
-      userId: userIdStr, 
-      playerId: playerIdStr, 
-      result: canDragResult 
-    });
-    return canDragResult;
+    // Игрок может перетаскивать только свою фишку
+    if (currentUser.type === 'player') {
+      // Приведение типов для сравнения
+      const userIdStr = String(currentUser.id);
+      const playerIdStr = String(playerId);
+      const canDragResult = userIdStr === playerIdStr;
+      console.log('🔍 canDrag player check:', { 
+        userType: currentUser.type, 
+        userId: userIdStr, 
+        playerId: playerIdStr, 
+        result: canDragResult 
+      });
+      return canDragResult;
+    }
+    
+    // Зрители не могут перетаскивать фишки
+    console.log('❌ canDrag: Viewer cannot drag pieces');
+    return false;
   };
 
   const handleMouseDown = (e, index) => {
@@ -257,9 +279,10 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   return (
     <div 
       ref={containerRef}
-      className="relative w-full min-h-screen p-4 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-lg"
+      className="relative w-full h-full"
       style={{
-        minHeight: '120vh',
+        minHeight: '100vh',
+        backgroundColor: 'transparent', // убираем белый фон
         paddingBottom: '100px',
         boxSizing: 'border-box'
       }}
@@ -278,7 +301,9 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
           id: player.id,
           canDragPlayer,
           hasMouseDownHandler: !!canDragPlayer,
-          currentUserForRender: currentUser
+          currentUserType: currentUser?.type,
+          currentUserId: currentUser?.id,
+          position: { x: positions[index]?.x, y: positions[index]?.y }
         });
         
         return (
@@ -297,10 +322,10 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
               pointerEvents: 'auto',
               filter: isDragging ? 'drop-shadow(0 10px 20px rgba(0,0,0,0.3))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
             }}
-            className={`w-16 h-16 rounded-full flex items-center justify-center ${
+            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200 ${
               canDragPlayer 
-                ? 'bg-blue-500 hover:bg-blue-600 shadow-lg' 
-                : 'bg-gray-500 hover:bg-gray-600'
+                ? 'bg-blue-500 hover:bg-blue-600 shadow-lg border-2 border-blue-300' 
+                : 'bg-gray-500 hover:bg-gray-600 opacity-75'
             }`}
           >
             {player.avatar && typeof player.avatar === 'string' && player.avatar.trim() !== '' ? (

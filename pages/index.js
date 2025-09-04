@@ -53,8 +53,9 @@ export default function Home() {
         stats: player.stats || { wins: 0, rerolls: 0, drops: 0 },
         socialLinks: player.socialLinks || { twitch: '', telegram: '', discord: '' },
         position: player.position || player.id,
-        x: player.x !== undefined ? player.x : ((player.position - 1) % 3) * 200 + 100,
-        y: player.y !== undefined ? player.y : Math.floor((player.position - 1) / 3) * 200 + 100
+        // Используем координаты из БД без изменений, если они есть
+        x: player.x !== undefined ? player.x : null,
+        y: player.y !== undefined ? player.y : null
       })));
     }
     
@@ -146,9 +147,9 @@ export default function Home() {
               drops: 0,
               position: player.id
             },
-            // Сохраняем x,y координаты если они есть
-            x: player.x !== undefined ? player.x : ((player.position - 1) % 3) * 200 + 100,
-            y: player.y !== undefined ? player.y : Math.floor((player.position - 1) / 3) * 200 + 100
+            // Сохраняем x,y координаты если они есть, иначе null (позиция будет установлена в PlayerIcons)
+            x: player.x !== undefined ? player.x : null,
+            y: player.y !== undefined ? player.y : null
           }));
           
           setPlayers(normalizedPlayers);
