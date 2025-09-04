@@ -41,11 +41,14 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     dragOffset: { x: 0, y: 0 },
     initialPosition: { x: 0, y: 0 }
   });
+  const justMovedRef = useRef(false);
 
   // Update positions when players data changes
   useEffect(() => {
-    if (Array.isArray(safePlayers) && safePlayers.length > 0 && !dragState.current.isDragging) {
-      // Only update positions if not currently dragging
+    // Не обновляем позиции если только что переместили фишку или сейчас перетаскиваем
+    if (Array.isArray(safePlayers) && safePlayers.length > 0 && 
+        !dragState.current.isDragging && !justMovedRef.current) {
+      
       const newPositions = safePlayers.map((player, index) => {
         // Используем сохраненные x,y координаты из БД если они есть и валидны
         if (typeof player.x === 'number' && typeof player.y === 'number' && 
@@ -74,7 +77,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
         setPositions(newPositions);
       }
     }
-  }, [safePlayers, positions]);
+  }, [safePlayers]); // убрали positions из зависимостей
 
   // Ensure positions array has the right length
   useEffect(() => {
@@ -185,6 +188,14 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
           console.error('Ошибка сохранения позиции игрока:', error);
         });
     }
+    
+    // Устанавливаем флаг что только что переместили фишку
+    justMovedRef.current = true;
+    
+    // Сбрасываем флаг через 1 секунду (достаточно времени для API ответа)
+    setTimeout(() => {
+      justMovedRef.current = false;
+    }, 1000);
     
     // Clean up drag state
     dragState.current = {
