@@ -10,20 +10,30 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     // Initialize positions from player data or use defaults
     if (Array.isArray(safePlayers) && safePlayers.length > 0) {
       return safePlayers.map((player, index) => {
-        // Используем сохраненные координаты или дефолтные
-        const defaultX = (index % 3) * 200 + 100;
-        const defaultY = Math.floor(index / 3) * 200 + 100;
+        // Используем сохраненные координаты или случайные позиции для новых игроков
+        if (player.x !== undefined && player.x !== null && player.y !== undefined && player.y !== null) {
+          return { x: player.x, y: player.y };
+        }
         
-        return {
-          x: player.x !== undefined && player.x !== null ? player.x : defaultX,
-          y: player.y !== undefined && player.y !== null ? player.y : defaultY
-        };
+        // Для новых игроков создаем случайные позиции, избегая наложений
+        const padding = 100;
+        const iconSize = 64;
+        const minDistance = 120;
+        
+        let newX, newY;
+        let attempts = 0;
+        const maxAttempts = 50;
+        
+        do {
+          newX = padding + Math.random() * (800 - iconSize - padding * 2);
+          newY = padding + Math.random() * (600 - iconSize - padding * 2);
+          attempts++;
+        } while (attempts < maxAttempts);
+        
+        return { x: newX, y: newY };
       });
     }
-    return Array(12).fill().map((_, i) => ({
-      x: (i % 3) * 200 + 100,
-      y: Math.floor(i / 3) * 200 + 100
-    }));
+    return [];
   });
 
   const [draggedIndex, setDraggedIndex] = useState(null);
@@ -36,15 +46,18 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     if (Array.isArray(safePlayers) && safePlayers.length > 0 && draggedIndex === null) {
       // Only update positions if not currently dragging
       const newPositions = safePlayers.map((player, index) => {
-        // Используем сохраненные x,y координаты или дефолтные для новых игроков
-        // Если координаты не заданы, используем сетку 3x4
-        const defaultX = ((index) % 3) * 200 + 100;
-        const defaultY = Math.floor((index) / 3) * 200 + 100;
+        // Используем сохраненные x,y координаты или случайные позиции для новых игроков
+        if (player.x !== undefined && player.x !== null && player.y !== undefined && player.y !== null) {
+          return { x: player.x, y: player.y };
+        }
         
-        return {
-          x: player.x !== undefined && player.x !== null ? player.x : defaultX,
-          y: player.y !== undefined && player.y !== null ? player.y : defaultY
-        };
+        // Для новых игроков создаем случайные позиции
+        const padding = 100;
+        const iconSize = 64;
+        const defaultX = padding + Math.random() * (800 - iconSize - padding * 2);
+        const defaultY = padding + Math.random() * (600 - iconSize - padding * 2);
+        
+        return { x: defaultX, y: defaultY };
       });
       
       // Only update if positions actually changed to avoid unnecessary re-renders
@@ -64,13 +77,18 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
         while (newPos.length < safePlayers.length) {
           const index = newPos.length;
           const player = safePlayers[index];
-          const defaultX = ((index) % 3) * 200 + 100;
-          const defaultY = Math.floor((index) / 3) * 200 + 100;
           
-          newPos.push({
-            x: player?.x !== undefined && player?.x !== null ? player.x : defaultX,
-            y: player?.y !== undefined && player?.y !== null ? player.y : defaultY
-          });
+          // Используем сохраненные координаты или создаем случайные для новых игроков
+          if (player?.x !== undefined && player?.x !== null && player?.y !== undefined && player?.y !== null) {
+            newPos.push({ x: player.x, y: player.y });
+          } else {
+            const padding = 100;
+            const iconSize = 64;
+            const defaultX = padding + Math.random() * (800 - iconSize - padding * 2);
+            const defaultY = padding + Math.random() * (600 - iconSize - padding * 2);
+            
+            newPos.push({ x: defaultX, y: defaultY });
+          }
         }
         return newPos;
       });
@@ -145,15 +163,19 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     e.preventDefault();
     
     const containerRect = containerRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(containerRect.width - 64, e.clientX - containerRect.left - dragOffset.x));
-    const y = Math.max(0, e.clientY - containerRect.top - dragOffset.y);
+    const iconSize = 64;
+    const padding = 10;
     
-    console.log(`🖱️ Moving player ${draggedIndex} to (${x}, ${y})`);
+    // Вычисляем новые координаты с учетом границ контейнера
+    const newX = Math.max(padding, Math.min(containerRect.width - iconSize - padding, e.clientX - containerRect.left - dragOffset.x));
+    const newY = Math.max(padding, Math.min(containerRect.height - iconSize - padding, e.clientY - containerRect.top - dragOffset.y));
+    
+    console.log(`🖱️ Moving player ${draggedIndex} to (${newX}, ${newY})`);
     
     // Update position smoothly
     setPositions(prev => {
       const newPos = [...prev];
-      newPos[draggedIndex] = { x, y };
+      newPos[draggedIndex] = { x: newX, y: newY };
       return newPos;
     });
   };
@@ -163,8 +185,18 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     
     // Свободное перетаскивание - сохраняем точную позицию без привязки к сетке
     const currentPos = positions[draggedIndex];
-    const finalX = Math.max(0, currentPos.x);
-    const finalY = Math.max(0, currentPos.y);
+    const iconSize = 64;
+    const padding = 10;
+    
+    // Убеждаемся, что позиция находится в пределах контейнера
+    let finalX = Math.max(padding, currentPos.x);
+    let finalY = Math.max(padding, currentPos.y);
+    
+    if (containerRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      finalX = Math.min(containerRect.width - iconSize - padding, finalX);
+      finalY = Math.min(containerRect.height - iconSize - padding, finalY);
+    }
     
     console.log(`✅ Dropping player ${draggedIndex} at free position (${finalX}, ${finalY})`);
     
@@ -205,10 +237,11 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   return (
     <div 
       ref={containerRef}
-      className="relative w-full min-h-screen p-4"
+      className="relative w-full min-h-screen p-4 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-lg"
       style={{
         minHeight: '120vh',
-        paddingBottom: '100px'
+        paddingBottom: '100px',
+        boxSizing: 'border-box'
       }}
     >
       {safePlayers.map((player, index) => {
@@ -229,11 +262,12 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
               left: `${positions[index]?.x || 0}px`,
               top: `${positions[index]?.y || 0}px`,
               cursor: canDragPlayer ? (isDragging ? 'grabbing' : 'grab') : 'default',
-              zIndex: isDragging ? 20 : 10,
-              transition: isDragging ? 'none' : 'left 0.2s ease, top 0.2s ease',
-              transform: isDragging ? 'scale(1.1)' : 'scale(1)',
+              zIndex: isDragging ? 1000 : 10,
+              transition: isDragging ? 'none' : 'all 0.3s ease',
+              transform: isDragging ? 'scale(1.1) rotate(5deg)' : 'scale(1)',
               userSelect: 'none',
-              pointerEvents: 'auto'
+              pointerEvents: 'auto',
+              filter: isDragging ? 'drop-shadow(0 10px 20px rgba(0,0,0,0.3))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
             }}
             className={`w-16 h-16 rounded-full flex items-center justify-center ${
               canDragPlayer 
