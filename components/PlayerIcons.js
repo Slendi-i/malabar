@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Tooltip } from '@mui/material';
 import apiService from '../services/apiService';
 
@@ -34,14 +34,17 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     return [];
   });
 
-  const [draggedIndex, setDraggedIndex] = useState(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef(null);
+  const dragState = useRef({
+    isDragging: false,
+    draggedIndex: null,
+    dragOffset: { x: 0, y: 0 },
+    initialPosition: { x: 0, y: 0 }
+  });
 
   // Update positions when players data changes
   useEffect(() => {
-    if (Array.isArray(safePlayers) && safePlayers.length > 0 && draggedIndex === null) {
+    if (Array.isArray(safePlayers) && safePlayers.length > 0 && !dragState.current.isDragging) {
       // Only update positions if not currently dragging
       const newPositions = safePlayers.map((player, index) => {
         // Используем сохраненные x,y координаты из БД если они есть и валидны
@@ -71,7 +74,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
         setPositions(newPositions);
       }
     }
-  }, [safePlayers, draggedIndex]); // Убрали positions из зависимостей
+  }, [safePlayers, positions]);
 
   // Ensure positions array has the right length
   useEffect(() => {
@@ -107,7 +110,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     }
   }, [safePlayers.length]); // Убрали positions.length из зависимостей
 
-  const canDrag = useCallback((playerId) => {
+  const canDrag = (playerId) => {
     if (!currentUser || !playerId) return false;
     
     // Администратор может перетаскивать все фишки
@@ -120,10 +123,12 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     
     // Зрители не могут перетаскивать фишки
     return false;
-  }, [currentUser]);
+  };
 
-  const handleMouseMove = useCallback((e) => {
-    if (draggedIndex === null || !containerRef.current) return;
+  const handleMouseMove = (e) => {
+    const { isDragging, draggedIndex, dragOffset } = dragState.current;
+    
+    if (!isDragging || draggedIndex === null || !containerRef.current) return;
     
     e.preventDefault();
     
@@ -141,13 +146,17 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       newPos[draggedIndex] = { x: newX, y: newY };
       return newPos;
     });
-  }, [draggedIndex, dragOffset]);
+  };
 
-  const handleMouseUp = useCallback((e) => {
-    if (draggedIndex === null || !isDragging) return;
+  const handleMouseUp = (e) => {
+    const { isDragging, draggedIndex } = dragState.current;
     
-    // Свободное перетаскивание - сохраняем точную позицию без привязки к сетке
+    if (!isDragging || draggedIndex === null) return;
+    
+    // Get current position
     const currentPos = positions[draggedIndex];
+    if (!currentPos) return;
+    
     const iconSize = 64;
     const padding = 10;
     
@@ -161,6 +170,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       finalY = Math.min(containerRect.height - iconSize - padding, finalY);
     }
     
+    // Update final position
     setPositions(prev => {
       const newPos = [...prev];
       newPos[draggedIndex] = { x: finalX, y: finalY };
@@ -176,19 +186,24 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
         });
     }
     
-    // Clean up
-    setDraggedIndex(null);
-    setDragOffset({ x: 0, y: 0 });
-    setIsDragging(false);
+    // Clean up drag state
+    dragState.current = {
+      isDragging: false,
+      draggedIndex: null,
+      dragOffset: { x: 0, y: 0 },
+      initialPosition: { x: 0, y: 0 }
+    };
+    
+    // Remove event listeners
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
-  }, [draggedIndex, isDragging, positions, safePlayers]);
+  };
 
-  const handleMouseDown = useCallback((e, index) => {
+  const handleMouseDown = (e, index) => {
     const player = safePlayers[index];
     const canDragThis = canDrag(player?.id);
     
-    if (!canDragThis || isDragging) return;
+    if (!canDragThis || dragState.current.isDragging) return;
     
     e.preventDefault();
     e.stopPropagation();
@@ -197,14 +212,18 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
     
-    setDraggedIndex(index);
-    setDragOffset({ x: offsetX, y: offsetY });
-    setIsDragging(true);
+    // Set drag state
+    dragState.current = {
+      isDragging: true,
+      draggedIndex: index,
+      dragOffset: { x: offsetX, y: offsetY },
+      initialPosition: positions[index] || { x: 0, y: 0 }
+    };
     
     // Add global mouse event listeners
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, [safePlayers, canDrag, isDragging, handleMouseMove, handleMouseUp]);
+  };
 
   // Cleanup event listeners when component unmounts
   useEffect(() => {
@@ -212,7 +231,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [handleMouseMove, handleMouseUp]);
+  }, []);
 
   return (
     <div 
@@ -231,7 +250,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
           return null;
         }
         
-        const isDragging = draggedIndex === index;
+        const isDragging = dragState.current.draggedIndex === index && dragState.current.isDragging;
         const canDragPlayer = canDrag(player.id);
         
         
