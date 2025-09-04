@@ -22,12 +22,23 @@ export default function Home() {
   const lastSaveRef = useRef(Date.now());
   const saveTimeoutRef = useRef(null);
 
-  // Обработчики для real-time синхронизации
+  // Обработчики для real-time синхронизации  
   const handlePlayersUpdate = useCallback((type, data, playerId) => {
     console.log('🔄 Получено обновление из БД:', type, data);
     
-    // БД является источником истины - применяем все обновления
+    // БД является источником истины, НО координаты игнорируем если обновление только по координатам
     if (type === 'single' && playerId && data) {
+      // Проверяем, это обновление только координат или других данных
+      const isCoordinatesOnlyUpdate = 
+        data.x !== undefined && data.y !== undefined && 
+        Object.keys(data).filter(key => key !== 'x' && key !== 'y' && key !== 'id').length === 0;
+        
+      if (isCoordinatesOnlyUpdate) {
+        console.log('🚫 Игнорируем обновление координат из WebSocket для игрока', playerId);
+        // НЕ обновляем состояние - позиции управляются локально
+        return;
+      }
+      
       console.log('📝 Обновление одного игрока из БД:', playerId, data);
       setPlayers(prev => prev.map(player => 
         player.id === playerId ? { 
@@ -39,24 +50,28 @@ export default function Home() {
           stats: data.stats || player.stats || { wins: 0, rerolls: 0, drops: 0 },
           socialLinks: data.socialLinks || player.socialLinks || { twitch: '', telegram: '', discord: '' },
           position: data.position !== undefined ? data.position : player.position,
-          x: data.x !== undefined ? data.x : player.x,
-          y: data.y !== undefined ? data.y : player.y
+          // Координаты НЕ обновляем из WebSocket - они управляются локально
+          x: player.x,
+          y: player.y
         } : player
       ));
     } else if (type === 'batch' && Array.isArray(data)) {
       console.log('📝 Обновление всех игроков из БД:', data.length);
-      setPlayers(data.map(player => ({
-        ...player,
-        // Нормализуем аватар 
-        avatar: player.avatar || '',
-        games: Array.isArray(player.games) ? player.games : [],
-        stats: player.stats || { wins: 0, rerolls: 0, drops: 0 },
-        socialLinks: player.socialLinks || { twitch: '', telegram: '', discord: '' },
-        position: player.position || player.id,
-        // Используем координаты из БД без изменений, если они есть
-        x: player.x !== undefined ? player.x : null,
-        y: player.y !== undefined ? player.y : null
-      })));
+      setPlayers(prev => data.map(player => {
+        const existing = prev.find(p => p.id === player.id);
+        return {
+          ...player,
+          // Нормализуем аватар 
+          avatar: player.avatar || '',
+          games: Array.isArray(player.games) ? player.games : [],
+          stats: player.stats || { wins: 0, rerolls: 0, drops: 0 },
+          socialLinks: player.socialLinks || { twitch: '', telegram: '', discord: '' },
+          position: player.position || player.id,
+          // Используем ЛОКАЛЬНЫЕ координаты если есть, иначе из БД
+          x: existing?.x !== undefined ? existing.x : (player.x !== undefined ? player.x : null),
+          y: existing?.y !== undefined ? existing.y : (player.y !== undefined ? player.y : null)
+        };
+      }));
     }
     
     setSyncStatus('synchronized');

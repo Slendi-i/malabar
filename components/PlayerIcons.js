@@ -16,40 +16,49 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     dragOffset: { x: 0, y: 0 },
     initialPosition: { x: 0, y: 0 }
   });
-  // ЕДИНСТВЕННАЯ инициализация позиций - больше НИКТО их не трогает автоматически!
+  // Инициализация позиций при первой загрузке и при изменении количества игроков
   useEffect(() => {
-    if (Array.isArray(safePlayers) && safePlayers.length > 0 && !isInitialized) {
-      console.log('🎯 ИНИЦИАЛИЗАЦИЯ позиций для', safePlayers.length, 'игроков');
-      
-      const initialPositions = safePlayers.map((player, index) => {
-        // Используем сохраненные координаты БД если они есть и валидны
-        if (typeof player.x === 'number' && typeof player.y === 'number' && 
-            player.x !== null && player.y !== null && 
-            !isNaN(player.x) && !isNaN(player.y)) {
-          console.log(`🗄️ Игрок ${player.name} - позиция из БД: (${player.x}, ${player.y})`);
-          return { x: player.x, y: player.y };
-        }
+    if (Array.isArray(safePlayers) && safePlayers.length > 0) {
+      // Инициализируем или обновляем позиции только для новых игроков
+      setPositions(prevPositions => {
+        const newPositions = safePlayers.map((player, index) => {
+          // Если уже есть позиция для этого индекса, оставляем её
+          if (prevPositions[index]) {
+            return prevPositions[index];
+          }
+          
+          // Используем сохраненные координаты БД если они есть и валидны
+          if (typeof player.x === 'number' && typeof player.y === 'number' && 
+              player.x !== null && player.y !== null && 
+              !isNaN(player.x) && !isNaN(player.y)) {
+            console.log(`🗄️ Игрок ${player.name} - позиция из БД: (${player.x}, ${player.y})`);
+            return { x: player.x, y: player.y };
+          }
+          
+          // Для новых игроков используем фиксированные позиции в сетке
+          const padding = 100;
+          const spacing = 150;
+          const columns = 4;
+          
+          const col = index % columns;
+          const row = Math.floor(index / columns);
+          
+          const x = padding + col * spacing;
+          const y = padding + row * spacing;
+          
+          console.log(`🆕 Игрок ${player.name} - новая позиция: (${x}, ${y})`);
+          return { x, y };
+        });
         
-        // Для новых игроков используем фиксированные позиции в сетке
-        const padding = 100;
-        const spacing = 150;
-        const columns = 4;
-        
-        const col = index % columns;
-        const row = Math.floor(index / columns);
-        
-        const x = padding + col * spacing;
-        const y = padding + row * spacing;
-        
-        console.log(`🆕 Игрок ${player.name} - новая позиция: (${x}, ${y})`);
-        return { x, y };
+        return newPositions;
       });
       
-      setPositions(initialPositions);
-      setIsInitialized(true);
-      console.log('✅ Инициализация завершена, автообновления ОТКЛЮЧЕНЫ');
+      if (!isInitialized) {
+        setIsInitialized(true);
+        console.log('✅ Инициализация завершена');
+      }
     }
-  }, [safePlayers, isInitialized]);
+  }, [safePlayers.length, isInitialized]); // Реагируем только на изменение количества игроков
 
   const canDrag = (playerId) => {
     if (!currentUser || !playerId) return false;
