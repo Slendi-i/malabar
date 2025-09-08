@@ -84,6 +84,13 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
 
       // Отправляем в БД через API
       await apiService.updatePlayerGames(currentUser.id, games);
+      
+      // Обновляем локальное состояние для немедленного отображения
+      setPlayers(prev => prev.map(player => 
+        player.id === currentUser.id 
+          ? { ...player, games: games }
+          : player
+      ));
     } catch (error) {
       console.error('❌ Ошибка сохранения результата броска:', error);
       alert('Ошибка сохранения результата броска. Попробуйте еще раз.');
@@ -130,6 +137,13 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
 
       // Отправляем в БД через API
       await apiService.updatePlayerGames(currentUser.id, games);
+      
+      // Обновляем локальное состояние для немедленного отображения
+      setPlayers(prev => prev.map(player => 
+        player.id === currentUser.id 
+          ? { ...player, games: games }
+          : player
+      ));
     } catch (error) {
       console.error('❌ Ошибка сохранения выбора игры:', error);
       alert('Ошибка сохранения выбора игры. Попробуйте еще раз.');

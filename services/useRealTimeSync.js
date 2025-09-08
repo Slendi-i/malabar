@@ -157,14 +157,14 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
     }
   }, [onPlayersUpdate, onUserUpdate]);
 
-  // HTTP polling as fallback when WebSocket fails (только при необходимости)
+  // HTTP polling as fallback when WebSocket fails
   const startHttpPolling = useCallback(() => {
     console.log('Starting HTTP polling fallback...');
     
-    // Убираем постоянный polling - только одноразовая проверка при fallback
-    const checkForUpdates = async () => {
+    const pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`${API_ENDPOINTS.PLAYERS}/updates?since=${Date.now() - 30000}`);
+        // Check for updates via HTTP
+        const response = await fetch(`${API_ENDPOINTS.PLAYERS}/updates?since=${Date.now() - 10000}`);
         if (response.ok) {
           const data = await response.json();
           if (data.players && data.players.length > 0 && onPlayersUpdate) {
@@ -172,12 +172,12 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
           }
         }
       } catch (error) {
-        console.warn('HTTP fallback check failed:', error);
+        console.warn('HTTP polling failed:', error);
       }
-    };
+    }, 5000); // Poll every 5 seconds
     
-    // Проверяем только один раз при fallback
-    checkForUpdates();
+    // Store interval ID for cleanup
+    reconnectTimeoutRef.current = pollInterval;
   }, [onPlayersUpdate]);
 
   const disconnect = useCallback(() => {
@@ -200,6 +200,9 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
   // Connect on mount, disconnect on unmount
   useEffect(() => {
     connect();
+    
+    // Запускаем HTTP polling как fallback для надежности
+    startHttpPolling();
     
     return () => {
       disconnect();

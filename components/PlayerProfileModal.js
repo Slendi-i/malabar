@@ -74,12 +74,14 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
       
       try {
         await apiService.updatePlayerDetailed(player.id, updatedPlayer);
+        // Обновляем локальное состояние для немедленного отображения
+        onPlayerUpdate(updatedPlayer);
       } catch (error) {
         console.error('❌ Ошибка сохранения данных игрока в БД:', error);
         alert('Ошибка сохранения данных. Попробуйте еще раз.');
       }
     }, delay);
-  }, [player]);
+  }, [player, onPlayerUpdate]);
 
   // Immediate save for critical data (games, images)
   const updatePlayerData = async (updatedData) => {
@@ -92,6 +94,8 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
     
     try {
       await apiService.updatePlayerDetailed(player.id, updatedPlayer);
+      // Обновляем локальное состояние для немедленного отображения
+      onPlayerUpdate(updatedPlayer);
     } catch (error) {
       console.error('❌ Ошибка сохранения данных игрока в БД:', error);
       alert('Ошибка сохранения данных. Попробуйте еще раз.');

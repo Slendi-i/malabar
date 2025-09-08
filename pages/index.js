@@ -33,7 +33,7 @@ export default function Home() {
           : player
       ));
     } else if (type === 'single' && playerId && data) {
-      // Обновление профиля игрока (не координат)
+      // Обновление профиля игрока
       setPlayers(prev => prev.map(player => 
         player.id === playerId ? { 
           ...player, 
@@ -46,6 +46,7 @@ export default function Home() {
         } : player
       ));
     } else if (type === 'batch' && Array.isArray(data)) {
+      // Полное обновление всех игроков
       setPlayers(prev => data.map(player => {
         return {
           ...player,
