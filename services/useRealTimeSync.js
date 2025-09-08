@@ -72,16 +72,12 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
       ws.current.onopen = () => {
         setConnectionStatus('connected');
         reconnectAttempts.current = 0;
-        
-        // Запускаем heartbeat для проверки соединения
-        startHeartbeat();
+        if (startHeartbeat) startHeartbeat();
       };
 
       ws.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          
-          // Обновляем время последнего сообщения (heartbeat)
           lastHeartbeatRef.current = Date.now();
           
           switch (message.type) {
@@ -104,17 +100,16 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
               break;
               
             case 'ping':
-              // Отвечаем на ping сервера
               if (ws.current && ws.current.readyState === WebSocket.OPEN) {
                 ws.current.send(JSON.stringify({ type: 'pong' }));
               }
               break;
               
             case 'pong':
-              // Получен ответ на наш ping
               break;
               
             default:
+              break;
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
@@ -123,13 +118,10 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
 
       ws.current.onclose = (event) => {
         setConnectionStatus('disconnected');
+        if (stopHeartbeat) stopHeartbeat();
         
-        // Останавливаем heartbeat
-        stopHeartbeat();
-        
-        // Attempt to reconnect if not manually closed
         if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = Math.min(baseReconnectDelay * Math.pow(1.5, reconnectAttempts.current), 10000); // Максимум 10 секунд
+          const delay = Math.min(baseReconnectDelay * Math.pow(1.5, reconnectAttempts.current), 10000);
           setConnectionStatus('reconnecting');
           
           reconnectTimeoutRef.current = setTimeout(() => {
@@ -138,8 +130,6 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
           }, delay);
         } else if (reconnectAttempts.current >= maxReconnectAttempts) {
           setConnectionStatus('failed');
-          // Start HTTP polling as fallback
-          startHttpPolling();
         }
       };
 
@@ -151,8 +141,6 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
       setConnectionStatus('error');
-      // Fallback to HTTP polling
-      startHttpPolling();
     }
   }, [onPlayersUpdate, onUserUpdate]);
 
@@ -180,12 +168,11 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
-      clearInterval(reconnectTimeoutRef.current); // Also clear intervals
+      clearInterval(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
     
-    // Останавливаем heartbeat
-    stopHeartbeat();
+    if (stopHeartbeat) stopHeartbeat();
     
     if (ws.current) {
       ws.current.close(1000, 'Component unmounting');
@@ -193,7 +180,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
     }
     
     setConnectionStatus('disconnected');
-  }, [stopHeartbeat]);
+  }, []);
 
   // Connect on mount, disconnect on unmount
   useEffect(() => {
@@ -202,7 +189,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
     return () => {
       disconnect();
     };
-  }, [connect, disconnect]);
+  }, []);
 
   // Expose connection status and manual controls
   return {
@@ -212,7 +199,9 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
     disconnect,
     reconnect: () => {
       disconnect();
-      setTimeout(connect, 100);
+      setTimeout(() => {
+        connect();
+      }, 100);
     }
   };
 }

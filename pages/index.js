@@ -25,17 +25,13 @@ export default function Home() {
 
   // Обработчики для real-time синхронизации  
   const handlePlayersUpdate = useCallback((type, data, playerId) => {
-    
-    // 🚨 РАДИКАЛЬНО: ПОЛНОСТЬЮ ИГНОРИРУЕМ ВСЕ ОБНОВЛЕНИЯ КООРДИНАТ ИЗ WEBSOCKET
-    // Координаты теперь управляются только через DOM и прямые вызовы API
+    // Игнорируем обновления координат из WebSocket
     if (type === 'single' && playerId && data) {
-      // Проверяем, это обновление только координат или других данных
       const isCoordinatesOnlyUpdate = 
         data.x !== undefined && data.y !== undefined && 
         Object.keys(data).filter(key => key !== 'x' && key !== 'y' && key !== 'id').length === 0;
         
       if (isCoordinatesOnlyUpdate) {
-        // Координаты больше НЕ синхронизируются через WebSocket - только через DOM
         return;
       }
       
@@ -43,33 +39,28 @@ export default function Home() {
         player.id === playerId ? { 
           ...player, 
           ...data,
-          // Нормализуем данные
           avatar: data.avatar || player.avatar || '',
           games: Array.isArray(data.games) ? data.games : player.games || [],
           stats: data.stats || player.stats || { wins: 0, rerolls: 0, drops: 0 },
           socialLinks: data.socialLinks || player.socialLinks || { twitch: '', telegram: '', discord: '' },
           position: data.position !== undefined ? data.position : player.position
-          // 🚨 РАДИКАЛЬНО: ВООБЩЕ НЕ ХРАНИМ КООРДИНАТЫ В REACT STATE
         } : player
       ));
     } else if (type === 'batch' && Array.isArray(data)) {
       setPlayers(prev => data.map(player => {
-        const existing = prev.find(p => p.id === player.id);
         return {
           ...player,
-          // Нормализуем аватар 
           avatar: player.avatar || '',
           games: Array.isArray(player.games) ? player.games : [],
           stats: player.stats || { wins: 0, rerolls: 0, drops: 0 },
           socialLinks: player.socialLinks || { twitch: '', telegram: '', discord: '' },
           position: player.position || player.id
-          // 🚨 РАДИКАЛЬНО: КООРДИНАТЫ ВООБЩЕ НЕ ХРАНИМ В REACT STATE
         };
       }));
     }
     
     setSyncStatus('synchronized');
-  }, []); // Убрали зависимость от draggedPlayerId
+  }, []);
 
   const handleUserUpdate = useCallback((type, data) => {
     if (type === 'login' && data) {

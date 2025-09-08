@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Tooltip } from '@mui/material';
 import apiService from '../services/apiService';
 
@@ -55,7 +55,6 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   // Инициализация позиций только через DOM и API
   useEffect(() => {
     if (Array.isArray(safePlayers) && safePlayers.length > 0) {
-      
       // Небольшая задержка чтобы DOM элементы успели создаться
       setTimeout(() => {
         // Сначала пробуем загрузить из API
@@ -82,7 +81,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
         });
       }, 50);
     }
-  }, [safePlayers.length]); // Зависимость только от количества игроков, не от их данных
+  }, [safePlayers.length]);
   
   // Убрали polling - синхронизация теперь только через WebSocket
   // Это устраняет конфликты с перетаскиванием и постоянные обновления
@@ -96,7 +95,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [safePlayers]);
+  }, []);
 
   const canDrag = (playerId) => {
     if (!currentUser || !playerId) return false;
@@ -113,7 +112,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     return false;
   };
 
-  const handleMouseMove = (e) => {
+  const handleMouseMove = useCallback((e) => {
     const { isDragging, draggedIndex, dragOffset } = dragState.current;
     
     if (!isDragging || draggedIndex === null) return;
@@ -129,9 +128,9 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     if (player) {
       setPlayerPosition(player.id, newX, newY);
     }
-  };
+  }, [safePlayers]);
 
-  const handleMouseUp = (e) => {
+  const handleMouseUp = useCallback((e) => {
     const { isDragging, draggedIndex } = dragState.current;
     
     if (!isDragging || draggedIndex === null) return;
@@ -162,14 +161,12 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       initialPosition: { x: 0, y: 0 }
     };
     
-    // Убрали уведомления родительского компонента - координаты полностью изолированы
-    
     // Remove event listeners
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
-  };
+  }, [safePlayers, handleMouseMove]);
 
-  const handleMouseDown = (e, index) => {
+  const handleMouseDown = useCallback((e, index) => {
     const player = safePlayers[index];
     const canDragThis = canDrag(player?.id);
     
@@ -193,13 +190,10 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       initialPosition: getPlayerPosition(player.id)
     };
     
-    // Убрали уведомления родительского компонента - координаты полностью изолированы
-    
-    
     // Add global mouse event listeners
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  };
+  }, [safePlayers, handleMouseMove, handleMouseUp]);
 
   // Cleanup event listeners when component unmounts
   useEffect(() => {
@@ -207,7 +201,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, []);
+  }, [handleMouseMove, handleMouseUp]);
 
   return (
     <div 
