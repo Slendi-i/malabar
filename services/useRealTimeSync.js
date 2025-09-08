@@ -11,45 +11,15 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
   const lastHeartbeatRef = useRef(Date.now());
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
 
-  // Функция для запуска heartbeat
+  // Heartbeat отключен - может вызывать проблемы с постоянными обновлениями
   const startHeartbeat = useCallback(() => {
-    // Очищаем предыдущий интервал если есть
-    if (heartbeatIntervalRef.current) {
-      clearInterval(heartbeatIntervalRef.current);
-    }
-    
-    lastHeartbeatRef.current = Date.now();
-    
-    heartbeatIntervalRef.current = setInterval(() => {
-      const now = Date.now();
-      const timeSinceLastHeartbeat = now - lastHeartbeatRef.current;
-      
-      // Если давно не было сообщений (более 30 секунд), отправляем ping
-      if (timeSinceLastHeartbeat > 30000) {
-        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-          try {
-            ws.current.send(JSON.stringify({ type: 'ping', timestamp: now }));
-          } catch (error) {
-            console.error('Failed to send heartbeat ping:', error);
-            // Принудительно переподключаемся при ошибке ping
-            if (ws.current) {
-              ws.current.close();
-            }
-          }
-        }
-      }
-      
-      // Если очень давно не было сообщений (более 60 секунд), переподключаемся
-      if (timeSinceLastHeartbeat > 60000) {
-        if (ws.current) {
-          ws.current.close();
-        }
-      }
-    }, 15000); // Проверяем каждые 15 секунд
+    // Отключили heartbeat чтобы избежать проблем с постоянными обновлениями
+    console.log('Heartbeat отключен для предотвращения проблем с обновлениями');
   }, []);
 
   // Функция для остановки heartbeat
   const stopHeartbeat = useCallback(() => {
+    // Heartbeat отключен
     if (heartbeatIntervalRef.current) {
       clearInterval(heartbeatIntervalRef.current);
       heartbeatIntervalRef.current = null;
@@ -78,7 +48,6 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
       ws.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          lastHeartbeatRef.current = Date.now();
           
           switch (message.type) {
             case 'player_updated':
@@ -99,15 +68,6 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
               }
               break;
               
-            case 'ping':
-              if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-                ws.current.send(JSON.stringify({ type: 'pong' }));
-              }
-              break;
-              
-            case 'pong':
-              break;
-              
             default:
               break;
           }
@@ -120,15 +80,15 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
         setConnectionStatus('disconnected');
         if (stopHeartbeat) stopHeartbeat();
         
-        if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = Math.min(baseReconnectDelay * Math.pow(1.5, reconnectAttempts.current), 10000);
+        // Упростили логику переподключения
+        if (event.code !== 1000 && reconnectAttempts.current < 3) {
           setConnectionStatus('reconnecting');
           
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttempts.current++;
             connect();
-          }, delay);
-        } else if (reconnectAttempts.current >= maxReconnectAttempts) {
+          }, 2000);
+        } else {
           setConnectionStatus('failed');
         }
       };
@@ -144,26 +104,11 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
     }
   }, [onPlayersUpdate, onUserUpdate]);
 
-  // HTTP polling as fallback when WebSocket fails
+  // HTTP polling отключен - может вызывать проблемы с постоянными обновлениями
   const startHttpPolling = useCallback(() => {
-    
-    const pollInterval = setInterval(async () => {
-      try {
-        // Check for updates via HTTP
-        const response = await fetch(`${API_ENDPOINTS.PLAYERS}/updates?since=${Date.now() - 5000}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.players && data.players.length > 0 && onPlayersUpdate) {
-            onPlayersUpdate('batch', data.players);
-          }
-        }
-      } catch (error) {
-      }
-    }, 3000); // Poll every 3 seconds
-    
-    // Store interval ID for cleanup
-    reconnectTimeoutRef.current = pollInterval;
-  }, [onPlayersUpdate]);
+    // Отключили HTTP polling чтобы избежать проблем с постоянными обновлениями
+    console.log('HTTP polling отключен для предотвращения проблем с обновлениями');
+  }, []);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
