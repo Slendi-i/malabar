@@ -31,7 +31,14 @@ const nextConfig = {
   },
   // Production optimizations
   poweredByHeader: false,
-  reactStrictMode: true
+  reactStrictMode: true,
+  // Error handling configuration
+  onDemandEntries: {
+    // период (в мс), в течение которого страницы будут храниться в памяти
+    maxInactiveAge: 25 * 1000,
+    // количество страниц, которые должны храниться одновременно
+    pagesBufferLength: 2,
+  },
   // swcMinify is enabled by default in Next.js 15+
 };
 
