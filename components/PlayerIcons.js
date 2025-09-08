@@ -83,17 +83,16 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     }
   }, [safePlayers.length]);
   
-  // Умная синхронизация координат - только когда не перетаскиваем
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Загружаем обновления координат только если не перетаскиваем
-      if (!dragState.current.isDragging) {
-        loadPlayerCoordinatesFromAPI();
-      }
-    }, 5000); // Увеличили интервал до 5 секунд
-    
-    return () => clearInterval(interval);
-  }, []);
+  // Убираем постоянный polling - координаты синхронизируются через WebSocket
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     if (!dragState.current.isDragging) {
+  //       loadPlayerCoordinatesFromAPI();
+  //     }
+  //   }, 5000);
+  //   
+  //   return () => clearInterval(interval);
+  // }, []);
   
   // Пересчет позиций при изменении размера окна
   useEffect(() => {

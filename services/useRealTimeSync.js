@@ -82,6 +82,13 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
               }
               break;
               
+            case 'player_coordinates_updated':
+              // Специальная обработка обновления координат - не сбрасываем профили
+              if (onPlayersUpdate && message.data.player) {
+                onPlayersUpdate('coordinates', message.data.player, message.data.id);
+              }
+              break;
+              
             case 'players_batch_updated':
               if (onPlayersUpdate && message.data.players) {
                 onPlayersUpdate('batch', message.data.players);
@@ -150,14 +157,14 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
     }
   }, [onPlayersUpdate, onUserUpdate]);
 
-  // HTTP polling as fallback when WebSocket fails
+  // HTTP polling as fallback when WebSocket fails (только при необходимости)
   const startHttpPolling = useCallback(() => {
     console.log('Starting HTTP polling fallback...');
     
-    const pollInterval = setInterval(async () => {
+    // Убираем постоянный polling - только одноразовая проверка при fallback
+    const checkForUpdates = async () => {
       try {
-        // Check for updates via HTTP
-        const response = await fetch(`${API_ENDPOINTS.PLAYERS}/updates?since=${Date.now() - 10000}`);
+        const response = await fetch(`${API_ENDPOINTS.PLAYERS}/updates?since=${Date.now() - 30000}`);
         if (response.ok) {
           const data = await response.json();
           if (data.players && data.players.length > 0 && onPlayersUpdate) {
@@ -165,12 +172,12 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
           }
         }
       } catch (error) {
-        console.warn('HTTP polling failed:', error);
+        console.warn('HTTP fallback check failed:', error);
       }
-    }, 10000); // Poll every 10 seconds (увеличили интервал)
+    };
     
-    // Store interval ID for cleanup
-    reconnectTimeoutRef.current = pollInterval;
+    // Проверяем только один раз при fallback
+    checkForUpdates();
   }, [onPlayersUpdate]);
 
   const disconnect = useCallback(() => {
@@ -193,9 +200,6 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
   // Connect on mount, disconnect on unmount
   useEffect(() => {
     connect();
-    
-    // Запускаем HTTP polling как fallback
-    startHttpPolling();
     
     return () => {
       disconnect();

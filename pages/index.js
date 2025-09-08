@@ -25,16 +25,15 @@ export default function Home() {
 
   // Обработчики для real-time синхронизации  
   const handlePlayersUpdate = useCallback((type, data, playerId) => {
-    // Игнорируем обновления координат из WebSocket
-    if (type === 'single' && playerId && data) {
-      const isCoordinatesOnlyUpdate = 
-        data.x !== undefined && data.y !== undefined && 
-        Object.keys(data).filter(key => key !== 'x' && key !== 'y' && key !== 'id').length === 0;
-        
-      if (isCoordinatesOnlyUpdate) {
-        return;
-      }
-      
+    if (type === 'coordinates' && playerId && data) {
+      // Специальная обработка обновления только координат - не трогаем профили
+      setPlayers(prev => prev.map(player => 
+        player.id === playerId 
+          ? { ...player, x: data.x, y: data.y } // Обновляем только координаты
+          : player
+      ));
+    } else if (type === 'single' && playerId && data) {
+      // Обновление профиля игрока (не координат)
       setPlayers(prev => prev.map(player => 
         player.id === playerId ? { 
           ...player, 
