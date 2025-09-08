@@ -65,7 +65,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
       ws.current.onopen = () => {
         setConnectionStatus('connected');
         reconnectAttempts.current = 0;
-        if (startHeartbeat) startHeartbeat();
+        startHeartbeat();
       };
 
       ws.current.onmessage = (event) => {
@@ -115,7 +115,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
 
       ws.current.onclose = (event) => {
         setConnectionStatus('disconnected');
-        if (stopHeartbeat) stopHeartbeat();
+        stopHeartbeat();
         
         // Attempt to reconnect if not manually closed
         if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
@@ -128,10 +128,8 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
             connect();
           }, delay);
         } else if (reconnectAttempts.current >= maxReconnectAttempts) {
-          console.warn('Max reconnection attempts reached. Falling back to HTTP polling.');
+          console.warn('Max reconnection attempts reached.');
           setConnectionStatus('failed');
-          // Start HTTP polling as fallback
-          startHttpPolling();
         }
       };
 
@@ -143,10 +141,8 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
       setConnectionStatus('error');
-      // Fallback to HTTP polling
-      startHttpPolling();
     }
-  }, [onPlayersUpdate, onUserUpdate, startHeartbeat, stopHeartbeat, startHttpPolling]);
+  }, [onPlayersUpdate, onUserUpdate]);
 
   // HTTP polling as fallback when WebSocket fails
   const startHttpPolling = useCallback(() => {
@@ -186,7 +182,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
     }
     
     setConnectionStatus('disconnected');
-  }, [stopHeartbeat]);
+  }, []);
 
   // Connect on mount, disconnect on unmount
   useEffect(() => {
@@ -195,7 +191,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
     return () => {
       disconnect();
     };
-  }, [connect, disconnect]);
+  }, []);
 
   // Expose connection status and manual controls
   return {
@@ -205,7 +201,9 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
     disconnect,
     reconnect: () => {
       disconnect();
-      setTimeout(connect, 100);
+      setTimeout(() => {
+        connect();
+      }, 100);
     }
   };
 }
