@@ -51,7 +51,6 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
   const handleRollComplete = async (sum) => {
     if (!currentUser || currentUser.type !== 'player') return;
     
-    console.log('🎲 Сохранение результата броска в БД:', sum);
     
     // НЕ обновляем локальное состояние - отправляем сразу в БД
     try {
@@ -85,7 +84,6 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
 
       // Отправляем в БД через API
       await apiService.updatePlayerGames(currentUser.id, games);
-      console.log('✅ Результат броска сохранен в БД');
     } catch (error) {
       console.error('❌ Ошибка сохранения результата броска:', error);
       alert('Ошибка сохранения результата броска. Попробуйте еще раз.');
@@ -95,7 +93,6 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
   const handleGameSelect = async (gameName) => {
     if (!currentUser || currentUser.type !== 'player') return;
     
-    console.log('🎮 Сохранение выбора игры в БД:', gameName);
     
     // НЕ обновляем локальное состояние - отправляем сразу в БД
     try {
@@ -133,7 +130,6 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
 
       // Отправляем в БД через API
       await apiService.updatePlayerGames(currentUser.id, games);
-      console.log('✅ Выбор игры сохранен в БД');
     } catch (error) {
       console.error('❌ Ошибка сохранения выбора игры:', error);
       alert('Ошибка сохранения выбора игры. Попробуйте еще раз.');

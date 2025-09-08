@@ -29,7 +29,6 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {
           try {
             ws.current.send(JSON.stringify({ type: 'ping', timestamp: now }));
-            console.log('Sent heartbeat ping');
           } catch (error) {
             console.error('Failed to send heartbeat ping:', error);
             // Принудительно переподключаемся при ошибке ping
@@ -42,7 +41,6 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
       
       // Если очень давно не было сообщений (более 60 секунд), переподключаемся
       if (timeSinceLastHeartbeat > 60000) {
-        console.warn('Connection seems dead, forcing reconnection');
         if (ws.current) {
           ws.current.close();
         }
@@ -67,13 +65,11 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
         ws.current.close();
       }
 
-      console.log('Attempting WebSocket connection to:', API_ENDPOINTS.WEBSOCKET);
       setConnectionStatus('connecting');
       
       ws.current = new WebSocket(API_ENDPOINTS.WEBSOCKET);
 
       ws.current.onopen = () => {
-        console.log('WebSocket connected for real-time sync');
         setConnectionStatus('connected');
         reconnectAttempts.current = 0;
         
@@ -119,7 +115,6 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
               break;
               
             default:
-              console.log('Unknown WebSocket message type:', message.type);
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
@@ -127,7 +122,6 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
       };
 
       ws.current.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code, event.reason);
         setConnectionStatus('disconnected');
         
         // Останавливаем heartbeat
@@ -136,7 +130,6 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
         // Attempt to reconnect if not manually closed
         if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
           const delay = Math.min(baseReconnectDelay * Math.pow(1.5, reconnectAttempts.current), 10000); // Максимум 10 секунд
-          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
           setConnectionStatus('reconnecting');
           
           reconnectTimeoutRef.current = setTimeout(() => {
@@ -144,7 +137,6 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
             connect();
           }, delay);
         } else if (reconnectAttempts.current >= maxReconnectAttempts) {
-          console.warn('Max reconnection attempts reached. Falling back to HTTP polling.');
           setConnectionStatus('failed');
           // Start HTTP polling as fallback
           startHttpPolling();
@@ -166,7 +158,6 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
 
   // HTTP polling as fallback when WebSocket fails
   const startHttpPolling = useCallback(() => {
-    console.log('Starting HTTP polling fallback...');
     
     const pollInterval = setInterval(async () => {
       try {
@@ -179,7 +170,6 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
           }
         }
       } catch (error) {
-        console.warn('HTTP polling failed:', error);
       }
     }, 3000); // Poll every 3 seconds
     

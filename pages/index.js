@@ -25,7 +25,6 @@ export default function Home() {
 
   // Обработчики для real-time синхронизации  
   const handlePlayersUpdate = useCallback((type, data, playerId) => {
-    console.log('🔄 Получено обновление из БД:', type, data);
     
     // 🚨 РАДИКАЛЬНО: ПОЛНОСТЬЮ ИГНОРИРУЕМ ВСЕ ОБНОВЛЕНИЯ КООРДИНАТ ИЗ WEBSOCKET
     // Координаты теперь управляются только через DOM и прямые вызовы API
@@ -36,12 +35,10 @@ export default function Home() {
         Object.keys(data).filter(key => key !== 'x' && key !== 'y' && key !== 'id').length === 0;
         
       if (isCoordinatesOnlyUpdate) {
-        console.log('🚫 РАДИКАЛЬНО: Игнорируем ВСЕ обновления координат из WebSocket для игрока', playerId);
         // Координаты больше НЕ синхронизируются через WebSocket - только через DOM
         return;
       }
       
-      console.log('📝 Обновление одного игрока из БД:', playerId, data);
       setPlayers(prev => prev.map(player => 
         player.id === playerId ? { 
           ...player, 
@@ -56,7 +53,6 @@ export default function Home() {
         } : player
       ));
     } else if (type === 'batch' && Array.isArray(data)) {
-      console.log('📝 Обновление всех игроков из БД:', data.length);
       setPlayers(prev => data.map(player => {
         const existing = prev.find(p => p.id === player.id);
         return {
@@ -76,7 +72,6 @@ export default function Home() {
   }, []); // Убрали зависимость от draggedPlayerId
 
   const handleUserUpdate = useCallback((type, data) => {
-    console.log('Received user update:', type, data);
     if (type === 'login' && data) {
       // Можно добавить логику для отображения уведомлений о входе других пользователей
     }
@@ -125,7 +120,6 @@ export default function Home() {
         const savedUser = localStorage.getItem('currentUser');
         if (savedUser) {
           const userData = JSON.parse(savedUser);
-          console.log('🔄 Восстановление пользователя из localStorage:', userData);
           setCurrentUser(userData);
           return userData;
         }
@@ -143,7 +137,6 @@ export default function Home() {
         // Сначала восстанавливаем пользователя
         const restoredUser = restoreUserFromStorage();
         
-        console.log('🔄 Загрузка данных игроков...');
         // Load players from API
         const response = await apiService.getPlayers();
         
@@ -165,13 +158,11 @@ export default function Home() {
           }));
           
           setPlayers(normalizedPlayers);
-          console.log('✅ Данные игроков загружены из БД:', normalizedPlayers?.length || 0);
           setSyncStatus('synchronized');
         } else {
           console.error('❌ Некорректный ответ от API:', response);
           setSyncStatus('error');
           // НЕ создаем дефолтных игроков - это может перезаписать БД!
-          console.log('🚫 Ожидаем восстановления связи с БД, НЕ создаем дефолтные данные');
         }
         
         // Пытаемся загрузить пользователя из API только если не восстановили из localStorage
@@ -186,7 +177,6 @@ export default function Home() {
                 localStorage.setItem('currentUser', JSON.stringify(apiUser));
               }
             } else {
-              console.log('API вернул Guest или незалогиненного пользователя, оставляем кнопку "Войти"');
             }
           } catch (e) {
             console.warn('Failed to load user from API:', e);
@@ -195,7 +185,6 @@ export default function Home() {
       } catch (error) {
         console.error('❌ Критическая ошибка загрузки данных:', error);
         setSyncStatus('error');
-        console.log('🚫 Ошибка подключения к БД, НЕ перезаписываем данные');
       }
     };
 
@@ -262,7 +251,6 @@ export default function Home() {
       // Сохраняем в localStorage для persistence
       if (typeof window !== 'undefined') {
         localStorage.setItem('currentUser', JSON.stringify(userData));
-        console.log('✅ Пользователь сохранен в localStorage:', userData);
       }
     } catch (error) {
       console.error('Login failed:', error);
@@ -287,7 +275,6 @@ export default function Home() {
       // Сохраняем fallback данные в localStorage
       if (typeof window !== 'undefined') {
         localStorage.setItem('currentUser', JSON.stringify(fallbackUserData));
-        console.log('✅ Fallback пользователь сохранен в localStorage:', fallbackUserData);
       }
       
       // Пытаемся сохранить в API тоже (для fallback случая)
@@ -317,7 +304,6 @@ export default function Home() {
     setCurrentUser(null);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('currentUser');
-      console.log('✅ Пользователь вышел из системы, localStorage очищен');
     }
   };
 

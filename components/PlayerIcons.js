@@ -28,7 +28,6 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       playerElement.style.left = `${x}px`;
       playerElement.style.top = `${y}px`;
       positions.current[playerId] = { x, y };
-      // console.log(`🎯 DOM: Установлена позиция для игрока ${playerId}: (${x}, ${y})`);
     }
   };
 
@@ -37,15 +36,13 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     return positions.current[playerId] || { x: 0, y: 0 };
   };
   
-  // 🚨 РАДИКАЛЬНО: Прямая загрузка координат из API минуя React state
+  // Прямая загрузка координат из API минуя React state
   const loadPlayerCoordinatesFromAPI = async () => {
     try {
       const response = await apiService.getPlayers();
       if (response && response.players && Array.isArray(response.players)) {
-        console.log('🌐 API: Загружаем координаты напрямую из БД');
         response.players.forEach(player => {
           if (player.x !== undefined && player.y !== undefined && player.x !== null && player.y !== null) {
-            // console.log(`📍 API: Координаты игрока ${player.name}: (${player.x}, ${player.y})`);
             setPlayerPosition(player.id, player.x, player.y);
           }
         });
@@ -55,10 +52,9 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     }
   };
 
-  // 🚨 РАДИКАЛЬНО НОВАЯ ИНИЦИАЛИЗАЦИЯ: Только DOM + API, никакого React state для координат
+  // Инициализация позиций только через DOM и API
   useEffect(() => {
     if (Array.isArray(safePlayers) && safePlayers.length > 0) {
-      console.log('🚀 РАДИКАЛЬНО НОВЫЙ ПОДХОД: Инициализация позиций только через DOM и API');
       
       // Небольшая задержка чтобы DOM элементы успели создаться
       setTimeout(() => {
@@ -68,7 +64,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
           safePlayers.forEach((player, index) => {
             const currentPos = getPlayerPosition(player.id);
             if (currentPos.x === 0 && currentPos.y === 0) {
-              // 🎯 НАЧАЛЬНАЯ СЕТКА С УЧЕТОМ ГРАНИЦ
+              // Начальная сетка
               const spacing = 150;
               const columns = 4;
               const startX = 470; // Начинаем после сайдбара (420 + 50)
@@ -80,7 +76,6 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
               const x = startX + col * spacing;
               const y = startY + row * spacing;
               
-              // console.log(`🆕 DOM: Игрок ${player.name} - новая позиция в сетке: (${x}, ${y})`);
               setPlayerPosition(player.id, x, y);
             }
           });
@@ -89,23 +84,13 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     }
   }, [safePlayers.length]); // Зависимость только от количества игроков, не от их данных
   
-  // 🚨 РАДИКАЛЬНО: Прямая синхронизация координат между клиентами через polling
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Загружаем обновления координат каждые 3 секунды для синхронизации
-      if (!dragState.current.isDragging) {
-        console.log('🔄 POLLING: Синхронизация координат с API');
-        loadPlayerCoordinatesFromAPI();
-      }
-    }, 3000);
-    
-    return () => clearInterval(interval);
-  }, []);
+  // Убрали polling - синхронизация теперь только через WebSocket
+  // Это устраняет конфликты с перетаскиванием и постоянные обновления
   
-  // 🎯 АДАПТИВНОСТЬ: Пересчет позиций при изменении размера окна
+  // Пересчет позиций при изменении размера окна
   useEffect(() => {
     const handleResize = () => {
-      // 🚀 БЕЗ ГРАНИЦ: При изменении размера окна ничего не делаем
+      // При изменении размера окна ничего не делаем
       // Фишки остаются на своих позициях без ограничений
     };
     
@@ -135,11 +120,9 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     
     e.preventDefault();
     
-    // 🚀 БЕЗ ГРАНИЦ: Прямое позиционирование без ограничений
+    // Прямое позиционирование без ограничений
     const newX = e.pageX - dragOffset.x;
     const newY = e.pageY - dragOffset.y;
-    
-    // console.log(`🚀 БЕЗ ГРАНИЦ: pageX=${e.pageX}, pageY=${e.pageY}, newX=${newX}, newY=${newY}`);
     
     // Напрямую обновляем позицию в DOM
     const player = safePlayers[draggedIndex];
@@ -159,25 +142,16 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     // Получаем текущую позицию из ref
     const currentPos = getPlayerPosition(currentPlayer.id);
     
-    // 🚀 БЕЗ ГРАНИЦ: Финальная позиция без ограничений
+    // Финальная позиция без ограничений
     let finalX = currentPos.x;
     let finalY = currentPos.y;
     
-    // console.log(`🚀 ФИНАЛЬНАЯ ПОЗИЦИЯ БЕЗ ГРАНИЦ: (${finalX}, ${finalY})`);
-    
     // Устанавливаем финальную позицию в DOM
     setPlayerPosition(currentPlayer.id, finalX, finalY);
-    console.log(`✅ DOM: ФИНАЛЬНАЯ позиция игрока ${currentPlayer.name}: (${finalX}, ${finalY})`);
-    
     // Сохраняем пиксельные координаты в базе данных
-    console.log(`💾 DOM: Сохранение в БД: ${currentPlayer.name} -> (${finalX}, ${finalY})`);
-    
     apiService.updatePlayerCoordinates(currentPlayer.id, finalX, finalY)
-      .then(() => {
-        console.log(`✅ DOM: Сохранено в БД: ${currentPlayer.name}`);
-      })
       .catch(error => {
-        console.error('❌ DOM: Ошибка сохранения позиции игрока:', error);
+        console.error('Ошибка сохранения позиции игрока:', error);
       });
     
     // Clean up drag state
@@ -188,7 +162,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       initialPosition: { x: 0, y: 0 }
     };
     
-    // 🚨 РАДИКАЛЬНО: Убрали уведомления родительского компонента - координаты полностью изолированы
+    // Убрали уведомления родительского компонента - координаты полностью изолированы
     
     // Remove event listeners
     document.removeEventListener('mousemove', handleMouseMove);
@@ -204,14 +178,12 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     e.preventDefault();
     e.stopPropagation();
     
-    // 🚨 РАДИКАЛЬНО УПРОЩАЕМ: Используем текущую позицию элемента напрямую из DOM
+    // Используем текущую позицию элемента напрямую из DOM
     const currentPosition = getPlayerPosition(player.id);
     
     // Вычисляем offset относительно текущей позиции элемента в DOM
     const offsetX = e.pageX - currentPosition.x;
     const offsetY = e.pageY - currentPosition.y;
-    
-    // console.log(`🚀 НАЧАЛО БЕЗ ГРАНИЦ: pageX=${e.pageX}, pageY=${e.pageY}, currentPos=(${currentPosition.x}, ${currentPosition.y}), offset=(${offsetX}, ${offsetY})`);
     
     // Set drag state
     dragState.current = {
@@ -221,9 +193,8 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
       initialPosition: getPlayerPosition(player.id)
     };
     
-    // 🚨 РАДИКАЛЬНО: Убрали уведомления родительского компонента - координаты полностью изолированы
+    // Убрали уведомления родительского компонента - координаты полностью изолированы
     
-    console.log(`🖱️ DOM: Начало перетаскивания игрока ${player.name}`);
     
     // Add global mouse event listeners
     document.addEventListener('mousemove', handleMouseMove);
@@ -271,8 +242,8 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
               top: '0px',
               cursor: canDragPlayer ? (isDragging ? 'grabbing' : 'grab') : 'default',
               zIndex: isDragging ? 9999 : 100, // Еще выше для гарантии поверх всего
-              transition: isDragging ? 'none' : 'all 0.3s ease',
-              transform: isDragging ? 'scale(1.1) rotate(5deg)' : 'scale(1)',
+              transition: isDragging ? 'none' : 'all 0.2s ease',
+              transform: isDragging ? 'scale(1.05)' : 'scale(1)',
               userSelect: 'none',
               pointerEvents: 'auto',
               filter: isDragging ? 'drop-shadow(0 10px 20px rgba(0,0,0,0.3))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'

@@ -71,11 +71,9 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
         avatar: updatedData.avatar || player.avatar
       };
       
-      console.log('💾 Сохранение данных игрока в БД:', { playerId: player.id, updatedData });
       
       try {
         await apiService.updatePlayerDetailed(player.id, updatedPlayer);
-        console.log('✅ Данные игрока сохранены в БД успешно');
       } catch (error) {
         console.error('❌ Ошибка сохранения данных игрока в БД:', error);
         alert('Ошибка сохранения данных. Попробуйте еще раз.');
@@ -91,11 +89,9 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
       avatar: updatedData.avatar || player.avatar
     };
     
-    console.log('💾 Немедленное сохранение данных игрока в БД:', { playerId: player.id, updatedData });
     
     try {
       await apiService.updatePlayerDetailed(player.id, updatedPlayer);
-      console.log('✅ Данные игрока сохранены в БД успешно');
     } catch (error) {
       console.error('❌ Ошибка сохранения данных игрока в БД:', error);
       alert('Ошибка сохранения данных. Попробуйте еще раз.');
