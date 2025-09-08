@@ -128,19 +128,25 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
             connect();
           }, delay);
         } else if (reconnectAttempts.current >= maxReconnectAttempts) {
-          console.warn('Max reconnection attempts reached.');
+          console.warn('Max reconnection attempts reached. Starting HTTP polling fallback.');
           setConnectionStatus('failed');
+          // Запускаем HTTP polling как fallback
+          startHttpPolling();
         }
       };
 
       ws.current.onerror = (error) => {
         console.error('WebSocket error:', error);
         setConnectionStatus('error');
+        // Запускаем HTTP polling при ошибке WebSocket
+        startHttpPolling();
       };
 
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
       setConnectionStatus('error');
+      // Запускаем HTTP polling при ошибке создания WebSocket
+      startHttpPolling();
     }
   }, [onPlayersUpdate, onUserUpdate]);
 
@@ -187,6 +193,9 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
   // Connect on mount, disconnect on unmount
   useEffect(() => {
     connect();
+    
+    // Запускаем HTTP polling как fallback
+    startHttpPolling();
     
     return () => {
       disconnect();
