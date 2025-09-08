@@ -2,8 +2,10 @@ import { useEffect } from 'react';
 
 function Error({ statusCode }) {
   useEffect(() => {
-    // Логируем ошибку для отладки
-    console.error('Error page rendered with statusCode:', statusCode);
+    // Логируем ошибку для отладки только в development
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error page rendered with statusCode:', statusCode);
+    }
   }, [statusCode]);
 
   return (

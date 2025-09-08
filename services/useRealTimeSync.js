@@ -11,15 +11,38 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
   const lastHeartbeatRef = useRef(Date.now());
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
 
-  // Heartbeat отключен - может вызывать проблемы с постоянными обновлениями
+  // Функция для запуска heartbeat
   const startHeartbeat = useCallback(() => {
-    // Отключили heartbeat чтобы избежать проблем с постоянными обновлениями
-    console.log('Heartbeat отключен для предотвращения проблем с обновлениями');
+    // Очищаем предыдущий интервал если есть
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+    }
+    
+    lastHeartbeatRef.current = Date.now();
+    
+    heartbeatIntervalRef.current = setInterval(() => {
+      const now = Date.now();
+      const timeSinceLastHeartbeat = now - lastHeartbeatRef.current;
+      
+      // Если давно не было сообщений (более 60 секунд), отправляем ping
+      if (timeSinceLastHeartbeat > 60000) {
+        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+          try {
+            ws.current.send(JSON.stringify({ type: 'ping', timestamp: now }));
+          } catch (error) {
+            console.error('Failed to send heartbeat ping:', error);
+            // Принудительно переподключаемся при ошибке ping
+            if (ws.current) {
+              ws.current.close();
+            }
+          }
+        }
+      }
+    }, 30000); // Проверяем каждые 30 секунд (увеличили интервал)
   }, []);
 
   // Функция для остановки heartbeat
   const stopHeartbeat = useCallback(() => {
-    // Heartbeat отключен
     if (heartbeatIntervalRef.current) {
       clearInterval(heartbeatIntervalRef.current);
       heartbeatIntervalRef.current = null;
@@ -49,6 +72,9 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
         try {
           const message = JSON.parse(event.data);
           
+          // Обновляем время последнего сообщения (heartbeat)
+          lastHeartbeatRef.current = Date.now();
+          
           switch (message.type) {
             case 'player_updated':
               if (onPlayersUpdate && message.data.player) {
@@ -68,8 +94,19 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
               }
               break;
               
-            default:
+            case 'ping':
+              // Отвечаем на ping сервера
+              if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+                ws.current.send(JSON.stringify({ type: 'pong' }));
+              }
               break;
+              
+            case 'pong':
+              // Получен ответ на наш ping
+              break;
+              
+            default:
+              console.log('Unknown WebSocket message type:', message.type);
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
@@ -80,16 +117,21 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
         setConnectionStatus('disconnected');
         if (stopHeartbeat) stopHeartbeat();
         
-        // Упростили логику переподключения
-        if (event.code !== 1000 && reconnectAttempts.current < 3) {
+        // Attempt to reconnect if not manually closed
+        if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
+          const delay = Math.min(baseReconnectDelay * Math.pow(1.5, reconnectAttempts.current), 10000);
+          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
           setConnectionStatus('reconnecting');
           
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttempts.current++;
             connect();
-          }, 2000);
-        } else {
+          }, delay);
+        } else if (reconnectAttempts.current >= maxReconnectAttempts) {
+          console.warn('Max reconnection attempts reached. Falling back to HTTP polling.');
           setConnectionStatus('failed');
+          // Start HTTP polling as fallback
+          startHttpPolling();
         }
       };
 
@@ -101,14 +143,33 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
       setConnectionStatus('error');
+      // Fallback to HTTP polling
+      startHttpPolling();
     }
-  }, [onPlayersUpdate, onUserUpdate]);
+  }, [onPlayersUpdate, onUserUpdate, startHeartbeat, stopHeartbeat, startHttpPolling]);
 
-  // HTTP polling отключен - может вызывать проблемы с постоянными обновлениями
+  // HTTP polling as fallback when WebSocket fails
   const startHttpPolling = useCallback(() => {
-    // Отключили HTTP polling чтобы избежать проблем с постоянными обновлениями
-    console.log('HTTP polling отключен для предотвращения проблем с обновлениями');
-  }, []);
+    console.log('Starting HTTP polling fallback...');
+    
+    const pollInterval = setInterval(async () => {
+      try {
+        // Check for updates via HTTP
+        const response = await fetch(`${API_ENDPOINTS.PLAYERS}/updates?since=${Date.now() - 10000}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.players && data.players.length > 0 && onPlayersUpdate) {
+            onPlayersUpdate('batch', data.players);
+          }
+        }
+      } catch (error) {
+        console.warn('HTTP polling failed:', error);
+      }
+    }, 10000); // Poll every 10 seconds (увеличили интервал)
+    
+    // Store interval ID for cleanup
+    reconnectTimeoutRef.current = pollInterval;
+  }, [onPlayersUpdate]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -117,7 +178,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
       reconnectTimeoutRef.current = null;
     }
     
-    if (stopHeartbeat) stopHeartbeat();
+    stopHeartbeat();
     
     if (ws.current) {
       ws.current.close(1000, 'Component unmounting');
@@ -125,7 +186,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
     }
     
     setConnectionStatus('disconnected');
-  }, []);
+  }, [stopHeartbeat]);
 
   // Connect on mount, disconnect on unmount
   useEffect(() => {
@@ -134,7 +195,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
     return () => {
       disconnect();
     };
-  }, []);
+  }, [connect, disconnect]);
 
   // Expose connection status and manual controls
   return {
@@ -144,9 +205,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
     disconnect,
     reconnect: () => {
       disconnect();
-      setTimeout(() => {
-        connect();
-      }, 100);
+      setTimeout(connect, 100);
     }
   };
 }

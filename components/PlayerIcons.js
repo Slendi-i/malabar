@@ -83,8 +83,17 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     }
   }, [safePlayers.length]);
   
-  // Убрали polling - синхронизация теперь только через WebSocket
-  // Это устраняет конфликты с перетаскиванием и постоянные обновления
+  // Умная синхронизация координат - только когда не перетаскиваем
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Загружаем обновления координат только если не перетаскиваем
+      if (!dragState.current.isDragging) {
+        loadPlayerCoordinatesFromAPI();
+      }
+    }, 5000); // Увеличили интервал до 5 секунд
+    
+    return () => clearInterval(interval);
+  }, []);
   
   // Пересчет позиций при изменении размера окна
   useEffect(() => {

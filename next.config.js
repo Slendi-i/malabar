@@ -13,14 +13,6 @@ const nextConfig = {
   },
   // Webpack configuration to fix __webpack_require__.a error
   webpack: (config, { isServer }) => {
-    // Fix for __webpack_require__.a is not a function error
-    config.experiments = {
-      ...config.experiments,
-      asyncWebAssembly: true,
-      layers: true,
-      topLevelAwait: true
-    };
-    
     // Ensure proper module resolution
     config.resolve.fallback = {
       ...config.resolve.fallback,
