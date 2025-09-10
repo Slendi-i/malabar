@@ -104,24 +104,28 @@ class ApiService {
     console.log(`🎯 API: Updating coordinates for player ${id}: (${x}, ${y})`);
     
     try {
-      // 1. Сначала получаем текущие данные игрока
-      console.log(`📥 API: Getting current player data for ${id}...`);
-      const currentPlayer = await this.getPlayer(id);
-      console.log(`📋 API: Current player data:`, currentPlayer);
-      
-      // 2. Обновляем только координаты, сохраняя остальные поля
-      const updatedPlayer = {
-        ...currentPlayer,
+      // 🚀 ИСПРАВЛЕНО: Отправляем ТОЛЬКО координаты для правильного определения типа на сервере
+      const coordinatesOnlyData = {
         x: parseFloat(x),
         y: parseFloat(y)
       };
       
-      console.log(`📤 API: Sending full player update with new coordinates...`);
+      console.log(`📤 API: Отправляем только координаты (не полный объект):`, coordinatesOnlyData);
       
-      // 3. Используем существующий PUT endpoint
-      const result = await this.updatePlayer(id, updatedPlayer);
-      console.log(`✅ API: Coordinates updated successfully via PUT:`, result);
-      return result;
+      // Прямой вызов PUT с минимальными данными
+      const response = await this.fetchWithErrorHandling(
+        `${API_ENDPOINTS.PLAYERS}/${id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(coordinatesOnlyData),
+        }
+      );
+      
+      console.log(`✅ API: Coordinates updated successfully:`, response);
+      return response;
       
     } catch (error) {
       console.error(`❌ API: Failed to update coordinates for player ${id}:`, error);

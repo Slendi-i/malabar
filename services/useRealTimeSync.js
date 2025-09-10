@@ -63,6 +63,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
       ws.current = new WebSocket(API_ENDPOINTS.WEBSOCKET);
 
       ws.current.onopen = () => {
+        console.log('🔗 WebSocket: Соединение установлено!');
         setConnectionStatus('connected');
         reconnectAttempts.current = 0;
         startHeartbeat();
@@ -131,13 +132,14 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
       };
 
       ws.current.onclose = (event) => {
+        console.log(`❌ WebSocket: Соединение закрыто. Code: ${event.code}, Reason: ${event.reason || 'Не указано'}`);
         setConnectionStatus('disconnected');
         stopHeartbeat();
         
         // Attempt to reconnect if not manually closed
         if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
           const delay = Math.min(baseReconnectDelay * Math.pow(1.5, reconnectAttempts.current), 10000);
-          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
+          console.log(`🔄 WebSocket: Переподключаемся через ${delay}ms (попытка ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
           setConnectionStatus('reconnecting');
           
           reconnectTimeoutRef.current = setTimeout(() => {

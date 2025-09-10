@@ -465,27 +465,43 @@ app.put('/api/players/:id', (req, res) => {
         return res.status(500).json({ error: 'Update failed' });
       }
       
-      // Умный broadcast в зависимости от того, что обновляется
+      // 🔍 УЛУЧШЕННАЯ логика broadcast с детальной диагностикой
       const requestKeys = Object.keys(req.body);
-      const isCoordinateUpdate = requestKeys.length === 2 && 
-                                 requestKeys.includes('x') && 
-                                 requestKeys.includes('y');
+      const hasX = requestKeys.includes('x');
+      const hasY = requestKeys.includes('y');
+      const isCoordinateUpdate = hasX && hasY && requestKeys.length <= 3; // x, y + возможно id
+      
+      console.log('🔍 SERVER: Анализируем тип обновления:', {
+        requestKeys,
+        hasX,
+        hasY,
+        isCoordinateUpdate,
+        bodyKeysCount: requestKeys.length
+      });
       
       if (isCoordinateUpdate) {
         // Только координаты - отправляем coordinates
-        console.log('📍 SERVER: Broadcasting coordinates update');
-        broadcastUpdate('coordinates', { 
+        console.log('📍 SERVER: Broadcasting coordinates update для игрока', playerId);
+        const coordinatesData = { 
           id: playerId, 
           x: updatedPlayer.x,
           y: updatedPlayer.y
-        });
+        };
+        console.log('📍 SERVER: Данные координат:', coordinatesData);
+        broadcastUpdate('coordinates', coordinatesData);
       } else {
         // Профиль - отправляем profile
-        console.log('📝 SERVER: Broadcasting profile update');
-        broadcastUpdate('profile', { 
+        console.log('📝 SERVER: Broadcasting profile update для игрока', playerId);
+        const profileData = { 
           id: playerId, 
           player: updatedPlayer 
+        };
+        console.log('📝 SERVER: Данные профиля (краткие):', {
+          id: profileData.id,
+          name: profileData.player.name,
+          hasAvatar: !!profileData.player.avatar
         });
+        broadcastUpdate('profile', profileData);
       }
       
       res.json({ message: 'Player updated successfully', id: playerId });
@@ -818,21 +834,32 @@ function broadcastUpdate(type, data) {
   const message = JSON.stringify({ type, data, timestamp: Date.now() });
   const now = Date.now();
   
+  console.log(`📡 SERVER: Начинаем broadcast "${type}" для ${clients.size} клиентов`);
+  
+  let successCount = 0;
+  let failCount = 0;
+  
   clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       try {
         client.send(message);
         // Обновляем метку активности при успешной отправке
         client.lastActivity = now;
+        successCount++;
       } catch (error) {
-        console.error('Error broadcasting to client:', error);
+        console.error('❌ Error broadcasting to client:', error);
         clients.delete(client);
+        failCount++;
       }
     } else {
       // Удаляем неактивные соединения
+      console.log('🧹 Удаляем неактивное WebSocket соединение');
       clients.delete(client);
+      failCount++;
     }
   });
+  
+  console.log(`📊 SERVER: Broadcast завершен - успешно: ${successCount}, ошибок: ${failCount}, тип: "${type}"`);
 }
 
 // Graceful shutdown

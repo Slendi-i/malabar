@@ -23,7 +23,9 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
   
   // Debouncing для сохранения координат  
   const saveTimeoutRef = useRef(null);
+  const dragTimeoutRef = useRef(null); // Защита от зависших dragState
   const SAVE_DELAY = 500; // Задержка перед сохранением в БД
+  const DRAG_TIMEOUT = 10000; // 10 секунд - максимальное время перетаскивания
 
   // Функция для установки позиции фишки напрямую в DOM
   const setPlayerPosition = (playerId, x, y) => {
@@ -150,14 +152,24 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     };
   }, [updatePlayerPositionFromSync, onPlayerPositionUpdate]);
   
-  // Cleanup debouncing timeout при размонтировании
+  // 🧹 ПОЛНЫЙ cleanup всех timeouts при размонтировании
   useEffect(() => {
     return () => {
+      console.log('🧹 PlayerIcons: Cleanup timeouts при размонтировании');
+      
+      // Cleanup save timeout
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+      
+      // Cleanup drag timeout
+      if (dragTimeoutRef.current) {
+        clearTimeout(dragTimeoutRef.current);
+        dragTimeoutRef.current = null;
       }
     };
-  }, []);
+  }, []); 
   
   // Пересчет позиций при изменении размера окна
   useEffect(() => {
@@ -203,26 +215,15 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     }
   }, [safePlayers]);
 
-  const handleMouseUp = useCallback((e) => {
-    const { isDragging, draggedIndex } = dragState.current;
+  // 🛡️ ЗАЩИЩЕННЫЙ cleanup dragState
+  const forceCleanupDragState = useCallback(() => {
+    console.log('🧹 ПРИНУДИТЕЛЬНЫЙ cleanup dragState');
     
-    if (!isDragging || draggedIndex === null) return;
-    
-    const currentPlayer = safePlayers[draggedIndex];
-    if (!currentPlayer) return;
-    
-    // Получаем текущую позицию из ref
-    const currentPos = getPlayerPosition(currentPlayer.id);
-    
-    // Финальная позиция без ограничений
-    let finalX = currentPos.x;
-    let finalY = currentPos.y;
-    
-    // Устанавливаем финальную позицию в DOM
-    setPlayerPosition(currentPlayer.id, finalX, finalY);
-    
-    // 🚀 Сохраняем координаты
-    debouncedSavePosition(currentPlayer.id, finalX, finalY);
+    // Очищаем timeout защиты
+    if (dragTimeoutRef.current) {
+      clearTimeout(dragTimeoutRef.current);
+      dragTimeoutRef.current = null;
+    }
     
     // Clean up drag state
     dragState.current = {
@@ -232,19 +233,77 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
       initialPosition: { x: 0, y: 0 }
     };
     
-    // Remove event listeners
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-  }, [safePlayers, handleMouseMove]);
+    // Remove event listeners (безопасно)
+    try {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    } catch (error) {
+      console.warn('❌ Ошибка при удалении event listeners:', error);
+    }
+  }, []);
+
+  const handleMouseUp = useCallback((e) => {
+    console.log('🖱️ Mouse UP - начинаем завершение перетаскивания');
+    const { isDragging, draggedIndex } = dragState.current;
+    
+    if (!isDragging || draggedIndex === null) {
+      console.log('⏭️ Перетаскивание уже завершено или не начиналось');
+      forceCleanupDragState(); // На всякий случай
+      return;
+    }
+    
+    const currentPlayer = safePlayers[draggedIndex];
+    if (!currentPlayer) {
+      console.warn('❌ Игрок не найден при завершении перетаскивания');
+      forceCleanupDragState();
+      return;
+    }
+    
+    // Получаем текущую позицию из ref
+    const currentPos = getPlayerPosition(currentPlayer.id);
+    
+    // Финальная позиция без ограничений
+    let finalX = currentPos.x;
+    let finalY = currentPos.y;
+    
+    console.log(`🎯 Завершение перетаскивания игрока ${currentPlayer.id}: (${finalX}, ${finalY})`);
+    
+    // Устанавливаем финальную позицию в DOM
+    setPlayerPosition(currentPlayer.id, finalX, finalY);
+    
+    // СНАЧАЛА cleanup, ПОТОМ сохранение (чтобы не блокировать новые перетаскивания)
+    forceCleanupDragState();
+    
+    // 🚀 Сохраняем координаты ПОСЛЕ cleanup
+    debouncedSavePosition(currentPlayer.id, finalX, finalY);
+    
+  }, [safePlayers, forceCleanupDragState]);
 
   const handleMouseDown = useCallback((e, index) => {
     const player = safePlayers[index];
     const canDragThis = canDrag(player?.id);
     
-    if (!canDragThis || dragState.current.isDragging) return;
+    console.log(`🖱️ Mouse DOWN на игроке ${player?.id}:`, {
+      canDrag: canDragThis,
+      isDragging: dragState.current.isDragging,
+      draggedIndex: dragState.current.draggedIndex
+    });
+    
+    // Если уже перетаскиваем - принудительно очищаем состояние и начинаем заново
+    if (dragState.current.isDragging) {
+      console.warn('⚠️ Обнаружено зависшее состояние перетаскивания - принудительно очищаем');
+      forceCleanupDragState();
+    }
+    
+    if (!canDragThis) {
+      console.log('🚫 Нет прав на перетаскивание этого игрока');
+      return;
+    }
     
     e.preventDefault();
     e.stopPropagation();
+    
+    console.log(`✅ Начинаем перетаскивание игрока ${player.id}`);
     
     // Используем текущую позицию элемента напрямую из DOM
     const currentPosition = getPlayerPosition(player.id);
@@ -261,16 +320,33 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
       initialPosition: getPlayerPosition(player.id)
     };
     
+    // Устанавливаем timeout защиту от зависания
+    dragTimeoutRef.current = setTimeout(() => {
+      console.warn('⏰ TIMEOUT: Принудительно завершаем перетаскивание через 10 секунд');
+      forceCleanupDragState();
+    }, DRAG_TIMEOUT);
+    
     // Add global mouse event listeners
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, [safePlayers, handleMouseMove, handleMouseUp]);
+  }, [safePlayers, handleMouseMove, handleMouseUp, forceCleanupDragState]);
 
-  // Cleanup event listeners when component unmounts
+  // 🧹 ПОЛНЫЙ cleanup event listeners при размонтировании
   useEffect(() => {
     return () => {
+      console.log('🧹 PlayerIcons: Cleanup event listeners при размонтировании');
+      
+      // Cleanup event listeners
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      
+      // Force cleanup drag state
+      dragState.current = {
+        isDragging: false,
+        draggedIndex: null,
+        dragOffset: { x: 0, y: 0 },
+        initialPosition: { x: 0, y: 0 }
+      };
     };
   }, [handleMouseMove, handleMouseUp]);
 
