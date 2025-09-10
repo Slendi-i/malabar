@@ -29,9 +29,14 @@ export default function Home() {
     console.log('🔄 WebSocket уведомление:', type, playerId, data);
     
     if (type === 'coordinates' && playerId && data) {
+      console.log('🎯 Получены координаты через WebSocket:', { playerId, x: data.x, y: data.y });
+      
       // Обновляем координаты через прямой вызов функции PlayerIcons
       if (window.updatePlayerPosition) {
+        console.log('📡 Вызываем window.updatePlayerPosition');
         window.updatePlayerPosition(playerId, data.x, data.y);
+      } else {
+        console.warn('❌ window.updatePlayerPosition не найдена');
       }
       
       // Также обновляем в React state для консистентности  

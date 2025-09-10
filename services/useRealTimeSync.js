@@ -76,22 +76,32 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
           lastHeartbeatRef.current = Date.now();
           
           switch (message.type) {
-            case 'player_updated':
-              if (onPlayersUpdate && message.data.player) {
-                onPlayersUpdate('single', message.data.player, message.data.id);
+            case 'coordinates':
+              // Обновление координат игрока
+              if (onPlayersUpdate && message.data.id && message.data.x !== undefined && message.data.y !== undefined) {
+                console.log('📍 WebSocket: Получены новые координаты для игрока', message.data.id);
+                onPlayersUpdate('coordinates', message.data, message.data.id);
               }
               break;
               
-            case 'player_coordinates_updated':
-              // Специальная обработка обновления координат - не сбрасываем профили
+            case 'profile':
+              // Обновление профиля игрока
+              if (onPlayersUpdate && message.data.player && message.data.id) {
+                console.log('📝 WebSocket: Получен обновленный профиль игрока', message.data.id);
+                onPlayersUpdate('profile', message.data.player, message.data.id);
+              }
+              break;
+              
+            case 'player_updated':
+              // Старый формат для совместимости
               if (onPlayersUpdate && message.data.player) {
-                onPlayersUpdate('coordinates', message.data.player, message.data.id);
+                onPlayersUpdate('profile', message.data.player, message.data.id);
               }
               break;
               
             case 'players_batch_updated':
               if (onPlayersUpdate && message.data.players) {
-                onPlayersUpdate('batch', message.data.players);
+                onPlayersUpdate('initial_load', message.data.players);
               }
               break;
               

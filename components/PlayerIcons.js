@@ -29,9 +29,12 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
   const setPlayerPosition = (playerId, x, y) => {
     const playerElement = document.querySelector(`[data-player-id="${playerId}"]`);
     if (playerElement) {
+      console.log(`🎨 DOM: Устанавливаем позицию игрока ${playerId} в (${x}, ${y})`);
       playerElement.style.left = `${x}px`;
       playerElement.style.top = `${y}px`;
       positions.current[playerId] = { x, y };
+    } else {
+      console.warn(`❌ DOM: Элемент игрока ${playerId} не найден в DOM`);
     }
   };
 
@@ -114,8 +117,16 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
   
   // Функция для обновления координат от WebSocket
   const updatePlayerPositionFromSync = useCallback((playerId, x, y) => {
+    console.log(`🔗 PlayerIcons: updatePlayerPositionFromSync вызвана для игрока ${playerId}: (${x}, ${y})`);
+    
     // Обновляем позицию только если не перетаскиваем этого игрока
-    if (!dragState.current.isDragging || safePlayers[dragState.current.draggedIndex]?.id !== playerId) {
+    const isDraggingThisPlayer = dragState.current.isDragging && 
+                                safePlayers[dragState.current.draggedIndex]?.id === playerId;
+    
+    if (isDraggingThisPlayer) {
+      console.log(`⏸️ PlayerIcons: Пропускаем обновление - игрок ${playerId} перетаскивается`);
+    } else {
+      console.log(`✅ PlayerIcons: Обновляем позицию игрока ${playerId} в DOM`);
       setPlayerPosition(playerId, x, y);
     }
   }, [safePlayers]);
@@ -124,12 +135,16 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
   useEffect(() => {
     if (onPlayerPositionUpdate && typeof onPlayerPositionUpdate === 'function') {
       // Передаем функцию обновления в родительский компонент
+      console.log('🔗 PlayerIcons: Устанавливаем window.updatePlayerPosition');
       window.updatePlayerPosition = updatePlayerPositionFromSync;
+    } else {
+      console.warn('❌ PlayerIcons: onPlayerPositionUpdate не передан или не функция');
     }
     
     return () => {
       // Cleanup
       if (window.updatePlayerPosition) {
+        console.log('🧹 PlayerIcons: Очищаем window.updatePlayerPosition');
         delete window.updatePlayerPosition;
       }
     };

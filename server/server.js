@@ -465,11 +465,28 @@ app.put('/api/players/:id', (req, res) => {
         return res.status(500).json({ error: 'Update failed' });
       }
       
-      // Broadcast full player update
-      broadcastUpdate('profile', { 
-        id: playerId, 
-        player: updatedPlayer 
-      });
+      // Умный broadcast в зависимости от того, что обновляется
+      const requestKeys = Object.keys(req.body);
+      const isCoordinateUpdate = requestKeys.length === 2 && 
+                                 requestKeys.includes('x') && 
+                                 requestKeys.includes('y');
+      
+      if (isCoordinateUpdate) {
+        // Только координаты - отправляем coordinates
+        console.log('📍 SERVER: Broadcasting coordinates update');
+        broadcastUpdate('coordinates', { 
+          id: playerId, 
+          x: updatedPlayer.x,
+          y: updatedPlayer.y
+        });
+      } else {
+        // Профиль - отправляем profile
+        console.log('📝 SERVER: Broadcasting profile update');
+        broadcastUpdate('profile', { 
+          id: playerId, 
+          player: updatedPlayer 
+        });
+      }
       
       res.json({ message: 'Player updated successfully', id: playerId });
     });
