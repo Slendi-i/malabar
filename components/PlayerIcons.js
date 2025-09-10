@@ -42,6 +42,19 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
   
   // 🚀 ОПТИМИЗИРОВАННОЕ сохранение с debouncing
   const debouncedSavePosition = useCallback((playerId, x, y) => {
+    console.log('🔍 DEBUG: debouncedSavePosition called with:', { playerId, x, y, types: { playerId: typeof playerId, x: typeof x, y: typeof y } });
+    
+    // Проверяем корректность данных
+    if (!playerId || playerId === undefined || playerId === null) {
+      console.error('❌ DEBUG: Invalid playerId:', playerId);
+      return;
+    }
+    
+    if (x === undefined || y === undefined || isNaN(x) || isNaN(y)) {
+      console.error('❌ DEBUG: Invalid coordinates:', { x, y });
+      return;
+    }
+    
     // Очищаем предыдущий timeout
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -50,7 +63,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     // Ставим новый timeout
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        console.log(`💾 Сохранение координат игрока ${playerId}: (${x}, ${y})`);
+        console.log(`💾 FINAL: Сохранение координат игрока ${playerId}: (${x}, ${y})`);
         
         // Отправляем координаты в БД через специальный endpoint
         await apiService.updatePlayerCoordinates(playerId, x, y);
@@ -63,6 +76,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
         console.log(`✅ Координаты игрока ${playerId} сохранены`);
       } catch (error) {
         console.error(`❌ Ошибка сохранения координат игрока ${playerId}:`, error);
+        console.error(`📋 DEBUG: Error details:`, error.message);
       }
     }, SAVE_DELAY);
   }, [onPlayerPositionUpdate]);
@@ -212,6 +226,10 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     setPlayerPosition(currentPlayer.id, finalX, finalY);
     
     // 🚀 ОПТИМИЗАЦИЯ: Сохраняем с debouncing
+    console.log('🔍 DEBUG: currentPlayer object:', currentPlayer);
+    console.log('🔍 DEBUG: currentPlayer.id:', currentPlayer.id, 'type:', typeof currentPlayer.id);
+    console.log('🔍 DEBUG: coordinates:', { x: finalX, y: finalY });
+    
     debouncedSavePosition(currentPlayer.id, finalX, finalY);
     
     // Clean up drag state

@@ -101,21 +101,45 @@ class ApiService {
 
   // Update player coordinates specifically (for piece dragging)
   async updatePlayerCoordinates(id, x, y) {
-    const url = `${API_ENDPOINTS.PLAYERS}/${id}/coordinates`;
-    console.log(`🎯 API: Updating coordinates for player ${id}: (${x}, ${y})`);
-    console.log(`📡 API: Sending PATCH request to: ${url}`);
+    // Проверяем и нормализуем ID
+    console.log(`🔍 API DEBUG: Received id:`, id, 'type:', typeof id);
+    
+    const playerId = parseInt(id);
+    if (isNaN(playerId) || playerId <= 0) {
+      const error = new Error(`Invalid player ID: ${id} (parsed: ${playerId})`);
+      console.error('❌ API: Invalid player ID:', error.message);
+      throw error;
+    }
+    
+    const url = `${API_ENDPOINTS.PLAYERS}/${playerId}/coordinates`;
+    console.log(`🎯 API: Updating coordinates for player ${playerId}: (${x}, ${y})`);
+    console.log(`📡 API: Full URL: ${url}`);
+    console.log(`🌍 API: API_ENDPOINTS.PLAYERS:`, API_ENDPOINTS.PLAYERS);
+    
+    // Проверяем координаты
+    const numX = parseFloat(x);
+    const numY = parseFloat(y);
+    if (isNaN(numX) || isNaN(numY)) {
+      const error = new Error(`Invalid coordinates: x=${x}, y=${y}`);
+      console.error('❌ API: Invalid coordinates:', error.message);
+      throw error;
+    }
+    
+    const payload = { x: numX, y: numY };
+    console.log(`📦 API: Payload:`, payload);
     
     try {
       const result = await this.fetchWithErrorHandling(url, {
         method: 'PATCH',
-        body: JSON.stringify({ x, y })
+        body: JSON.stringify(payload)
       });
       console.log(`✅ API: Coordinates updated successfully:`, result);
       return result;
     } catch (error) {
-      console.error(`❌ API: Failed to update coordinates for player ${id}:`, error);
+      console.error(`❌ API: Failed to update coordinates for player ${playerId}:`, error);
       console.error(`📍 API: URL was: ${url}`);
-      console.error(`📦 API: Payload was:`, { x, y });
+      console.error(`📦 API: Payload was:`, payload);
+      console.error(`🔧 API: API_ENDPOINTS config:`, API_ENDPOINTS);
       throw error;
     }
   }
