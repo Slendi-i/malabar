@@ -338,14 +338,7 @@ export default function Home() {
     }
   };
 
-  // Cleanup function for timeouts
-  useEffect(() => {
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, []);
+  // 🚀 УБРАЛИ cleanup для saveTimeoutRef - теперь сохранение в дочерних компонентах
 
   if (!isMounted) return null;
 
