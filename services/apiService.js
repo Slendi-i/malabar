@@ -101,11 +101,23 @@ class ApiService {
 
   // Update player coordinates specifically (for piece dragging)
   async updatePlayerCoordinates(id, x, y) {
+    const url = `${API_ENDPOINTS.PLAYERS}/${id}/coordinates`;
     console.log(`🎯 API: Updating coordinates for player ${id}: (${x}, ${y})`);
-    return this.fetchWithErrorHandling(`${API_ENDPOINTS.PLAYERS}/${id}/coordinates`, {
-      method: 'PATCH',
-      body: JSON.stringify({ x, y })
-    });
+    console.log(`📡 API: Sending PATCH request to: ${url}`);
+    
+    try {
+      const result = await this.fetchWithErrorHandling(url, {
+        method: 'PATCH',
+        body: JSON.stringify({ x, y })
+      });
+      console.log(`✅ API: Coordinates updated successfully:`, result);
+      return result;
+    } catch (error) {
+      console.error(`❌ API: Failed to update coordinates for player ${id}:`, error);
+      console.error(`📍 API: URL was: ${url}`);
+      console.error(`📦 API: Payload was:`, { x, y });
+      throw error;
+    }
   }
 }
 
