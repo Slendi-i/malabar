@@ -344,18 +344,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Debug endpoint to check players in database
-app.get('/api/debug/players', (req, res) => {
-  db.all('SELECT id, name, x, y FROM players ORDER BY id', (err, players) => {
-    if (err) {
-      console.error('Debug players query error:', err);
-      return res.status(500).json({ error: 'Database error' });
-    }
-    
-    console.log('📊 DEBUG: Players in database:', players);
-    res.json({ players, count: players.length });
-  });
-});
+// 🚀 Debug endpoint удален - больше не нужен
 
 // Updates endpoint for HTTP polling
 app.get('/api/players/updates', (req, res) => {
@@ -433,64 +422,7 @@ app.get('/api/players/:id', (req, res) => {
   });
 });
 
-// Update player coordinates only
-app.patch('/api/players/:id/coordinates', (req, res) => {
-  console.log(`🎯 SERVER: Received PATCH request to /api/players/${req.params.id}/coordinates`);
-  console.log(`📦 SERVER: Request body:`, req.body);
-  
-  const playerId = parseInt(req.params.id);
-  const { x, y } = req.body;
-  
-  console.log(`🔍 SERVER: Parsed playerId: ${playerId}, x: ${x}, y: ${y}`);
-  
-  if (x === undefined || y === undefined) {
-    console.log(`❌ SERVER: Missing coordinates - x: ${x}, y: ${y}`);
-    return res.status(400).json({ error: 'x and y coordinates are required' });
-  }
-  
-  if (isNaN(playerId)) {
-    console.log(`❌ SERVER: Invalid playerId: ${req.params.id}`);
-    return res.status(400).json({ error: 'Invalid player ID' });
-  }
-  
-  console.log(`🎯 SERVER: Updating coordinates for player ${playerId}: (${x}, ${y})`);
-  
-  // Сначала проверим, существует ли игрок
-  db.get('SELECT id FROM players WHERE id = ?', [playerId], (err, player) => {
-    if (err) {
-      console.error('❌ SERVER: Database error:', err);
-      return res.status(500).json({ error: 'Database error' });
-    }
-    
-    if (!player) {
-      console.log(`❌ SERVER: Player ${playerId} not found in database`);
-      return res.status(404).json({ error: 'Player not found' });
-    }
-    
-    console.log(`✅ SERVER: Player ${playerId} exists, updating coordinates...`);
-    
-    const sql = `UPDATE players SET x = ?, y = ? WHERE id = ?`;
-    const params = [x, y, playerId];
-    
-    db.run(sql, params, function(err) {
-      if (err) {
-        console.error('❌ SERVER: Coordinates update error:', err);
-        return res.status(500).json({ error: 'Coordinates update failed' });
-      }
-      
-      console.log(`✅ SERVER: Coordinates updated for player ${playerId}, affected rows: ${this.changes}`);
-      
-      // Broadcast only coordinates update
-      broadcastUpdate('coordinates', { 
-        id: playerId, 
-        x: x,
-        y: y
-      });
-      
-      res.json({ message: 'Coordinates updated successfully', id: playerId, x, y });
-    });
-  });
-});
+// 🚀 PATCH endpoint удален - используем проверенный PUT /api/players/:id
 
 // Update individual player by ID
 app.put('/api/players/:id', (req, res) => {
@@ -533,7 +465,7 @@ app.put('/api/players/:id', (req, res) => {
         return res.status(500).json({ error: 'Update failed' });
       }
       
-      // Broadcast profile update (coordinates are handled separately)
+      // Broadcast full player update
       broadcastUpdate('profile', { 
         id: playerId, 
         player: updatedPlayer 

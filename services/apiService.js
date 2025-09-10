@@ -101,45 +101,30 @@ class ApiService {
 
   // Update player coordinates specifically (for piece dragging)
   async updatePlayerCoordinates(id, x, y) {
-    // Проверяем и нормализуем ID
-    console.log(`🔍 API DEBUG: Received id:`, id, 'type:', typeof id);
-    
-    const playerId = parseInt(id);
-    if (isNaN(playerId) || playerId <= 0) {
-      const error = new Error(`Invalid player ID: ${id} (parsed: ${playerId})`);
-      console.error('❌ API: Invalid player ID:', error.message);
-      throw error;
-    }
-    
-    const url = `${API_ENDPOINTS.PLAYERS}/${playerId}/coordinates`;
-    console.log(`🎯 API: Updating coordinates for player ${playerId}: (${x}, ${y})`);
-    console.log(`📡 API: Full URL: ${url}`);
-    console.log(`🌍 API: API_ENDPOINTS.PLAYERS:`, API_ENDPOINTS.PLAYERS);
-    
-    // Проверяем координаты
-    const numX = parseFloat(x);
-    const numY = parseFloat(y);
-    if (isNaN(numX) || isNaN(numY)) {
-      const error = new Error(`Invalid coordinates: x=${x}, y=${y}`);
-      console.error('❌ API: Invalid coordinates:', error.message);
-      throw error;
-    }
-    
-    const payload = { x: numX, y: numY };
-    console.log(`📦 API: Payload:`, payload);
+    console.log(`🎯 API: Updating coordinates for player ${id}: (${x}, ${y})`);
     
     try {
-      const result = await this.fetchWithErrorHandling(url, {
-        method: 'PATCH',
-        body: JSON.stringify(payload)
-      });
-      console.log(`✅ API: Coordinates updated successfully:`, result);
+      // 1. Сначала получаем текущие данные игрока
+      console.log(`📥 API: Getting current player data for ${id}...`);
+      const currentPlayer = await this.getPlayer(id);
+      console.log(`📋 API: Current player data:`, currentPlayer);
+      
+      // 2. Обновляем только координаты, сохраняя остальные поля
+      const updatedPlayer = {
+        ...currentPlayer,
+        x: parseFloat(x),
+        y: parseFloat(y)
+      };
+      
+      console.log(`📤 API: Sending full player update with new coordinates...`);
+      
+      // 3. Используем существующий PUT endpoint
+      const result = await this.updatePlayer(id, updatedPlayer);
+      console.log(`✅ API: Coordinates updated successfully via PUT:`, result);
       return result;
+      
     } catch (error) {
-      console.error(`❌ API: Failed to update coordinates for player ${playerId}:`, error);
-      console.error(`📍 API: URL was: ${url}`);
-      console.error(`📦 API: Payload was:`, payload);
-      console.error(`🔧 API: API_ENDPOINTS config:`, API_ENDPOINTS);
+      console.error(`❌ API: Failed to update coordinates for player ${id}:`, error);
       throw error;
     }
   }
