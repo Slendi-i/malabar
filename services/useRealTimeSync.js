@@ -178,13 +178,10 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
   useEffect(() => {
     connect();
     
-    // Запускаем HTTP polling как fallback для надежности
-    startHttpPolling();
-    
     return () => {
       disconnect();
     };
-  }, []);
+  }, [connect, disconnect]);
 
   // Expose connection status and manual controls
   return {
