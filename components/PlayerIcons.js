@@ -31,7 +31,6 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
   const setPlayerPosition = (playerId, x, y) => {
     const playerElement = document.querySelector(`[data-player-id="${playerId}"]`);
     if (playerElement) {
-      console.log(`🎨 DOM: Устанавливаем позицию игрока ${playerId} в (${x}, ${y})`);
       playerElement.style.left = `${x}px`;
       playerElement.style.top = `${y}px`;
       positions.current[playerId] = { x, y };
@@ -119,16 +118,14 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
   
   // Функция для обновления координат от WebSocket
   const updatePlayerPositionFromSync = useCallback((playerId, x, y) => {
-    console.log(`🔗 PlayerIcons: updatePlayerPositionFromSync вызвана для игрока ${playerId}: (${x}, ${y})`);
-    
     // Обновляем позицию только если не перетаскиваем этого игрока
     const isDraggingThisPlayer = dragState.current.isDragging && 
                                 safePlayers[dragState.current.draggedIndex]?.id === playerId;
     
     if (isDraggingThisPlayer) {
-      console.log(`⏸️ PlayerIcons: Пропускаем обновление - игрок ${playerId} перетаскивается`);
+      console.log(`⏸️ Пропускаем синхронизацию - игрок ${playerId} перетаскивается`);
     } else {
-      console.log(`✅ PlayerIcons: Обновляем позицию игрока ${playerId} в DOM`);
+      console.log(`🔗 Синхронизация позиции игрока ${playerId}: (${x}, ${y})`);
       setPlayerPosition(playerId, x, y);
     }
   }, [safePlayers]);
@@ -136,8 +133,6 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
   // Добавляем внешний доступ к функции обновления
   useEffect(() => {
     if (onPlayerPositionUpdate && typeof onPlayerPositionUpdate === 'function') {
-      // Передаем функцию обновления в родительский компонент
-      console.log('🔗 PlayerIcons: Устанавливаем window.updatePlayerPosition');
       window.updatePlayerPosition = updatePlayerPositionFromSync;
     } else {
       console.warn('❌ PlayerIcons: onPlayerPositionUpdate не передан или не функция');
@@ -146,7 +141,6 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     return () => {
       // Cleanup
       if (window.updatePlayerPosition) {
-        console.log('🧹 PlayerIcons: Очищаем window.updatePlayerPosition');
         delete window.updatePlayerPosition;
       }
     };
@@ -243,11 +237,9 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
   }, []);
 
   const handleMouseUp = useCallback((e) => {
-    console.log('🖱️ Mouse UP - начинаем завершение перетаскивания');
     const { isDragging, draggedIndex } = dragState.current;
     
     if (!isDragging || draggedIndex === null) {
-      console.log('⏭️ Перетаскивание уже завершено или не начиналось');
       forceCleanupDragState(); // На всякий случай
       return;
     }
@@ -283,12 +275,6 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     const player = safePlayers[index];
     const canDragThis = canDrag(player?.id);
     
-    console.log(`🖱️ Mouse DOWN на игроке ${player?.id}:`, {
-      canDrag: canDragThis,
-      isDragging: dragState.current.isDragging,
-      draggedIndex: dragState.current.draggedIndex
-    });
-    
     // Если уже перетаскиваем - принудительно очищаем состояние и начинаем заново
     if (dragState.current.isDragging) {
       console.warn('⚠️ Обнаружено зависшее состояние перетаскивания - принудительно очищаем');
@@ -296,7 +282,6 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     }
     
     if (!canDragThis) {
-      console.log('🚫 Нет прав на перетаскивание этого игрока');
       return;
     }
     

@@ -429,6 +429,8 @@ app.put('/api/players/:id', (req, res) => {
   const playerId = parseInt(req.params.id);
   const updatedPlayer = req.body;
   
+  console.log('🔍 SERVER: PUT /api/players/', playerId, 'данные:', updatedPlayer);
+  
   db.get('SELECT * FROM players WHERE id = ?', [playerId], (err, player) => {
     if (err) {
       console.error('Database error:', err);
@@ -439,7 +441,35 @@ app.put('/api/players/:id', (req, res) => {
       return res.status(404).json({ error: 'Player not found' });
     }
     
-    // Update the specific player
+    console.log('🔍 SERVER: Текущие данные игрока:', {
+      id: player.id,
+      name: player.name,
+      hasAvatar: !!player.avatar,
+      x: player.x,
+      y: player.y
+    });
+    
+    // 🚀 УМНЫЙ UPDATE - объединяем существующие данные с новыми
+    const mergedPlayer = {
+      name: updatedPlayer.name !== undefined ? updatedPlayer.name : player.name,
+      avatar: updatedPlayer.avatar !== undefined ? updatedPlayer.avatar : player.avatar,
+      socialLinks: updatedPlayer.socialLinks !== undefined ? updatedPlayer.socialLinks : JSON.parse(player.socialLinks || '{}'),
+      stats: updatedPlayer.stats !== undefined ? updatedPlayer.stats : JSON.parse(player.stats || '{}'),
+      games: updatedPlayer.games !== undefined ? updatedPlayer.games : JSON.parse(player.games || '[]'),
+      isOnline: updatedPlayer.isOnline !== undefined ? updatedPlayer.isOnline : player.isOnline,
+      position: updatedPlayer.position !== undefined ? updatedPlayer.position : player.position,
+      x: updatedPlayer.x !== undefined ? updatedPlayer.x : player.x,
+      y: updatedPlayer.y !== undefined ? updatedPlayer.y : player.y
+    };
+    
+    console.log('🔍 SERVER: Объединенные данные:', {
+      name: mergedPlayer.name,
+      hasAvatar: !!mergedPlayer.avatar,
+      x: mergedPlayer.x,
+      y: mergedPlayer.y
+    });
+    
+    // Update the specific player с объединенными данными
     const sql = `
       UPDATE players 
       SET name = ?, avatar = ?, socialLinks = ?, stats = ?, games = ?, isOnline = ?, position = ?, x = ?, y = ?
@@ -447,15 +477,15 @@ app.put('/api/players/:id', (req, res) => {
     `;
     
     const params = [
-      updatedPlayer.name,
-      updatedPlayer.avatar,
-      JSON.stringify(updatedPlayer.socialLinks || {}),
-      JSON.stringify(updatedPlayer.stats || {}),
-      JSON.stringify(updatedPlayer.games || []),
-      updatedPlayer.isOnline ? 1 : 0,
-      updatedPlayer.position,
-      updatedPlayer.x !== undefined ? updatedPlayer.x : null,
-      updatedPlayer.y !== undefined ? updatedPlayer.y : null,
+      mergedPlayer.name,
+      mergedPlayer.avatar,
+      JSON.stringify(mergedPlayer.socialLinks),
+      JSON.stringify(mergedPlayer.stats),
+      JSON.stringify(mergedPlayer.games),
+      mergedPlayer.isOnline ? 1 : 0,
+      mergedPlayer.position,
+      mergedPlayer.x,
+      mergedPlayer.y,
       playerId
     ];
     
@@ -484,8 +514,8 @@ app.put('/api/players/:id', (req, res) => {
         console.log('📍 SERVER: Broadcasting coordinates update для игрока', playerId);
         const coordinatesData = { 
           id: playerId, 
-          x: updatedPlayer.x,
-          y: updatedPlayer.y
+          x: mergedPlayer.x,
+          y: mergedPlayer.y
         };
         console.log('📍 SERVER: Данные координат:', coordinatesData);
         broadcastUpdate('coordinates', coordinatesData);
@@ -494,7 +524,7 @@ app.put('/api/players/:id', (req, res) => {
         console.log('📝 SERVER: Broadcasting profile update для игрока', playerId);
         const profileData = { 
           id: playerId, 
-          player: updatedPlayer 
+          player: mergedPlayer 
         };
         console.log('📝 SERVER: Данные профиля (краткие):', {
           id: profileData.id,

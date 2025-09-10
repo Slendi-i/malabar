@@ -99,20 +99,19 @@ class ApiService {
     return this.fetchWithErrorHandling(`${API_ENDPOINTS.PLAYERS}/${id}`);
   }
 
-  // Update player coordinates specifically (for piece dragging)
+  // 🚀 УПРОЩЕННОЕ обновление координат - сервер сам мержит данные
   async updatePlayerCoordinates(id, x, y) {
     console.log(`🎯 API: Updating coordinates for player ${id}: (${x}, ${y})`);
     
     try {
-      // 🚀 ИСПРАВЛЕНО: Отправляем ТОЛЬКО координаты для правильного определения типа на сервере
-      const coordinatesOnlyData = {
+      // Отправляем ТОЛЬКО координаты - сервер автоматически объединит с существующими данными
+      const coordinatesData = {
         x: parseFloat(x),
         y: parseFloat(y)
       };
       
-      console.log(`📤 API: Отправляем только координаты (не полный объект):`, coordinatesOnlyData);
+      console.log(`📤 API: Отправляем координаты:`, coordinatesData);
       
-      // Прямой вызов PUT с минимальными данными
       const response = await this.fetchWithErrorHandling(
         `${API_ENDPOINTS.PLAYERS}/${id}`,
         {
@@ -120,11 +119,11 @@ class ApiService {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(coordinatesOnlyData),
+          body: JSON.stringify(coordinatesData),
         }
       );
       
-      console.log(`✅ API: Coordinates updated successfully:`, response);
+      console.log(`✅ API: Coordinates updated successfully`);
       return response;
       
     } catch (error) {
