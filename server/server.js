@@ -420,6 +420,43 @@ app.get('/api/players/:id', (req, res) => {
   });
 });
 
+// Update player coordinates only
+app.patch('/api/players/:id/coordinates', (req, res) => {
+  const playerId = parseInt(req.params.id);
+  const { x, y } = req.body;
+  
+  if (x === undefined || y === undefined) {
+    return res.status(400).json({ error: 'x and y coordinates are required' });
+  }
+  
+  console.log(`🎯 Updating coordinates for player ${playerId}: (${x}, ${y})`);
+  
+  const sql = `UPDATE players SET x = ?, y = ? WHERE id = ?`;
+  const params = [x, y, playerId];
+  
+  db.run(sql, params, function(err) {
+    if (err) {
+      console.error('Coordinates update error:', err);
+      return res.status(500).json({ error: 'Coordinates update failed' });
+    }
+    
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+    
+    console.log(`✅ Coordinates updated for player ${playerId}`);
+    
+    // Broadcast only coordinates update
+    broadcastUpdate('coordinates', { 
+      id: playerId, 
+      x: x,
+      y: y
+    });
+    
+    res.json({ message: 'Coordinates updated successfully', id: playerId, x, y });
+  });
+});
+
 // Update individual player by ID
 app.put('/api/players/:id', (req, res) => {
   const playerId = parseInt(req.params.id);
@@ -461,21 +498,11 @@ app.put('/api/players/:id', (req, res) => {
         return res.status(500).json({ error: 'Update failed' });
       }
       
-      // 🚀 ОПТИМИЗАЦИЯ: Разделяем типы обновлений
-      // Если обновились только координаты
-      if (Object.keys(req.body).length === 2 && req.body.x !== undefined && req.body.y !== undefined) {
-        broadcastUpdate('coordinates', { 
-          id: playerId, 
-          x: updatedPlayer.x,
-          y: updatedPlayer.y
-        });
-      } else {
-        // Обновление профиля (без координат)
-        broadcastUpdate('profile', { 
-          id: playerId, 
-          player: updatedPlayer 
-        });
-      }
+      // Broadcast profile update (coordinates are handled separately)
+      broadcastUpdate('profile', { 
+        id: playerId, 
+        player: updatedPlayer 
+      });
       
       res.json({ message: 'Player updated successfully', id: playerId });
     });

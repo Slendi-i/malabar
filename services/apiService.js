@@ -101,9 +101,9 @@ class ApiService {
 
   // Update player coordinates specifically (for piece dragging)
   async updatePlayerCoordinates(id, x, y) {
-    console.log(`Updating coordinates for player ${id}: (${x}, ${y})`);
+    console.log(`🎯 API: Updating coordinates for player ${id}: (${x}, ${y})`);
     return this.fetchWithErrorHandling(`${API_ENDPOINTS.PLAYERS}/${id}/coordinates`, {
-      method: 'POST',
+      method: 'PATCH',
       body: JSON.stringify({ x, y })
     });
   }

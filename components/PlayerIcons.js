@@ -52,8 +52,8 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
       try {
         console.log(`💾 Сохранение координат игрока ${playerId}: (${x}, ${y})`);
         
-        // Отправляем в БД
-        await apiService.updatePlayerDetailed(playerId, { x, y });
+        // Отправляем координаты в БД через специальный endpoint
+        await apiService.updatePlayerCoordinates(playerId, x, y);
         
         // Уведомляем родительский компонент для WebSocket broadcast
         if (onPlayerPositionUpdate) {
