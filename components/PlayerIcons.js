@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Tooltip } from '@mui/material';
 import apiService from '../services/apiService';
 
-export default function PlayerIcons({ players, setPlayers, currentUser }) {
+export default function PlayerIcons({ players, setPlayers, currentUser, onPlayerPositionUpdate }) {
   // Ensure players is an array and has the expected structure
   const safePlayers = Array.isArray(players) ? players : [];
   
@@ -20,6 +20,10 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     dragOffset: { x: 0, y: 0 },
     initialPosition: { x: 0, y: 0 }
   });
+  
+  // Debouncing для сохранения координат  
+  const saveTimeoutRef = useRef(null);
+  const SAVE_DELAY = 500; // Задержка перед сохранением в БД
 
   // Функция для установки позиции фишки напрямую в DOM
   const setPlayerPosition = (playerId, x, y) => {
@@ -35,6 +39,33 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
   const getPlayerPosition = (playerId) => {
     return positions.current[playerId] || { x: 0, y: 0 };
   };
+  
+  // 🚀 ОПТИМИЗИРОВАННОЕ сохранение с debouncing
+  const debouncedSavePosition = useCallback((playerId, x, y) => {
+    // Очищаем предыдущий timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    // Ставим новый timeout
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        console.log(`💾 Сохранение координат игрока ${playerId}: (${x}, ${y})`);
+        
+        // Отправляем в БД
+        await apiService.updatePlayerDetailed(playerId, { x, y });
+        
+        // Уведомляем родительский компонент для WebSocket broadcast
+        if (onPlayerPositionUpdate) {
+          onPlayerPositionUpdate(playerId, x, y);
+        }
+        
+        console.log(`✅ Координаты игрока ${playerId} сохранены`);
+      } catch (error) {
+        console.error(`❌ Ошибка сохранения координат игрока ${playerId}:`, error);
+      }
+    }, SAVE_DELAY);
+  }, [onPlayerPositionUpdate]);
   
   // Прямая загрузка координат из API минуя React state
   const loadPlayerCoordinatesFromAPI = async () => {
@@ -83,16 +114,39 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     }
   }, [safePlayers.length]);
   
-  // Умная синхронизация координат - только когда не перетаскиваем
+  // 🚀 УБРАЛИ постоянные запросы к API!
+  // Теперь координаты обновляются только через WebSocket уведомления
+  
+  // Функция для обновления координат от WebSocket
+  const updatePlayerPositionFromSync = useCallback((playerId, x, y) => {
+    // Обновляем позицию только если не перетаскиваем этого игрока
+    if (!dragState.current.isDragging || safePlayers[dragState.current.draggedIndex]?.id !== playerId) {
+      setPlayerPosition(playerId, x, y);
+    }
+  }, [safePlayers]);
+  
+  // Добавляем внешний доступ к функции обновления
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Загружаем обновления координат только если не перетаскиваем
-      if (!dragState.current.isDragging) {
-        loadPlayerCoordinatesFromAPI();
-      }
-    }, 3000); // Уменьшили интервал для лучшей синхронизации
+    if (onPlayerPositionUpdate && typeof onPlayerPositionUpdate === 'function') {
+      // Передаем функцию обновления в родительский компонент
+      window.updatePlayerPosition = updatePlayerPositionFromSync;
+    }
     
-    return () => clearInterval(interval);
+    return () => {
+      // Cleanup
+      if (window.updatePlayerPosition) {
+        delete window.updatePlayerPosition;
+      }
+    };
+  }, [updatePlayerPositionFromSync, onPlayerPositionUpdate]);
+  
+  // Cleanup debouncing timeout при размонтировании
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
   }, []);
   
   // Пересчет позиций при изменении размера окна
@@ -156,11 +210,9 @@ export default function PlayerIcons({ players, setPlayers, currentUser }) {
     
     // Устанавливаем финальную позицию в DOM
     setPlayerPosition(currentPlayer.id, finalX, finalY);
-    // Сохраняем пиксельные координаты в базе данных
-    apiService.updatePlayerCoordinates(currentPlayer.id, finalX, finalY)
-      .catch(error => {
-        console.error('Ошибка сохранения позиции игрока:', error);
-      });
+    
+    // 🚀 ОПТИМИЗАЦИЯ: Сохраняем с debouncing
+    debouncedSavePosition(currentPlayer.id, finalX, finalY);
     
     // Clean up drag state
     dragState.current = {

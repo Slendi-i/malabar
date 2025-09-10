@@ -135,50 +135,27 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
             connect();
           }, delay);
         } else if (reconnectAttempts.current >= maxReconnectAttempts) {
-          console.warn('Max reconnection attempts reached. Starting HTTP polling fallback.');
+          console.warn('Max reconnection attempts reached.');
           setConnectionStatus('failed');
-          // Запускаем HTTP polling как fallback
-          startHttpPolling();
+          // 🚀 УБРАЛИ HTTP polling - он создавал постоянные запросы к БД!
         }
       };
 
       ws.current.onerror = (error) => {
         console.error('WebSocket error:', error);
         setConnectionStatus('error');
-        // Запускаем HTTP polling при ошибке WebSocket
-        startHttpPolling();
+        // 🚀 УБРАЛИ HTTP polling - он создавал постоянные запросы!
       };
 
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
       setConnectionStatus('error');
-      // Запускаем HTTP polling при ошибке создания WebSocket
-      startHttpPolling();
+      // 🚀 УБРАЛИ HTTP polling - он создавал постоянные запросы!
     }
   }, [onPlayersUpdate, onUserUpdate]);
 
-  // HTTP polling as fallback when WebSocket fails
-  const startHttpPolling = useCallback(() => {
-    console.log('Starting HTTP polling fallback...');
-    
-    const pollInterval = setInterval(async () => {
-      try {
-        // Check for updates via HTTP
-        const response = await fetch(`${API_ENDPOINTS.PLAYERS}/updates?since=${Date.now() - 10000}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.players && data.players.length > 0 && onPlayersUpdate) {
-            onPlayersUpdate('batch', data.players);
-          }
-        }
-      } catch (error) {
-        console.warn('HTTP polling failed:', error);
-      }
-    }, 5000); // Poll every 5 seconds
-    
-    // Store interval ID for cleanup
-    reconnectTimeoutRef.current = pollInterval;
-  }, [onPlayersUpdate]);
+  // 🚀 УБРАЛИ HTTP polling - он создавал постоянные запросы к БД!
+  // Теперь синхронизация работает ТОЛЬКО через WebSocket
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {

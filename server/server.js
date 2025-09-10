@@ -461,11 +461,21 @@ app.put('/api/players/:id', (req, res) => {
         return res.status(500).json({ error: 'Update failed' });
       }
       
-      // Broadcast update to all connected clients
-      broadcastUpdate('player_updated', { 
-        id: playerId, 
-        player: updatedPlayer 
-      });
+      // 🚀 ОПТИМИЗАЦИЯ: Разделяем типы обновлений
+      // Если обновились только координаты
+      if (Object.keys(req.body).length === 2 && req.body.x !== undefined && req.body.y !== undefined) {
+        broadcastUpdate('coordinates', { 
+          id: playerId, 
+          x: updatedPlayer.x,
+          y: updatedPlayer.y
+        });
+      } else {
+        // Обновление профиля (без координат)
+        broadcastUpdate('profile', { 
+          id: playerId, 
+          player: updatedPlayer 
+        });
+      }
       
       res.json({ message: 'Player updated successfully', id: playerId });
     });

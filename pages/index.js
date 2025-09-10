@@ -17,49 +17,77 @@ export default function Home() {
     ratio: 0.75
   });
   const [syncStatus, setSyncStatus] = useState('disconnected');
-  // 🚨 РАДИКАЛЬНО: Убрали draggedPlayerId - больше не нужен
   const containerRef = useRef(null);
   const imageRef = useRef(null);
-  const lastSaveRef = useRef(Date.now());
-  const saveTimeoutRef = useRef(null);
+  const dataLoadedRef = useRef(false); // Флаг что данные уже загружены
+  
+  // 🚀 ОПТИМИЗАЦИЯ: Убрали автоматическое сохранение
+  // Теперь данные сохраняются только при явных действиях пользователя
 
-  // Обработчики для real-time синхронизации  
+  // 🚀 ОПТИМИЗИРОВАННЫЕ обработчики для real-time синхронизации  
   const handlePlayersUpdate = useCallback((type, data, playerId) => {
+    console.log('🔄 WebSocket уведомление:', type, playerId, data);
+    
     if (type === 'coordinates' && playerId && data) {
-      // Специальная обработка обновления только координат - не трогаем профили
+      // Обновляем координаты через прямой вызов функции PlayerIcons
+      if (window.updatePlayerPosition) {
+        window.updatePlayerPosition(playerId, data.x, data.y);
+      }
+      
+      // Также обновляем в React state для консистентности  
       setPlayers(prev => prev.map(player => 
         player.id === playerId 
-          ? { ...player, x: data.x, y: data.y } // Обновляем только координаты
+          ? { ...player, x: data.x, y: data.y }
           : player
       ));
-    } else if (type === 'single' && playerId && data) {
-      // Обновление профиля игрока
+      
+    } else if (type === 'profile' && playerId && data) {
+      // Обновление ТОЛЬКО профиля игрока (не координат!)
+      console.log('📝 Обновление профиля игрока:', playerId);
       setPlayers(prev => prev.map(player => 
         player.id === playerId ? { 
           ...player, 
           ...data,
+          // Сохраняем координаты как есть
+          x: player.x,
+          y: player.y,
+          // Обновляем только профильные данные
           avatar: data.avatar || player.avatar || '',
+          name: data.name || player.name,
           games: Array.isArray(data.games) ? data.games : player.games || [],
           stats: data.stats || player.stats || { wins: 0, rerolls: 0, drops: 0 },
-          socialLinks: data.socialLinks || player.socialLinks || { twitch: '', telegram: '', discord: '' },
-          position: data.position !== undefined ? data.position : player.position
+          socialLinks: data.socialLinks || player.socialLinks || { twitch: '', telegram: '', discord: '' }
         } : player
       ));
-    } else if (type === 'batch' && Array.isArray(data)) {
-      // Полное обновление всех игроков
-      setPlayers(prev => data.map(player => {
-        return {
+      
+    } else if (type === 'initial_load' && Array.isArray(data)) {
+      // ТОЛЬКО при первой загрузке - полное обновление
+      console.log('📥 Первичная загрузка данных:', data.length, 'игроков');
+      if (!dataLoadedRef.current) {
+        const normalizedPlayers = data.map(player => ({
           ...player,
           avatar: player.avatar || '',
           games: Array.isArray(player.games) ? player.games : [],
           stats: player.stats || { wins: 0, rerolls: 0, drops: 0 },
           socialLinks: player.socialLinks || { twitch: '', telegram: '', discord: '' },
-          position: player.position || player.id
-        };
-      }));
+          position: player.position || player.id,
+          x: player.x !== undefined ? player.x : ((player.position - 1) % 3) * 200 + 100,
+          y: player.y !== undefined ? player.y : Math.floor((player.position - 1) / 3) * 200 + 100
+        }));
+        
+        setPlayers(normalizedPlayers);
+        dataLoadedRef.current = true;
+        setSyncStatus('synchronized');
+      }
     }
-    
-    setSyncStatus('synchronized');
+  }, []);
+  
+  // Функция для обработки обновления позиций игроков
+  const handlePlayerPositionUpdate = useCallback((playerId, x, y) => {
+    console.log(`🔄 Уведомление о изменении позиции игрока ${playerId}: (${x}, ${y})`);
+    // Это вызывается когда PlayerIcons сохранил позицию в БД
+    // Здесь мы можем отправить WebSocket уведомление другим пользователям
+    // (Будет реализовано в сервере)
   }, []);
 
   const handleUserUpdate = useCallback((type, data) => {
@@ -124,11 +152,20 @@ export default function Home() {
     };
 
     const loadData = async () => {
+      // 🚀 ОПТИМИЗАЦИЯ: Защита от повторных загрузок
+      if (dataLoadedRef.current) {
+        console.log('📋 Данные уже загружены, пропускаем повторную загрузку');
+        return;
+      }
+      
       try {
+        console.log('🔄 ЕДИНОРАЗОВАЯ загрузка данных...');
+        setSyncStatus('connecting');
+        
         // Сначала восстанавливаем пользователя
         const restoredUser = restoreUserFromStorage();
         
-        // Load players from API
+        // Load players from API ОДИН раз
         const response = await apiService.getPlayers();
         
         // Проверяем что получили корректный ответ с данными игроков
@@ -149,6 +186,9 @@ export default function Home() {
           }));
           
           setPlayers(normalizedPlayers);
+          dataLoadedRef.current = true; // 🔒 Блокируем повторные загрузки
+          
+          console.log('✅ Данные загружены ОДИН раз:', normalizedPlayers?.length, 'игроков');
           setSyncStatus('synchronized');
         } else {
           console.error('❌ Некорректный ответ от API:', response);
@@ -469,6 +509,7 @@ export default function Home() {
               players={players} 
               setPlayers={setPlayers}
               currentUser={currentUser}
+              onPlayerPositionUpdate={handlePlayerPositionUpdate}
             />
           </div>
         </div>
