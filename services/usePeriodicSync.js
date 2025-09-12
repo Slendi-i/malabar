@@ -12,7 +12,7 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
   const [lastSyncTime, setLastSyncTime] = useState(null);
   const isInitializedRef = useRef(false);
 
-  // 🚀 ПОЛНАЯ СИНХРОНИЗАЦИЯ ВСЕХ ДАННЫХ
+  // 🚀 ПОЛНАЯ СИНХРОНИЗАЦИЯ ВСЕХ ДАННЫХ (стабильная функция)
   const performFullSync = useCallback(async () => {
     console.log('🔄 ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ: Начинаем полную синхронизацию...');
     setSyncStatus('syncing');
@@ -73,7 +73,7 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
       // Сбрасываем статус ошибки через 5 секунд
       setTimeout(() => setSyncStatus('idle'), 5000);
     }
-  }, [players, setPlayers, currentUser, setCurrentUser]);
+  }, [setPlayers, setCurrentUser]);
 
   // 🚀 ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ (при изменениях) - автоматическая
   const forceSync = useCallback(async () => {
@@ -106,7 +106,7 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
         console.log('🧹 ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ: Интервал очищен');
       }
     };
-  }, [performFullSync]);
+  }, []);
 
   // 🚀 СИНХРОНИЗАЦИЯ ПРИ ИЗМЕНЕНИЯХ (debounced)
   const syncOnChange = useCallback(() => {
