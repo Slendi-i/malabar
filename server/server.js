@@ -422,6 +422,73 @@ app.get('/api/players/:id', (req, res) => {
   });
 });
 
+// 🔥 РАДИКАЛЬНЫЙ ENDPOINT - только координаты!
+app.patch('/api/coordinates/:id', (req, res) => {
+  const playerId = parseInt(req.params.id);
+  const { x, y } = req.body;
+  
+  console.log(`🔥 RADICAL: Обновление координат игрока ${playerId}: (${x}, ${y})`);
+  
+  // Минимальная валидация
+  if (!playerId || isNaN(playerId)) {
+    return res.status(400).json({ error: 'Invalid player ID' });
+  }
+  
+  if (x === undefined || y === undefined) {
+    return res.status(400).json({ error: 'Missing x or y coordinates' });
+  }
+  
+  const validX = parseFloat(x);
+  const validY = parseFloat(y);
+  
+  if (isNaN(validX) || isNaN(validY)) {
+    return res.status(400).json({ error: 'Invalid coordinates' });
+  }
+  
+  // ПРОСТЕЙШИЙ SQL запрос - только x и y
+  const sql = 'UPDATE players SET x = ?, y = ? WHERE id = ?';
+  const params = [validX, validY, playerId];
+  
+  console.log(`🔥 RADICAL: SQL: ${sql}`);
+  console.log(`🔥 RADICAL: Params: [${params.join(', ')}]`);
+  
+  db.run(sql, params, function(err) {
+    if (err) {
+      console.error(`❌ RADICAL: SQL Error:`, err);
+      return res.status(500).json({ error: 'Database error', details: err.message });
+    }
+    
+    if (this.changes === 0) {
+      console.error(`❌ RADICAL: Player ${playerId} not found`);
+      return res.status(404).json({ error: 'Player not found' });
+    }
+    
+    console.log(`✅ RADICAL: Координаты обновлены для игрока ${playerId}`);
+    
+    // Broadcast через WebSocket
+    const updateData = {
+      type: 'player_position_update',
+      playerId: playerId,
+      x: validX,
+      y: validY
+    };
+    
+    wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify(updateData));
+      }
+    });
+    
+    res.json({ 
+      success: true, 
+      message: 'Coordinates updated',
+      playerId: playerId,
+      x: validX,
+      y: validY
+    });
+  });
+});
+
 // 🚀 PATCH endpoint удален - используем проверенный PUT /api/players/:id
 
 // Update individual player by ID

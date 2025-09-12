@@ -99,48 +99,36 @@ class ApiService {
     return this.fetchWithErrorHandling(`${API_ENDPOINTS.PLAYERS}/${id}`);
   }
 
-  // 🔥 НЕМЕДЛЕННЫЙ FALLBACK: Сразу используем работающий endpoint
+  // 🔥 РАДИКАЛЬНО ПРОСТОЙ - только новый endpoint!
   async updatePlayerCoordinates(id, x, y) {
-    console.log(`🔥 IMMEDIATE FALLBACK: Using old PUT endpoint for player ${id}: (${x}, ${y})`);
-    
-    // ПРОПУСКАЕМ новый endpoint и сразу используем старый!
-    return await this.updatePlayerCoordinatesFallback(id, x, y);
-  }
-
-  // 🔥 ПРЯМОЙ FALLBACK без fetchWithErrorHandling
-  async updatePlayerCoordinatesFallback(id, x, y) {
-    console.log(`🔥 DIRECT FALLBACK: Прямой запрос к PUT endpoint для игрока ${id}`);
+    console.log(`🔥 RADICAL: Обновление координат игрока ${id}: (${x}, ${y})`);
     
     try {
-      const coordinatesData = {
-        x: parseFloat(x),
-        y: parseFloat(y)
-      };
-      
-      console.log(`🔥 DIRECT FALLBACK: Данные:`, coordinatesData);
-      
-      const response = await fetch(`${API_ENDPOINTS.PLAYERS}/${id}`, {
-        method: 'PUT',
+      const response = await fetch(`${API_ENDPOINTS.COORDINATES}/${id}`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(coordinatesData),
+        body: JSON.stringify({
+          x: parseFloat(x),
+          y: parseFloat(y)
+        }),
       });
       
-      console.log(`🔥 DIRECT FALLBACK: Статус ответа: ${response.status}`);
+      console.log(`🔥 RADICAL: Статус ответа: ${response.status}`);
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`🔥 DIRECT FALLBACK: HTTP ${response.status} ошибка:`, errorText);
+        console.error(`🔥 RADICAL: HTTP ${response.status} ошибка:`, errorText);
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
       
       const responseData = await response.json();
-      console.log(`✅ DIRECT FALLBACK: Координаты обновлены!`, responseData);
+      console.log(`✅ RADICAL: Координаты обновлены!`, responseData);
       return responseData;
       
     } catch (error) {
-      console.error(`❌ DIRECT FALLBACK: Полная ошибка:`, error);
+      console.error(`❌ RADICAL: Ошибка:`, error);
       throw error;
     }
   }

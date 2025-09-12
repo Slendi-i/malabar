@@ -44,17 +44,17 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     return positions.current[playerId] || { x: 0, y: 0 };
   };
   
-  // 🔥 МАКСИМАЛЬНО ПРОСТОЕ РЕШЕНИЕ: Только API, никаких fallback
+  // 🔥 РАДИКАЛЬНО ПРОСТОЙ - только новый endpoint!
   const immediateSavePosition = useCallback(async (playerId, x, y, reason = 'immediate') => {
-    console.log(`🔥 ULTRA SIMPLE: Сохранение координат игрока ${playerId}: (${x}, ${y}) - ${reason}`);
+    console.log(`🔥 RADICAL: Сохранение координат игрока ${playerId}: (${x}, ${y}) - ${reason}`);
     
     try {
       const response = await apiService.updatePlayerCoordinates(playerId, x, y);
-      console.log(`✅ ULTRA SIMPLE: Координаты игрока ${playerId} сохранены!`, response);
+      console.log(`✅ RADICAL: Координаты игрока ${playerId} сохранены!`, response);
     } catch (error) {
-      console.error(`❌ ULTRA SIMPLE: Ошибка для игрока ${playerId}:`, error);
+      console.error(`❌ RADICAL: Ошибка для игрока ${playerId}:`, error);
       // НЕ делаем fallback - просто логируем ошибку
-      console.warn(`⚠️ ULTRA SIMPLE: Координаты НЕ сохранены для игрока ${playerId}`);
+      console.warn(`⚠️ RADICAL: Координаты НЕ сохранены для игрока ${playerId}`);
     }
   }, []);
 
