@@ -5,6 +5,7 @@ import PlayerIcons from '../components/PlayerIcons';
 import AuthModal from '../components/AuthModal';
 import apiService from '../services/apiService';
 import { useRealTimeSync } from '../services/useRealTimeSync';
+import { usePeriodicSync } from '../services/usePeriodicSync';
 
 export default function Home() {
   const [players, setPlayers] = useState([]);
@@ -133,10 +134,21 @@ export default function Home() {
 
   // Initialize WebSocket connection
   const { isConnected, connectionStatus, reconnect } = useRealTimeSync(handlePlayersUpdate, handleUserUpdate);
+  
+  // 🚀 ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ каждые 10 секунд
+  const { 
+    syncStatus: periodicSyncStatus, 
+    lastSyncTime, 
+    forceSync, 
+    syncOnChange, 
+    isSyncing 
+  } = usePeriodicSync(players, setPlayers, currentUser, setCurrentUser);
 
-  // Update sync status based on WebSocket connection
+  // 🚀 ОБНОВЛЕННЫЙ СТАТУС СИНХРОНИЗАЦИИ с учётом периодической синхронизации
   useEffect(() => {
-    if (isConnected) {
+    if (isSyncing) {
+      setSyncStatus('syncing');
+    } else if (isConnected) {
       setSyncStatus('synchronized');
     } else {
       switch (connectionStatus) {
@@ -156,7 +168,7 @@ export default function Home() {
           setSyncStatus('disconnected');
       }
     }
-  }, [isConnected, connectionStatus]);
+  }, [isConnected, connectionStatus, isSyncing]);
 
   // Инициализация компонента
   useEffect(() => {
@@ -392,6 +404,7 @@ export default function Home() {
           />
           <span className="text-sm font-medium text-gray-700">
             {syncStatus === 'synchronized' ? 'Синхронизировано' :
+             syncStatus === 'syncing' ? 'Синхронизация...' :
              syncStatus === 'saving' ? 'Сохранение...' :
              syncStatus === 'connecting' ? 'Подключение...' :
              syncStatus === 'reconnecting' ? 'Переподключение...' :
@@ -399,10 +412,22 @@ export default function Home() {
              syncStatus === 'error' ? 'Ошибка синхронизации' :
              'Не подключен'}
           </span>
+          {lastSyncTime && (
+            <span className="text-xs text-gray-500 ml-2">
+              Последняя: {lastSyncTime.toLocaleTimeString()}
+            </span>
+          )}
+          <button 
+            onClick={forceSync}
+            disabled={isSyncing}
+            className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 disabled:opacity-50 ml-2"
+          >
+            {isSyncing ? 'Синхронизация...' : 'Синхронизировать'}
+          </button>
           {(syncStatus === 'error' || syncStatus === 'fallback') && (
             <button 
               onClick={reconnect}
-              className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
+              className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200 ml-1"
             >
               {syncStatus === 'fallback' ? 'Восстановить WS' : 'Повторить'}
             </button>
@@ -530,13 +555,14 @@ export default function Home() {
           
           {/* Player icons overlay */}
           <div style={{ position: 'relative', zIndex: 1 }}>
-            <PlayerIcons 
-              players={players} 
-              setPlayers={setPlayers}
-              currentUser={currentUser}
-              onPlayerPositionUpdate={handlePlayerPositionUpdate}
-              updatePlayerPositionRef={updatePlayerPositionRef}
-            />
+        <PlayerIcons 
+          players={players} 
+          setPlayers={setPlayers}
+          currentUser={currentUser}
+          onPlayerPositionUpdate={handlePlayerPositionUpdate}
+          updatePlayerPositionRef={updatePlayerPositionRef}
+          syncOnChange={syncOnChange}
+        />
           </div>
         </div>
       </div>

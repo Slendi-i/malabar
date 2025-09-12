@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Tooltip } from '@mui/material';
 import apiService from '../services/apiService';
 
-export default function PlayerIcons({ players, setPlayers, currentUser, onPlayerPositionUpdate, updatePlayerPositionRef }) {
+export default function PlayerIcons({ players, setPlayers, currentUser, onPlayerPositionUpdate, updatePlayerPositionRef, syncOnChange }) {
   // Ensure players is an array and has the expected structure
   const safePlayers = Array.isArray(players) ? players : [];
   
@@ -156,6 +156,12 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
         lastSaveRef.current[playerId] = { x, y, timestamp: Date.now() };
         
         console.log(`✅ Координаты игрока ${playerId} сохранены оптимизированно`);
+        
+        // 🚀 ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ при изменениях
+        if (syncOnChange) {
+          console.log('🔄 Запускаем синхронизацию при изменении координат...');
+          syncOnChange();
+        }
       } catch (error) {
         console.error(`❌ Ошибка сохранения координат игрока ${playerId}:`, error);
       }
