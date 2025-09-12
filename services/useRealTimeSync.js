@@ -6,7 +6,8 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
   const reconnectTimeoutRef = useRef(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 10; // Оптимальное количество попыток
-  const baseReconnectDelay = 500; // Оптимальная задержка
+  const baseReconnectDelay = 10000; // Не чаще 1 раза в 10 секунд
+  const lastConnectAttemptRef = useRef(0);
   const heartbeatIntervalRef = useRef(null);
   const lastHeartbeatRef = useRef(Date.now());
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
@@ -53,6 +54,22 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
     if (typeof window === 'undefined') return;
 
     try {
+      // Троттлинг подключения: не чаще 1 раза в 10 секунд
+      const now = Date.now();
+      const sinceLast = now - lastConnectAttemptRef.current;
+      if (sinceLast < baseReconnectDelay) {
+        const wait = baseReconnectDelay - sinceLast;
+        console.log(`🔌 WebSocket: ждём ${wait}мс перед новым подключением`);
+        if (!reconnectTimeoutRef.current) {
+          reconnectTimeoutRef.current = setTimeout(() => {
+            reconnectTimeoutRef.current = null;
+            connect();
+          }, wait);
+        }
+        return;
+      }
+      lastConnectAttemptRef.current = now;
+
       // Close existing connection if any
       if (ws.current) {
         ws.current.close();
@@ -138,7 +155,8 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
         
         // Attempt to reconnect if not manually closed
         if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = Math.min(baseReconnectDelay * Math.pow(1.2, reconnectAttempts.current), 5000);
+          // Фиксируем паузу между попытками не менее 10 секунд
+          const delay = baseReconnectDelay;
           console.log(`🔄 WebSocket: Переподключаемся через ${delay}ms (попытка ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
           setConnectionStatus('reconnecting');
           
