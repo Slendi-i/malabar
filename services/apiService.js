@@ -5,6 +5,7 @@ class ApiService {
     async fetchWithErrorHandling(url, options = {}) {
     try {
       const response = await fetch(url, {
+        credentials: 'include', // Включаем cookies для авторизации
         headers: {
           'Content-Type': 'application/json',
           ...options.headers
@@ -39,13 +40,36 @@ class ApiService {
 
   // Users API
   async getCurrentUser() {
-    return this.fetchWithErrorHandling(API_ENDPOINTS.CURRENT_USER);
+    try {
+      return await this.fetchWithErrorHandling(API_ENDPOINTS.CURRENT_USER);
+    } catch (error) {
+      if (error.message.includes('401')) {
+        // Не авторизован - возвращаем null
+        return null;
+      }
+      throw error;
+    }
   }
 
   async setCurrentUser(userData) {
     return this.fetchWithErrorHandling(API_ENDPOINTS.CURRENT_USER, {
       method: 'POST',
       body: JSON.stringify(userData)
+    });
+  }
+
+  // Авторизация (используем setCurrentUser для логина)
+  async login(username, password) {
+    return this.setCurrentUser({
+      username: username,
+      isLoggedIn: true
+    });
+  }
+
+  async logout() {
+    return this.setCurrentUser({
+      username: '',
+      isLoggedIn: false
     });
   }
 

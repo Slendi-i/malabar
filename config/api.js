@@ -34,6 +34,8 @@ export const API_ENDPOINTS = {
   PLAYERS_UPDATES: `${API_BASE_URL}/api/players/updates`,
   COORDINATES: `${API_BASE_URL}/api/coordinates`, // 🚀 НОВЫЙ endpoint для координат
   CURRENT_USER: `${API_BASE_URL}/api/users/current`,
+  LOGIN: `${API_BASE_URL}/api/users/current`,
+  LOGOUT: `${API_BASE_URL}/api/users/current`,
   HEALTH: `${API_BASE_URL}/api/health`,
   WEBSOCKET: API_BASE_URL.replace('http', 'ws') + '/ws'
 };

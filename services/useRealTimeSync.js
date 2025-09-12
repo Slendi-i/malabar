@@ -10,6 +10,8 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
   const lastConnectAttemptRef = useRef(0);
   const heartbeatIntervalRef = useRef(null);
   const lastHeartbeatRef = useRef(Date.now());
+  const isConnectingRef = useRef(false);
+  const lastPingRef = useRef(0);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
 
   // Функция для запуска heartbeat
@@ -53,6 +55,23 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
   const connect = useCallback(() => {
     if (typeof window === 'undefined') return;
 
+    // Защита от одновременных подключений
+    if (isConnectingRef.current) {
+      console.log('🔌 WebSocket: Подключение уже в процессе, пропускаем');
+      return;
+    }
+
+    // Проверка видимости и онлайн статуса
+    if (document.hidden || !navigator.onLine) {
+      console.log('🔌 WebSocket: Страница скрыта или офлайн, откладываем подключение');
+      setTimeout(() => {
+        if (!document.hidden && navigator.onLine) {
+          connect();
+        }
+      }, 10000);
+      return;
+    }
+
     try {
       // Троттлинг подключения: не чаще 1 раза в 10 секунд
       const now = Date.now();
@@ -76,6 +95,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
       }
 
       setConnectionStatus('connecting');
+      isConnectingRef.current = true;
       
       ws.current = new WebSocket(API_ENDPOINTS.WEBSOCKET);
 
@@ -83,6 +103,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
         console.log('🔗 WebSocket: Соединение установлено!');
         setConnectionStatus('connected');
         reconnectAttempts.current = 0;
+        isConnectingRef.current = false;
         startHeartbeat();
       };
 
@@ -152,11 +173,12 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
         console.log(`❌ WebSocket: Соединение закрыто. Code: ${event.code}, Reason: ${event.reason || 'Не указано'}`);
         setConnectionStatus('disconnected');
         stopHeartbeat();
+        isConnectingRef.current = false;
         
         // Attempt to reconnect if not manually closed
         if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
-          // Фиксируем паузу между попытками не менее 10 секунд
-          const delay = baseReconnectDelay;
+          // Фиксируем паузу между попытками не менее 10 секунд + джиттер
+          const delay = baseReconnectDelay + Math.floor(Math.random() * 1500);
           console.log(`🔄 WebSocket: Переподключаемся через ${delay}ms (попытка ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
           setConnectionStatus('reconnecting');
           
@@ -174,12 +196,14 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
       ws.current.onerror = (error) => {
         console.error('WebSocket error:', error);
         setConnectionStatus('error');
+        isConnectingRef.current = false;
         // 🚀 УБРАЛИ HTTP polling - он создавал постоянные запросы!
       };
 
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
       setConnectionStatus('error');
+      isConnectingRef.current = false;
       // 🚀 УБРАЛИ HTTP polling - он создавал постоянные запросы!
     }
   }, [onPlayersUpdate, onUserUpdate]);
@@ -208,8 +232,28 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
   useEffect(() => {
     connect();
     
+    // Слушатели для видимости и онлайн статуса
+    const handleVisibilityChange = () => {
+      if (!document.hidden && navigator.onLine && ws.current?.readyState !== WebSocket.OPEN) {
+        console.log('🔌 WebSocket: Страница стала видимой, пытаемся подключиться');
+        connect();
+      }
+    };
+
+    const handleOnline = () => {
+      if (!document.hidden && ws.current?.readyState !== WebSocket.OPEN) {
+        console.log('🔌 WebSocket: Соединение восстановлено, пытаемся подключиться');
+        connect();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleOnline);
+    
     return () => {
       disconnect();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
     };
   }, [connect, disconnect]);
 

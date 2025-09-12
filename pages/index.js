@@ -143,6 +143,9 @@ export default function Home() {
     isSyncing 
   } = usePeriodicSync(players, setPlayers, currentUser, setCurrentUser);
 
+  // 🚀 ОТЛАДКА: Проверяем что хук монтируется
+  console.log('🔧 Periodic sync hook mounted, isSyncing:', isSyncing);
+
   // 🚀 ОБНОВЛЕННЫЙ СТАТУС СИНХРОНИЗАЦИИ с учётом периодической синхронизации
   useEffect(() => {
     if (isSyncing) {
@@ -243,17 +246,27 @@ export default function Home() {
         if (!restoredUser) {
           try {
             const apiUser = await apiService.getCurrentUser();
-            // Игнорируем Guest пользователя - это означает что никто не залогинен
-            if (apiUser && apiUser.username !== 'Guest' && apiUser.isLoggedIn) {
+            // Если API вернул null (не авторизован) или Guest - очищаем состояние
+            if (apiUser && apiUser.username && apiUser.username !== 'Guest' && apiUser.isLoggedIn) {
               setCurrentUser(apiUser);
               // Сохраняем в localStorage
               if (typeof window !== 'undefined') {
                 localStorage.setItem('currentUser', JSON.stringify(apiUser));
               }
             } else {
+              // Очищаем состояние если пользователь не авторизован
+              setCurrentUser(null);
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('currentUser');
+              }
             }
           } catch (e) {
             console.warn('Failed to load user from API:', e);
+            // При ошибке API тоже очищаем состояние
+            setCurrentUser(null);
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('currentUser');
+            }
           }
         }
       } catch (error) {
@@ -365,11 +378,8 @@ export default function Home() {
 
   const handleLogout = async () => {
     try {
-      // Правильный формат для API logout
-      await apiService.setCurrentUser({
-        username: '',
-        isLoggedIn: false
-      });
+      // Используем новый метод logout
+      await apiService.logout();
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -427,7 +437,7 @@ export default function Home() {
 
       {/* Кнопка авторизации */}
       <div className="absolute top-4 right-20 z-50">
-        {currentUser ? (
+        {currentUser && currentUser.name && currentUser.isLoggedIn ? (
           <Button 
             variant="contained" 
             onClick={handleLogout}

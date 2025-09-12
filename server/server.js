@@ -2,6 +2,7 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 const WebSocket = require('ws');
 
@@ -9,7 +10,11 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://46.173.17.229:3000', 'http://vet-klinika-moscow.ru:3000'],
+  credentials: true // Включаем cookies для авторизации
+}));
+app.use(cookieParser());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -826,13 +831,8 @@ app.get('/api/users/current', (req, res) => {
     }
     
     if (!row) {
-      // Return default user instead of error
-      return res.json({
-        id: -1,
-        username: 'Guest',
-        isLoggedIn: false,
-        lastLogin: null
-      });
+      // Возвращаем 401 если пользователь не авторизован
+      return res.status(401).json({ error: 'Not authenticated' });
     }
     
     res.json({
