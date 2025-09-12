@@ -44,23 +44,17 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     return positions.current[playerId] || { x: 0, y: 0 };
   };
   
-  // 🔥 ПРОСТОЕ РЕШЕНИЕ: Только API + localStorage fallback
+  // 🔥 МАКСИМАЛЬНО ПРОСТОЕ РЕШЕНИЕ: Только API, никаких fallback
   const immediateSavePosition = useCallback(async (playerId, x, y, reason = 'immediate') => {
+    console.log(`🔥 ULTRA SIMPLE: Сохранение координат игрока ${playerId}: (${x}, ${y}) - ${reason}`);
+    
     try {
-      console.log(`🔥 SIMPLE SAVE: Сохранение координат игрока ${playerId}: (${x}, ${y}) - ${reason}`);
       const response = await apiService.updatePlayerCoordinates(playerId, x, y);
-      console.log(`✅ SIMPLE SAVE: Координаты игрока ${playerId} сохранены!`, response);
+      console.log(`✅ ULTRA SIMPLE: Координаты игрока ${playerId} сохранены!`, response);
     } catch (error) {
-      console.error(`❌ SIMPLE SAVE: Ошибка API для игрока ${playerId}:`, error);
-      
-      // Единственный fallback - localStorage
-      try {
-        console.log(`💾 LOCALSTORAGE FALLBACK: Сохранение в локальное хранилище...`);
-        saveToLocalStorage(playerId, x, y);
-        console.log(`✅ LOCALSTORAGE FALLBACK: Координаты сохранены локально`);
-      } catch (localError) {
-        console.error(`❌ LOCALSTORAGE FALLBACK: Критическая ошибка:`, localError);
-      }
+      console.error(`❌ ULTRA SIMPLE: Ошибка для игрока ${playerId}:`, error);
+      // НЕ делаем fallback - просто логируем ошибку
+      console.warn(`⚠️ ULTRA SIMPLE: Координаты НЕ сохранены для игрока ${playerId}`);
     }
   }, []);
 
@@ -353,7 +347,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     // 🚀 МГНОВЕННОЕ сохранение для завершения перетаскивания 
     immediateSavePosition(currentPlayer.id, finalX, finalY, 'drag_end');
     
-  }, [safePlayers, forceCleanupDragState]);
+  }, [safePlayers, forceCleanupDragState, immediateSavePosition]);
 
   const handleMouseDown = useCallback((e, index) => {
     const player = safePlayers[index];

@@ -107,28 +107,42 @@ class ApiService {
     return await this.updatePlayerCoordinatesFallback(id, x, y);
   }
 
-  // 🚀 FALLBACK метод через старый endpoint
+  // 🔥 ПРЯМОЙ FALLBACK без fetchWithErrorHandling
   async updatePlayerCoordinatesFallback(id, x, y) {
-    console.log(`🔄 FALLBACK: Используем старый PUT endpoint для игрока ${id}`);
+    console.log(`🔥 DIRECT FALLBACK: Прямой запрос к PUT endpoint для игрока ${id}`);
     
-    const coordinatesData = {
-      x: parseFloat(x),
-      y: parseFloat(y)
-    };
-    
-    const response = await this.fetchWithErrorHandling(
-      `${API_ENDPOINTS.PLAYERS}/${id}`,
-      {
+    try {
+      const coordinatesData = {
+        x: parseFloat(x),
+        y: parseFloat(y)
+      };
+      
+      console.log(`🔥 DIRECT FALLBACK: Данные:`, coordinatesData);
+      
+      const response = await fetch(`${API_ENDPOINTS.PLAYERS}/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(coordinatesData),
+      });
+      
+      console.log(`🔥 DIRECT FALLBACK: Статус ответа: ${response.status}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`🔥 DIRECT FALLBACK: HTTP ${response.status} ошибка:`, errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
-    );
-    
-    console.log(`✅ FALLBACK: Coordinates updated via old method`);
-    return response;
+      
+      const responseData = await response.json();
+      console.log(`✅ DIRECT FALLBACK: Координаты обновлены!`, responseData);
+      return responseData;
+      
+    } catch (error) {
+      console.error(`❌ DIRECT FALLBACK: Полная ошибка:`, error);
+      throw error;
+    }
   }
 }
 
