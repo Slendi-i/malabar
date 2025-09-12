@@ -5,8 +5,8 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
   const ws = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 20; // Еще больше попыток для надежности
-  const baseReconnectDelay = 250; // Еще быстрее переподключение
+  const maxReconnectAttempts = 10; // Оптимальное количество попыток
+  const baseReconnectDelay = 500; // Оптимальная задержка
   const heartbeatIntervalRef = useRef(null);
   const lastHeartbeatRef = useRef(Date.now());
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
@@ -24,8 +24,8 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
       const now = Date.now();
       const timeSinceLastHeartbeat = now - lastHeartbeatRef.current;
       
-      // Если давно не было сообщений (более 20 секунд), отправляем ping  
-      if (timeSinceLastHeartbeat > 20000) {
+      // Если давно не было сообщений (более 30 секунд), отправляем ping  
+      if (timeSinceLastHeartbeat > 30000) {
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {
           try {
             ws.current.send(JSON.stringify({ type: 'ping', timestamp: now }));
@@ -38,7 +38,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
           }
         }
       }
-    }, 10000); // Проверяем каждые 10 секунд для быстрого отклика
+    }, 15000); // Проверяем каждые 15 секунд для оптимизации
   }, []);
 
   // Функция для остановки heartbeat

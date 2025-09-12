@@ -21,11 +21,13 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     initialPosition: { x: 0, y: 0 }
   });
   
-  // Debouncing для сохранения координат  
+  // 🚀 ОПТИМИЗИРОВАННЫЙ debouncing для координат
   const saveTimeoutRef = useRef(null);
   const dragTimeoutRef = useRef(null); // Защита от зависших dragState
-  const SAVE_DELAY = 150; // Уменьшена задержка для быстрой синхронизации
+  const lastSaveRef = useRef({}); // Кэш последних сохранений
+  const SAVE_DELAY = 100; // Оптимальная задержка для быстрой синхронизации
   const DRAG_TIMEOUT = 10000; // 10 секунд - максимальное время перетаскивания
+  const MIN_MOVEMENT = 5; // Минимальное движение для сохранения
 
   // Функция для установки позиции фишки напрямую в DOM
   const setPlayerPosition = (playerId, x, y) => {
@@ -122,7 +124,21 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
   }, []);
 
   // 🚀 УПРОЩЕННОЕ сохранение с debouncing для обычных случаев
+  // 🚀 ОПТИМИЗИРОВАННОЕ debounced сохранение
   const debouncedSavePosition = useCallback((playerId, x, y) => {
+    // Проверяем минимальное движение
+    const lastSave = lastSaveRef.current[playerId];
+    if (lastSave) {
+      const deltaX = Math.abs(x - lastSave.x);
+      const deltaY = Math.abs(y - lastSave.y);
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      if (distance < MIN_MOVEMENT) {
+        console.log(`🚫 Пропускаем сохранение - движение слишком мало: ${distance.toFixed(2)}px`);
+        return;
+      }
+    }
+    
     // Очищаем предыдущий timeout
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -131,12 +147,15 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     // Ставим новый timeout
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        console.log(`💾 Сохранение координат игрока ${playerId}: (${x}, ${y})`);
+        console.log(`💾 ОПТИМИЗИРОВАННОЕ сохранение координат игрока ${playerId}: (${x}, ${y})`);
         
-        // Используем проверенный метод через PUT endpoint
+        // Используем проверенный метод через PATCH endpoint
         await apiService.updatePlayerCoordinates(playerId, x, y);
         
-        console.log(`✅ Координаты игрока ${playerId} сохранены`);
+        // Кэшируем последнее сохранение
+        lastSaveRef.current[playerId] = { x, y, timestamp: Date.now() };
+        
+        console.log(`✅ Координаты игрока ${playerId} сохранены оптимизированно`);
       } catch (error) {
         console.error(`❌ Ошибка сохранения координат игрока ${playerId}:`, error);
       }

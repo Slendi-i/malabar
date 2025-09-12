@@ -50,21 +50,47 @@ export default function Home() {
       }
       
     } else if (type === 'profile' && playerId && data) {
-      // Обновление ТОЛЬКО профиля игрока (координаты НЕ трогаем!)
-      console.log('📝 Обновление профиля игрока:', playerId);
-      setPlayers(prev => prev.map(player => 
-        player.id === playerId ? { 
-          ...player,
-          // Обновляем только профильные данные, координаты НЕ трогаем
-          name: data.name !== undefined ? data.name : player.name,
-          avatar: data.avatar !== undefined ? data.avatar : player.avatar,
-          games: data.games !== undefined ? data.games : player.games,
-          stats: data.stats !== undefined ? data.stats : player.stats,
-          socialLinks: data.socialLinks !== undefined ? data.socialLinks : player.socialLinks,
-          isOnline: data.isOnline !== undefined ? data.isOnline : player.isOnline
-          // x и y НЕ обновляем - координаты управляются только через coordinates тип
-        } : player
-      ));
+      // 🚀 ОПТИМИЗИРОВАННОЕ обновление профиля игрока
+      console.log('📝 Обновление профиля игрока:', playerId, data);
+      setPlayers(prev => prev.map(player => {
+        if (player.id !== playerId) return player;
+        
+        // Умное обновление - только изменённые поля
+        const updatedPlayer = { ...player };
+        
+        if (data.name !== undefined && data.name !== player.name) {
+          updatedPlayer.name = data.name;
+          console.log(`📝 Имя игрока ${playerId} изменено: ${player.name} → ${data.name}`);
+        }
+        
+        if (data.avatar !== undefined && data.avatar !== player.avatar) {
+          updatedPlayer.avatar = data.avatar;
+          console.log(`📝 Аватар игрока ${playerId} изменён`);
+        }
+        
+        if (data.games !== undefined && JSON.stringify(data.games) !== JSON.stringify(player.games)) {
+          updatedPlayer.games = data.games;
+          console.log(`📝 Игры игрока ${playerId} обновлены`);
+        }
+        
+        if (data.stats !== undefined && JSON.stringify(data.stats) !== JSON.stringify(player.stats)) {
+          updatedPlayer.stats = data.stats;
+          console.log(`📝 Статистика игрока ${playerId} обновлена`);
+        }
+        
+        if (data.socialLinks !== undefined && JSON.stringify(data.socialLinks) !== JSON.stringify(player.socialLinks)) {
+          updatedPlayer.socialLinks = data.socialLinks;
+          console.log(`📝 Социальные ссылки игрока ${playerId} обновлены`);
+        }
+        
+        if (data.isOnline !== undefined && data.isOnline !== player.isOnline) {
+          updatedPlayer.isOnline = data.isOnline;
+          console.log(`📝 Статус онлайн игрока ${playerId}: ${data.isOnline ? 'онлайн' : 'офлайн'}`);
+        }
+        
+        // x и y НЕ обновляем - координаты управляются только через coordinates тип
+        return updatedPlayer;
+      }));
       
     } else if (type === 'initial_load' && Array.isArray(data)) {
       // ТОЛЬКО при первой загрузке - полное обновление

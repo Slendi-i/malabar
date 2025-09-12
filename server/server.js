@@ -422,12 +422,12 @@ app.get('/api/players/:id', (req, res) => {
   });
 });
 
-// 🔥 РАДИКАЛЬНЫЙ ENDPOINT - только координаты!
+// 🚀 ОПТИМИЗИРОВАННЫЙ ENDPOINT - умная синхронизация координат!
 app.patch('/api/coordinates/:id', (req, res) => {
   const playerId = parseInt(req.params.id);
   const { x, y } = req.body;
   
-  console.log(`🔥 RADICAL: Обновление координат игрока ${playerId}: (${x}, ${y})`);
+  console.log(`🚀 OPTIMIZED: Обновление координат игрока ${playerId}: (${x}, ${y})`);
   
   // Минимальная валидация
   if (!playerId || isNaN(playerId)) {
@@ -445,46 +445,80 @@ app.patch('/api/coordinates/:id', (req, res) => {
     return res.status(400).json({ error: 'Invalid coordinates' });
   }
   
-  // ПРОСТЕЙШИЙ SQL запрос - только x и y
-  const sql = 'UPDATE players SET x = ?, y = ? WHERE id = ?';
-  const params = [validX, validY, playerId];
-  
-  console.log(`🔥 RADICAL: SQL: ${sql}`);
-  console.log(`🔥 RADICAL: Params: [${params.join(', ')}]`);
-  
-  db.run(sql, params, function(err) {
+  // 🚀 УМНАЯ СИНХРОНИЗАЦИЯ - проверяем изменения перед обновлением
+  db.get('SELECT x, y FROM players WHERE id = ?', [playerId], (err, currentPlayer) => {
     if (err) {
-      console.error(`❌ RADICAL: SQL Error:`, err);
+      console.error(`❌ OPTIMIZED: Database error:`, err);
       return res.status(500).json({ error: 'Database error', details: err.message });
     }
     
-    if (this.changes === 0) {
-      console.error(`❌ RADICAL: Player ${playerId} not found`);
+    if (!currentPlayer) {
+      console.error(`❌ OPTIMIZED: Player ${playerId} not found`);
       return res.status(404).json({ error: 'Player not found' });
     }
     
-    console.log(`✅ RADICAL: Координаты обновлены для игрока ${playerId}`);
+    // Проверяем значимость изменений
+    const deltaX = Math.abs(validX - (currentPlayer.x || 0));
+    const deltaY = Math.abs(validY - (currentPlayer.y || 0));
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     
-    // Broadcast через WebSocket
-    const updateData = {
-      type: 'player_position_update',
-      playerId: playerId,
-      x: validX,
-      y: validY
-    };
+    if (distance < 1) { // Минимальное изменение 1px
+      console.log(`🚫 OPTIMIZED: Изменение слишком мало: ${distance.toFixed(2)}px - пропускаем`);
+      return res.json({ 
+        success: true, 
+        message: 'No significant change',
+        playerId: playerId,
+        x: currentPlayer.x,
+        y: currentPlayer.y,
+        skipped: true
+      });
+    }
     
-    wss.clients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(updateData));
+    // Обновляем только если есть значимые изменения
+    const sql = 'UPDATE players SET x = ?, y = ? WHERE id = ?';
+    const params = [validX, validY, playerId];
+    
+    console.log(`🚀 OPTIMIZED: SQL: ${sql}`);
+    console.log(`🚀 OPTIMIZED: Params: [${params.join(', ')}]`);
+    console.log(`🚀 OPTIMIZED: Distance: ${distance.toFixed(2)}px`);
+  
+    db.run(sql, params, function(err) {
+      if (err) {
+        console.error(`❌ OPTIMIZED: SQL Error:`, err);
+        return res.status(500).json({ error: 'Database error', details: err.message });
       }
-    });
-    
-    res.json({ 
-      success: true, 
-      message: 'Coordinates updated',
-      playerId: playerId,
-      x: validX,
-      y: validY
+      
+      if (this.changes === 0) {
+        console.error(`❌ OPTIMIZED: Player ${playerId} not found`);
+        return res.status(404).json({ error: 'Player not found' });
+      }
+      
+      console.log(`✅ OPTIMIZED: Координаты обновлены для игрока ${playerId} (distance: ${distance.toFixed(2)}px)`);
+      
+      // 🚀 УМНЫЙ BROADCAST - только если есть изменения
+      const updateData = {
+        type: 'player_position_update',
+        playerId: playerId,
+        x: validX,
+        y: validY,
+        distance: distance.toFixed(2)
+      };
+      
+      wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify(updateData));
+        }
+      });
+      
+      res.json({ 
+        success: true, 
+        message: 'Coordinates updated',
+        playerId: playerId,
+        x: validX,
+        y: validY,
+        distance: distance.toFixed(2),
+        changes: this.changes
+      });
     });
   });
 });
