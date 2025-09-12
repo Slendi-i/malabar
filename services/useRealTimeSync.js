@@ -5,7 +5,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
   const ws = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 10; // Оптимальное количество попыток
+  const maxReconnectAttempts = 999; // Практически бесконечные попытки
   const baseReconnectDelay = 10000; // Не чаще 1 раза в 10 секунд
   const lastConnectAttemptRef = useRef(0);
   const heartbeatIntervalRef = useRef(null);

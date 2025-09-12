@@ -67,13 +67,13 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
       setTimeout(() => setSyncStatus('idle'), 2000);
       
     } catch (error) {
-      console.error('❌ ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ: Ошибка:', error);
+      console.error('❌ PЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ: Ошибка:', error);
       setSyncStatus('error');
       
       // Сбрасываем статус ошибки через 5 секунд
       setTimeout(() => setSyncStatus('idle'), 5000);
     }
-  }, [setPlayers, setCurrentUser]);
+  }, [setPlayers, setCurrentUser, currentUser]);
 
   // 🚀 ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ (при изменениях) - автоматическая
   const forceSync = useCallback(async () => {
@@ -83,21 +83,18 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
 
   // 🚀 ИНИЦИАЛИЗАЦИЯ ПЕРИОДИЧЕСКОЙ СИНХРОНИЗАЦИИ
   useEffect(() => {
-    if (!isInitializedRef.current) {
-      console.log('🚀 ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ: Инициализация...');
-      
-      // Первая синхронизация сразу
+    console.log('🚀 ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ: Инициализация...');
+    
+    // Первая синхронизация сразу
+    performFullSync();
+    
+    // Устанавливаем интервал на 10 секунд
+    syncIntervalRef.current = setInterval(() => {
+      console.log('⏰ ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ: Время синхронизации (10 сек)');
       performFullSync();
-      isInitializedRef.current = true;
-      
-      // Устанавливаем интервал на 10 секунд
-      syncIntervalRef.current = setInterval(() => {
-        console.log('⏰ ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ: Время синхронизации (10 сек)');
-        performFullSync();
-      }, 10000); // 10 секунд
-      
-      console.log('✅ ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ: Интервал установлен на 10 секунд');
-    }
+    }, 10000); // 10 секунд
+    
+    console.log('✅ ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ: Интервал установлен на 10 секунд');
 
     // Cleanup при размонтировании
     return () => {
@@ -106,7 +103,7 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
         console.log('🧹 ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ: Интервал очищен');
       }
     };
-  }, []);
+  }, [performFullSync]);
 
   // 🚀 СИНХРОНИЗАЦИЯ ПРИ ИЗМЕНЕНИЯХ (debounced)
   const syncOnChange = useCallback(() => {
