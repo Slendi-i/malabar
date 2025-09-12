@@ -53,10 +53,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
   }, []);
 
   const connect = useCallback(() => {
-    if (typeof window === 'undefined') {
-      console.log('🔌 WebSocket: Серверный рендеринг, пропускаем подключение');
-      return;
-    }
+    if (typeof window === 'undefined') return;
 
     // Защита от одновременных подключений
     if (isConnectingRef.current) {
