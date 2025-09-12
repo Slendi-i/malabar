@@ -215,8 +215,19 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     }
   }, [safePlayers.length]);
   
-  // 🚀 УБРАЛИ постоянные запросы к API!
-  // Теперь координаты обновляются только через WebSocket уведомления
+  // 🚀 ОБНОВЛЕНИЕ ПОЗИЦИЙ ПРИ СИНХРОНИЗАЦИИ
+  useEffect(() => {
+    // Обновляем позиции фишек при изменении данных игроков
+    safePlayers.forEach(player => {
+      if (player.x !== undefined && player.y !== undefined) {
+        const currentPos = positions.current[player.id];
+        if (!currentPos || currentPos.x !== player.x || currentPos.y !== player.y) {
+          console.log(`🔄 СИНХРОНИЗАЦИЯ: Обновляем позицию фишки ${player.id}: (${player.x}, ${player.y})`);
+          setPlayerPosition(player.id, player.x, player.y);
+        }
+      }
+    });
+  }, [safePlayers]);
   
   // Функция для обновления координат от WebSocket
   const updatePlayerPositionFromSync = useCallback((playerId, x, y) => {

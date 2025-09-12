@@ -32,8 +32,8 @@ export default function Home() {
   const handlePlayersUpdate = useCallback((type, data, playerId) => {
     console.log('🔄 WebSocket уведомление:', type, playerId, data);
     
-    if (type === 'coordinates' && playerId && data) {
-      console.log('🎯 Получены координаты через WebSocket:', { playerId, x: data.x, y: data.y });
+    if ((type === 'coordinates' || type === 'player_position_update') && playerId && data) {
+      console.log('🎯 Получены координаты через WebSocket:', { type, playerId, x: data.x, y: data.y });
       
       // Используем надежный ref вместо window объекта
       if (updatePlayerPositionRef.current) {

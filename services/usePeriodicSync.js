@@ -18,8 +18,8 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
     setSyncStatus('syncing');
     
     try {
-      // 1. Синхронизируем игроков
-      console.log('📥 Синхронизация игроков...');
+      // 1. Синхронизируем игроков с координатами
+      console.log('📥 Синхронизация игроков с координатами...');
       const playersResponse = await apiService.getPlayers();
       const playersData = playersResponse.players || [];
       
@@ -27,6 +27,23 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
       
       // Обновляем состояние игроков
       setPlayers(playersData);
+      
+      // 🚀 ОБНОВЛЯЕМ ПОЗИЦИИ ФИШЕК в DOM
+      playersData.forEach(player => {
+        if (player.x !== undefined && player.y !== undefined) {
+          console.log(`📍 Обновляем позицию фишки ${player.id}: (${player.x}, ${player.y})`);
+          
+          // Обновляем позицию в DOM
+          const playerElement = document.querySelector(`[data-player-id="${player.id}"]`);
+          if (playerElement) {
+            playerElement.style.left = `${player.x}px`;
+            playerElement.style.top = `${player.y}px`;
+            console.log(`✅ Позиция фишки ${player.id} обновлена в DOM`);
+          } else {
+            console.warn(`⚠️ Фишка ${player.id} не найдена в DOM`);
+          }
+        }
+      });
       
       // 2. Синхронизируем текущего пользователя
       if (currentUser && currentUser.id) {
