@@ -14,6 +14,12 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
 
   // 🚀 ПОЛНАЯ СИНХРОНИЗАЦИЯ ВСЕХ ДАННЫХ (стабильная функция)
   const performFullSync = useCallback(async () => {
+    // Проверяем что мы в браузере
+    if (typeof window === 'undefined') {
+      console.log('⏸️ Синхронизация пропущена (серверный рендеринг)');
+      return;
+    }
+    
     console.log('🔄 ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ: Начинаем полную синхронизацию...');
     setSyncStatus('syncing');
     

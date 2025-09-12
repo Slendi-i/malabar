@@ -3,6 +3,11 @@ import { API_ENDPOINTS } from '../config/api';
 class ApiService {
   // Generic fetch wrapper with error handling
     async fetchWithErrorHandling(url, options = {}) {
+    // Проверяем что мы в браузере
+    if (typeof window === 'undefined') {
+      throw new Error('API calls can only be made in browser environment');
+    }
+    
     try {
       const response = await fetch(url, {
         credentials: 'include', // Включаем cookies для авторизации
