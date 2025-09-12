@@ -483,16 +483,21 @@ app.put('/api/players/:id', (req, res) => {
       JSON.stringify(mergedPlayer.stats),
       JSON.stringify(mergedPlayer.games),
       mergedPlayer.isOnline ? 1 : 0,
-      mergedPlayer.position,  // 🚨 ЭТО БЫЛО ПРОПУЩЕНО!
+      mergedPlayer.position || 0,  // 🔥 ИСПРАВЛЕНО: значение по умолчанию
       mergedPlayer.x,
       mergedPlayer.y,
       playerId
     ];
     
+    console.log('🔍 SERVER: SQL запрос:', sql);
+    console.log('🔍 SERVER: Параметры:', params);
+    
     db.run(sql, params, function(err) {
       if (err) {
-        console.error('Update error:', err);
-        return res.status(500).json({ error: 'Update failed' });
+        console.error('❌ SERVER: Update error:', err);
+        console.error('❌ SERVER: SQL:', sql);
+        console.error('❌ SERVER: Params:', params);
+        return res.status(500).json({ error: 'Update failed', details: err.message });
       }
       
       // 🔍 УЛУЧШЕННАЯ логика broadcast с детальной диагностикой
