@@ -75,9 +75,9 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
     }
   }, [players, setPlayers, currentUser, setCurrentUser]);
 
-  // 🚀 ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ (при изменениях)
+  // 🚀 ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ (при изменениях) - автоматическая
   const forceSync = useCallback(async () => {
-    console.log('⚡ ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ: Запускаем немедленно...');
+    console.log('⚡ АВТОМАТИЧЕСКАЯ СИНХРОНИЗАЦИЯ: Запускаем немедленно...');
     await performFullSync();
   }, [performFullSync]);
 
@@ -132,7 +132,6 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
   return {
     syncStatus,
     lastSyncTime,
-    forceSync,
     syncOnChange,
     isSyncing: syncStatus === 'syncing'
   };

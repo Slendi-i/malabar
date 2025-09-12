@@ -135,11 +135,10 @@ export default function Home() {
   // Initialize WebSocket connection
   const { isConnected, connectionStatus, reconnect } = useRealTimeSync(handlePlayersUpdate, handleUserUpdate);
   
-  // 🚀 ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ каждые 10 секунд
+  // 🚀 АВТОМАТИЧЕСКАЯ ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ каждые 10 секунд
   const { 
     syncStatus: periodicSyncStatus, 
     lastSyncTime, 
-    forceSync, 
     syncOnChange, 
     isSyncing 
   } = usePeriodicSync(players, setPlayers, currentUser, setCurrentUser);
@@ -388,48 +387,39 @@ export default function Home() {
 
   return (
     <div className="flex relative h-screen w-full bg-gray-100">
-      {/* Индикатор состояния синхронизации */}
+      {/* 🚀 УПРОЩЕННЫЙ ИНДИКАТОР СИНХРОНИЗАЦИИ - только цвет */}
       <div className="absolute bottom-4 right-4 z-50">
         <div className="flex items-center gap-2 bg-white bg-opacity-90 px-3 py-2 rounded-lg shadow-lg">
           <div 
             className={`w-3 h-3 rounded-full ${
               syncStatus === 'synchronized' ? 'bg-green-500' :
-              syncStatus === 'saving' ? 'bg-yellow-500 animate-pulse' :
+              syncStatus === 'syncing' ? 'bg-yellow-500 animate-pulse' :
+              syncStatus === 'saving' ? 'bg-yellow-500' :
               syncStatus === 'connecting' ? 'bg-blue-500 animate-pulse' :
               syncStatus === 'reconnecting' ? 'bg-orange-500 animate-pulse' :
               syncStatus === 'fallback' ? 'bg-purple-500' :
               syncStatus === 'error' ? 'bg-red-500' :
               'bg-gray-500'
             }`}
+            title={
+              syncStatus === 'synchronized' ? 'Синхронизировано' :
+              syncStatus === 'syncing' ? 'Синхронизация...' :
+              syncStatus === 'saving' ? 'Сохранение...' :
+              syncStatus === 'connecting' ? 'Подключение...' :
+              syncStatus === 'reconnecting' ? 'Переподключение...' :
+              syncStatus === 'fallback' ? 'HTTP режим' :
+              syncStatus === 'error' ? 'Ошибка синхронизации' :
+              'Не подключен'
+            }
           />
-          <span className="text-sm font-medium text-gray-700">
-            {syncStatus === 'synchronized' ? 'Синхронизировано' :
-             syncStatus === 'syncing' ? 'Синхронизация...' :
-             syncStatus === 'saving' ? 'Сохранение...' :
-             syncStatus === 'connecting' ? 'Подключение...' :
-             syncStatus === 'reconnecting' ? 'Переподключение...' :
-             syncStatus === 'fallback' ? 'HTTP режим' :
-             syncStatus === 'error' ? 'Ошибка синхронизации' :
-             'Не подключен'}
-          </span>
-          {lastSyncTime && (
-            <span className="text-xs text-gray-500 ml-2">
-              Последняя: {lastSyncTime.toLocaleTimeString()}
-            </span>
-          )}
-          <button 
-            onClick={forceSync}
-            disabled={isSyncing}
-            className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 disabled:opacity-50 ml-2"
-          >
-            {isSyncing ? 'Синхронизация...' : 'Синхронизировать'}
-          </button>
+          {/* Кнопка восстановления только при ошибках */}
           {(syncStatus === 'error' || syncStatus === 'fallback') && (
             <button 
               onClick={reconnect}
-              className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200 ml-1"
+              className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
+              title="Восстановить соединение"
             >
-              {syncStatus === 'fallback' ? 'Восстановить WS' : 'Повторить'}
+              ↻
             </button>
           )}
         </div>
