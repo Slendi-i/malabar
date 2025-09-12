@@ -99,23 +99,26 @@ class ApiService {
     return this.fetchWithErrorHandling(`${API_ENDPOINTS.PLAYERS}/${id}`);
   }
 
-  // 🚀 УПРОЩЕННОЕ обновление координат - сервер сам мержит данные
+  // 🚀 РАДИКАЛЬНОЕ РЕШЕНИЕ: Отдельный endpoint для координат
   async updatePlayerCoordinates(id, x, y) {
-    console.log(`🎯 API: Updating coordinates for player ${id}: (${x}, ${y})`);
+    console.log(`🎯 API RADICAL: Updating coordinates for player ${id}: (${x}, ${y})`);
     
     try {
-      // Отправляем ТОЛЬКО координаты - сервер автоматически объединит с существующими данными
-      const coordinatesData = {
-        x: parseFloat(x),
-        y: parseFloat(y)
-      };
+      // Валидация данных
+      const validX = parseFloat(x);
+      const validY = parseFloat(y);
       
-      console.log(`📤 API: Отправляем координаты:`, coordinatesData);
+      if (isNaN(validX) || isNaN(validY)) {
+        throw new Error(`Invalid coordinates: x=${x}, y=${y}`);
+      }
+      
+      const coordinatesData = { x: validX, y: validY };
+      console.log(`📤 API RADICAL: Отправляем координаты:`, coordinatesData);
       
       const response = await this.fetchWithErrorHandling(
-        `${API_ENDPOINTS.PLAYERS}/${id}`,
+        `${API_ENDPOINTS.COORDINATES}/${id}`,
         {
-          method: 'PUT',
+          method: 'PATCH', // Используем PATCH для координат
           headers: {
             'Content-Type': 'application/json',
           },
@@ -123,13 +126,45 @@ class ApiService {
         }
       );
       
-      console.log(`✅ API: Coordinates updated successfully`);
+      console.log(`✅ API RADICAL: Coordinates updated successfully`);
       return response;
       
     } catch (error) {
-      console.error(`❌ API: Failed to update coordinates for player ${id}:`, error);
-      throw error;
+      console.error(`❌ API RADICAL: Failed to update coordinates for player ${id}:`, error);
+      
+      // 🚀 FALLBACK к старому методу если новый не работает
+      try {
+        console.log(`🔄 API FALLBACK: Пробуем старый метод...`);
+        return await this.updatePlayerCoordinatesFallback(id, x, y);
+      } catch (fallbackError) {
+        console.error(`❌ API FALLBACK: Тоже не работает:`, fallbackError);
+        throw error; // Бросаем оригинальную ошибку
+      }
     }
+  }
+
+  // 🚀 FALLBACK метод через старый endpoint
+  async updatePlayerCoordinatesFallback(id, x, y) {
+    console.log(`🔄 FALLBACK: Используем старый PUT endpoint для игрока ${id}`);
+    
+    const coordinatesData = {
+      x: parseFloat(x),
+      y: parseFloat(y)
+    };
+    
+    const response = await this.fetchWithErrorHandling(
+      `${API_ENDPOINTS.PLAYERS}/${id}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(coordinatesData),
+      }
+    );
+    
+    console.log(`✅ FALLBACK: Coordinates updated via old method`);
+    return response;
   }
 }
 

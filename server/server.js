@@ -707,6 +707,52 @@ app.post('/api/players/:id/social', (req, res) => {
   });
 });
 
+// 🚀 РАДИКАЛЬНОЕ РЕШЕНИЕ: Отдельный endpoint ТОЛЬКО для координат
+app.patch('/api/coordinates/:id', (req, res) => {
+  const playerId = parseInt(req.params.id);
+  const { x, y } = req.body;
+  
+  console.log(`🎯 COORDINATES: Обновление координат игрока ${playerId}: (${x}, ${y})`);
+  
+  // Валидация
+  if (isNaN(playerId) || playerId <= 0) {
+    return res.status(400).json({ error: 'Invalid player ID' });
+  }
+  
+  if (x === undefined || y === undefined || isNaN(x) || isNaN(y)) {
+    return res.status(400).json({ error: 'Invalid coordinates' });
+  }
+  
+  // Простой UPDATE только координат - никаких мерджей!
+  const sql = 'UPDATE players SET x = ?, y = ? WHERE id = ?';
+  const params = [parseFloat(x), parseFloat(y), playerId];
+  
+  db.run(sql, params, function(err) {
+    if (err) {
+      console.error(`❌ COORDINATES: Ошибка БД:`, err);
+      return res.status(500).json({ error: 'Database error', details: err.message });
+    }
+    
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+    
+    console.log(`✅ COORDINATES: Координаты обновлены для игрока ${playerId}`);
+    
+    // Мгновенная трансляция через WebSocket
+    const coordinatesData = { id: playerId, x: parseFloat(x), y: parseFloat(y) };
+    broadcastUpdate('coordinates', coordinatesData);
+    
+    res.json({ 
+      success: true, 
+      id: playerId, 
+      x: parseFloat(x), 
+      y: parseFloat(y),
+      changes: this.changes
+    });
+  });
+});
+
 // 🚀 УДАЛЕН дублирующий POST роут - используем только PATCH /coordinates
 
 // Get current user
@@ -809,6 +855,9 @@ wss.on('connection', (ws) => {
       } else if (message.type === 'pong') {
         // Клиент ответил на наш ping - обновляем время последней активности
         ws.lastActivity = Date.now();
+      } else if (message.type === 'save_coordinates') {
+        // 🚀 РАДИКАЛЬНОЕ РЕШЕНИЕ: Сохранение координат через WebSocket
+        handleWebSocketCoordinatesSave(ws, message.data);
       }
     } catch (error) {
       console.error('Error parsing WebSocket message:', error);
@@ -858,6 +907,71 @@ setInterval(() => {
     }
   });
 }, 20000); // Проверяем каждые 20 секунд для быстрого отклика
+
+// 🚀 РАДИКАЛЬНОЕ РЕШЕНИЕ: Обработка сохранения координат через WebSocket
+function handleWebSocketCoordinatesSave(ws, data) {
+  console.log(`🚀 WS SAVE: Получен запрос сохранения координат:`, data);
+  
+  const { id, x, y } = data;
+  
+  // Валидация
+  if (!id || x === undefined || y === undefined) {
+    ws.send(JSON.stringify({
+      type: 'coordinates_error',
+      error: 'Invalid coordinates data',
+      data: { id, x, y }
+    }));
+    return;
+  }
+  
+  const playerId = parseInt(id);
+  if (isNaN(playerId) || playerId <= 0) {
+    ws.send(JSON.stringify({
+      type: 'coordinates_error', 
+      error: 'Invalid player ID',
+      data: { id, x, y }
+    }));
+    return;
+  }
+  
+  // Сохранение в БД
+  const sql = 'UPDATE players SET x = ?, y = ? WHERE id = ?';
+  const params = [parseFloat(x), parseFloat(y), playerId];
+  
+  db.run(sql, params, function(err) {
+    if (err) {
+      console.error(`❌ WS SAVE: Ошибка БД:`, err);
+      ws.send(JSON.stringify({
+        type: 'coordinates_error',
+        error: 'Database error',
+        details: err.message,
+        data: { id: playerId, x, y }
+      }));
+      return;
+    }
+    
+    if (this.changes === 0) {
+      ws.send(JSON.stringify({
+        type: 'coordinates_error',
+        error: 'Player not found',
+        data: { id: playerId, x, y }
+      }));
+      return;
+    }
+    
+    console.log(`✅ WS SAVE: Координаты сохранены для игрока ${playerId}`);
+    
+    // Подтверждение отправителю
+    ws.send(JSON.stringify({
+      type: 'coordinates_saved',
+      data: { id: playerId, x: parseFloat(x), y: parseFloat(y) }
+    }));
+    
+    // Трансляция всем остальным клиентам
+    const coordinatesData = { id: playerId, x: parseFloat(x), y: parseFloat(y) };
+    broadcastUpdate('coordinates', coordinatesData);
+  });
+}
 
 // Function to broadcast updates to all connected clients
 function broadcastUpdate(type, data) {

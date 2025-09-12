@@ -44,14 +44,95 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     return positions.current[playerId] || { x: 0, y: 0 };
   };
   
-  // 🚀 МГНОВЕННОЕ сохранение для критичных операций
+  // 🚀 РАДИКАЛЬНОЕ РЕШЕНИЕ: Множественные методы сохранения
   const immediateSavePosition = useCallback(async (playerId, x, y, reason = 'immediate') => {
     try {
-      console.log(`⚡ МГНОВЕННОЕ сохранение координат игрока ${playerId}: (${x}, ${y}) - ${reason}`);
+      console.log(`⚡ RADICAL SAVE: Сохранение координат игрока ${playerId}: (${x}, ${y}) - ${reason}`);
       await apiService.updatePlayerCoordinates(playerId, x, y);
-      console.log(`✅ Координаты игрока ${playerId} сохранены мгновенно`);
+      console.log(`✅ RADICAL SAVE: Координаты игрока ${playerId} сохранены через API`);
     } catch (error) {
-      console.error(`❌ Ошибка мгновенного сохранения координат игрока ${playerId}:`, error);
+      console.error(`❌ RADICAL SAVE: API ошибка для игрока ${playerId}:`, error);
+      
+      // 🚀 FALLBACK 1: Пробуем через WebSocket
+      try {
+        console.log(`🔄 WEBSOCKET FALLBACK: Сохранение через WebSocket...`);
+        await saveViaWebSocket(playerId, x, y);
+        console.log(`✅ WEBSOCKET FALLBACK: Координаты сохранены через WebSocket`);
+      } catch (wsError) {
+        console.error(`❌ WEBSOCKET FALLBACK: Ошибка WebSocket:`, wsError);
+        
+        // 🚀 FALLBACK 2: localStorage резерв
+        try {
+          console.log(`💾 LOCALSTORAGE FALLBACK: Сохранение в локальное хранилище...`);
+          saveToLocalStorage(playerId, x, y);
+          console.log(`✅ LOCALSTORAGE FALLBACK: Координаты сохранены локально`);
+        } catch (localError) {
+          console.error(`❌ LOCALSTORAGE FALLBACK: Критическая ошибка:`, localError);
+        }
+      }
+    }
+  }, []);
+
+  // 🚀 WebSocket-only сохранение
+  const saveViaWebSocket = useCallback(async (playerId, x, y) => {
+    return new Promise((resolve, reject) => {
+      // Проверяем доступность WebSocket
+      if (!window.WebSocket) {
+        reject(new Error('WebSocket не поддерживается'));
+        return;
+      }
+      
+      const ws = new WebSocket(window.location.protocol.replace('http', 'ws') + '//' + window.location.host + '/ws');
+      
+      const timeout = setTimeout(() => {
+        ws.close();
+        reject(new Error('WebSocket timeout'));
+      }, 5000);
+      
+      ws.onopen = () => {
+        console.log(`📡 WS: Отправляем координаты через WebSocket`);
+        ws.send(JSON.stringify({
+          type: 'save_coordinates',
+          data: { id: playerId, x, y }
+        }));
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message.type === 'coordinates_saved' && message.data.id === playerId) {
+            clearTimeout(timeout);
+            ws.close();
+            resolve(message);
+          }
+        } catch (e) {
+          console.warn('Неизвестное сообщение WebSocket:', event.data);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      };
+    });
+  }, []);
+
+  // 🚀 localStorage резерв
+  const saveToLocalStorage = useCallback((playerId, x, y) => {
+    try {
+      const key = `player_coordinates_${playerId}`;
+      const data = { x, y, timestamp: Date.now() };
+      localStorage.setItem(key, JSON.stringify(data));
+      
+      // Помечаем что есть несохраненные изменения
+      const unsavedKey = 'unsaved_coordinates';
+      const unsaved = JSON.parse(localStorage.getItem(unsavedKey) || '{}');
+      unsaved[playerId] = { x, y, timestamp: Date.now() };
+      localStorage.setItem(unsavedKey, JSON.stringify(unsaved));
+      
+      console.log(`💾 Координаты игрока ${playerId} сохранены в localStorage`);
+    } catch (error) {
+      throw new Error(`localStorage недоступен: ${error.message}`);
     }
   }, []);
 
