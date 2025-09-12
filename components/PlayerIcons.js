@@ -44,31 +44,22 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     return positions.current[playerId] || { x: 0, y: 0 };
   };
   
-  // 🚀 РАДИКАЛЬНОЕ РЕШЕНИЕ: Множественные методы сохранения
+  // 🔥 ПРОСТОЕ РЕШЕНИЕ: Только API + localStorage fallback
   const immediateSavePosition = useCallback(async (playerId, x, y, reason = 'immediate') => {
     try {
-      console.log(`⚡ RADICAL SAVE: Сохранение координат игрока ${playerId}: (${x}, ${y}) - ${reason}`);
-      await apiService.updatePlayerCoordinates(playerId, x, y);
-      console.log(`✅ RADICAL SAVE: Координаты игрока ${playerId} сохранены через API`);
+      console.log(`🔥 SIMPLE SAVE: Сохранение координат игрока ${playerId}: (${x}, ${y}) - ${reason}`);
+      const response = await apiService.updatePlayerCoordinates(playerId, x, y);
+      console.log(`✅ SIMPLE SAVE: Координаты игрока ${playerId} сохранены!`, response);
     } catch (error) {
-      console.error(`❌ RADICAL SAVE: API ошибка для игрока ${playerId}:`, error);
+      console.error(`❌ SIMPLE SAVE: Ошибка API для игрока ${playerId}:`, error);
       
-      // 🚀 FALLBACK 1: Пробуем через WebSocket
+      // Единственный fallback - localStorage
       try {
-        console.log(`🔄 WEBSOCKET FALLBACK: Сохранение через WebSocket...`);
-        await saveViaWebSocket(playerId, x, y);
-        console.log(`✅ WEBSOCKET FALLBACK: Координаты сохранены через WebSocket`);
-      } catch (wsError) {
-        console.error(`❌ WEBSOCKET FALLBACK: Ошибка WebSocket:`, wsError);
-        
-        // 🚀 FALLBACK 2: localStorage резерв
-        try {
-          console.log(`💾 LOCALSTORAGE FALLBACK: Сохранение в локальное хранилище...`);
-          saveToLocalStorage(playerId, x, y);
-          console.log(`✅ LOCALSTORAGE FALLBACK: Координаты сохранены локально`);
-        } catch (localError) {
-          console.error(`❌ LOCALSTORAGE FALLBACK: Критическая ошибка:`, localError);
-        }
+        console.log(`💾 LOCALSTORAGE FALLBACK: Сохранение в локальное хранилище...`);
+        saveToLocalStorage(playerId, x, y);
+        console.log(`✅ LOCALSTORAGE FALLBACK: Координаты сохранены локально`);
+      } catch (localError) {
+        console.error(`❌ LOCALSTORAGE FALLBACK: Критическая ошибка:`, localError);
       }
     }
   }, []);
