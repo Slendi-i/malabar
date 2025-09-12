@@ -24,6 +24,9 @@ export default function Home() {
   // 🚀 ОПТИМИЗАЦИЯ: Убрали автоматическое сохранение
   // Теперь данные сохраняются только при явных действиях пользователя
 
+  // 🚀 Ссылка на функцию обновления координат
+  const updatePlayerPositionRef = useRef(null);
+
   // 🚀 ОПТИМИЗИРОВАННЫЕ обработчики для real-time синхронизации  
   const handlePlayersUpdate = useCallback((type, data, playerId) => {
     console.log('🔄 WebSocket уведомление:', type, playerId, data);
@@ -31,37 +34,35 @@ export default function Home() {
     if (type === 'coordinates' && playerId && data) {
       console.log('🎯 Получены координаты через WebSocket:', { playerId, x: data.x, y: data.y });
       
-      // Обновляем координаты через прямой вызов функции PlayerIcons
-      if (window.updatePlayerPosition) {
-        console.log('📡 Вызываем window.updatePlayerPosition');
-        window.updatePlayerPosition(playerId, data.x, data.y);
+      // Используем надежный ref вместо window объекта
+      if (updatePlayerPositionRef.current) {
+        console.log('📡 Вызываем updatePlayerPositionRef.current');
+        updatePlayerPositionRef.current(playerId, data.x, data.y);
       } else {
-        console.warn('❌ window.updatePlayerPosition не найдена');
+        console.warn('❌ updatePlayerPositionRef.current не найдена');
+        
+        // Fallback - обновляем только React state
+        setPlayers(prev => prev.map(player => 
+          player.id === playerId 
+            ? { ...player, x: data.x, y: data.y }
+            : player
+        ));
       }
       
-      // Также обновляем в React state для консистентности  
-      setPlayers(prev => prev.map(player => 
-        player.id === playerId 
-          ? { ...player, x: data.x, y: data.y }
-          : player
-      ));
-      
     } else if (type === 'profile' && playerId && data) {
-      // Обновление ТОЛЬКО профиля игрока (не координат!)
+      // Обновление ТОЛЬКО профиля игрока (координаты НЕ трогаем!)
       console.log('📝 Обновление профиля игрока:', playerId);
       setPlayers(prev => prev.map(player => 
         player.id === playerId ? { 
-          ...player, 
-          ...data,
-          // Сохраняем координаты как есть
-          x: player.x,
-          y: player.y,
-          // Обновляем только профильные данные
-          avatar: data.avatar || player.avatar || '',
-          name: data.name || player.name,
-          games: Array.isArray(data.games) ? data.games : player.games || [],
-          stats: data.stats || player.stats || { wins: 0, rerolls: 0, drops: 0 },
-          socialLinks: data.socialLinks || player.socialLinks || { twitch: '', telegram: '', discord: '' }
+          ...player,
+          // Обновляем только профильные данные, координаты НЕ трогаем
+          name: data.name !== undefined ? data.name : player.name,
+          avatar: data.avatar !== undefined ? data.avatar : player.avatar,
+          games: data.games !== undefined ? data.games : player.games,
+          stats: data.stats !== undefined ? data.stats : player.stats,
+          socialLinks: data.socialLinks !== undefined ? data.socialLinks : player.socialLinks,
+          isOnline: data.isOnline !== undefined ? data.isOnline : player.isOnline
+          // x и y НЕ обновляем - координаты управляются только через coordinates тип
         } : player
       ));
       
@@ -508,6 +509,7 @@ export default function Home() {
               setPlayers={setPlayers}
               currentUser={currentUser}
               onPlayerPositionUpdate={handlePlayerPositionUpdate}
+              updatePlayerPositionRef={updatePlayerPositionRef}
             />
           </div>
         </div>

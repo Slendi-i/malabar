@@ -829,15 +829,15 @@ wss.on('connection', (ws) => {
   ws.lastActivity = Date.now();
 });
 
-// Heartbeat механизм для очистки неактивных соединений
+// Heartbeat механизм для очистки неактивных соединений (оптимизированный)
 setInterval(() => {
   const now = Date.now();
   clients.forEach(ws => {
     if (ws.readyState === WebSocket.OPEN) {
       const timeSinceLastActivity = now - (ws.lastActivity || now);
       
-      // Если давно не было активности (более 2 минут), отправляем ping
-      if (timeSinceLastActivity > 120000) {
+      // Если давно не было активности (более 45 секунд), отправляем ping
+      if (timeSinceLastActivity > 45000) {
         try {
           ws.send(JSON.stringify({ type: 'ping', timestamp: now }));
         } catch (error) {
@@ -846,8 +846,8 @@ setInterval(() => {
         }
       }
       
-      // Если очень давно не было активности (более 5 минут), закрываем соединение
-      if (timeSinceLastActivity > 300000) {
+      // Если очень давно не было активности (более 2 минут), закрываем соединение
+      if (timeSinceLastActivity > 120000) {
         console.log('Closing inactive WebSocket connection');
         ws.close();
         clients.delete(ws);
@@ -857,7 +857,7 @@ setInterval(() => {
       clients.delete(ws);
     }
   });
-}, 60000); // Проверяем каждую минуту
+}, 20000); // Проверяем каждые 20 секунд для быстрого отклика
 
 // Function to broadcast updates to all connected clients
 function broadcastUpdate(type, data) {

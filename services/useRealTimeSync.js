@@ -5,8 +5,8 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
   const ws = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 10; // Увеличено количество попыток
-  const baseReconnectDelay = 500; // Уменьшена базовая задержка
+  const maxReconnectAttempts = 20; // Еще больше попыток для надежности
+  const baseReconnectDelay = 250; // Еще быстрее переподключение
   const heartbeatIntervalRef = useRef(null);
   const lastHeartbeatRef = useRef(Date.now());
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
@@ -24,8 +24,8 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
       const now = Date.now();
       const timeSinceLastHeartbeat = now - lastHeartbeatRef.current;
       
-      // Если давно не было сообщений (более 60 секунд), отправляем ping
-      if (timeSinceLastHeartbeat > 60000) {
+      // Если давно не было сообщений (более 20 секунд), отправляем ping  
+      if (timeSinceLastHeartbeat > 20000) {
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {
           try {
             ws.current.send(JSON.stringify({ type: 'ping', timestamp: now }));
@@ -38,7 +38,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
           }
         }
       }
-    }, 30000); // Проверяем каждые 30 секунд (увеличили интервал)
+    }, 10000); // Проверяем каждые 10 секунд для быстрого отклика
   }, []);
 
   // Функция для остановки heartbeat
@@ -138,7 +138,7 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
         
         // Attempt to reconnect if not manually closed
         if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = Math.min(baseReconnectDelay * Math.pow(1.5, reconnectAttempts.current), 10000);
+          const delay = Math.min(baseReconnectDelay * Math.pow(1.2, reconnectAttempts.current), 5000);
           console.log(`🔄 WebSocket: Переподключаемся через ${delay}ms (попытка ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
           setConnectionStatus('reconnecting');
           

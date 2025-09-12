@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Tooltip } from '@mui/material';
 import apiService from '../services/apiService';
 
-export default function PlayerIcons({ players, setPlayers, currentUser, onPlayerPositionUpdate }) {
+export default function PlayerIcons({ players, setPlayers, currentUser, onPlayerPositionUpdate, updatePlayerPositionRef }) {
   // Ensure players is an array and has the expected structure
   const safePlayers = Array.isArray(players) ? players : [];
   
@@ -24,7 +24,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
   // Debouncing для сохранения координат  
   const saveTimeoutRef = useRef(null);
   const dragTimeoutRef = useRef(null); // Защита от зависших dragState
-  const SAVE_DELAY = 500; // Задержка перед сохранением в БД
+  const SAVE_DELAY = 150; // Уменьшена задержка для быстрой синхронизации
   const DRAG_TIMEOUT = 10000; // 10 секунд - максимальное время перетаскивания
 
   // Функция для установки позиции фишки напрямую в DOM
@@ -44,7 +44,18 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     return positions.current[playerId] || { x: 0, y: 0 };
   };
   
-  // 🚀 УПРОЩЕННОЕ сохранение с debouncing
+  // 🚀 МГНОВЕННОЕ сохранение для критичных операций
+  const immediateSavePosition = useCallback(async (playerId, x, y, reason = 'immediate') => {
+    try {
+      console.log(`⚡ МГНОВЕННОЕ сохранение координат игрока ${playerId}: (${x}, ${y}) - ${reason}`);
+      await apiService.updatePlayerCoordinates(playerId, x, y);
+      console.log(`✅ Координаты игрока ${playerId} сохранены мгновенно`);
+    } catch (error) {
+      console.error(`❌ Ошибка мгновенного сохранения координат игрока ${playerId}:`, error);
+    }
+  }, []);
+
+  // 🚀 УПРОЩЕННОЕ сохранение с debouncing для обычных случаев
   const debouncedSavePosition = useCallback((playerId, x, y) => {
     // Очищаем предыдущий timeout
     if (saveTimeoutRef.current) {
@@ -130,21 +141,22 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     }
   }, [safePlayers]);
   
-  // Добавляем внешний доступ к функции обновления
+  // Добавляем внешний доступ к функции обновления через ref
   useEffect(() => {
-    if (onPlayerPositionUpdate && typeof onPlayerPositionUpdate === 'function') {
-      window.updatePlayerPosition = updatePlayerPositionFromSync;
+    if (updatePlayerPositionRef) {
+      updatePlayerPositionRef.current = updatePlayerPositionFromSync;
+      console.log('✅ PlayerIcons: updatePlayerPositionRef подключен');
     } else {
-      console.warn('❌ PlayerIcons: onPlayerPositionUpdate не передан или не функция');
+      console.warn('❌ PlayerIcons: updatePlayerPositionRef не передан');
     }
     
     return () => {
       // Cleanup
-      if (window.updatePlayerPosition) {
-        delete window.updatePlayerPosition;
+      if (updatePlayerPositionRef) {
+        updatePlayerPositionRef.current = null;
       }
     };
-  }, [updatePlayerPositionFromSync, onPlayerPositionUpdate]);
+  }, [updatePlayerPositionFromSync, updatePlayerPositionRef]);
   
   // 🧹 ПОЛНЫЙ cleanup всех timeouts при размонтировании
   useEffect(() => {
@@ -266,8 +278,8 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
     // СНАЧАЛА cleanup, ПОТОМ сохранение (чтобы не блокировать новые перетаскивания)
     forceCleanupDragState();
     
-    // 🚀 Сохраняем координаты ПОСЛЕ cleanup
-    debouncedSavePosition(currentPlayer.id, finalX, finalY);
+    // 🚀 МГНОВЕННОЕ сохранение для завершения перетаскивания 
+    immediateSavePosition(currentPlayer.id, finalX, finalY, 'drag_end');
     
   }, [safePlayers, forceCleanupDragState]);
 
