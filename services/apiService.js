@@ -99,46 +99,92 @@ class ApiService {
     return this.fetchWithErrorHandling(`${API_ENDPOINTS.PLAYERS}/${id}`);
   }
 
-  // 🚀 РАДИКАЛЬНОЕ РЕШЕНИЕ: Отдельный endpoint для координат
+  // 🚨 ЭКСТРЕННОЕ РЕШЕНИЕ: Максимально простой метод координат
   async updatePlayerCoordinates(id, x, y) {
-    console.log(`🎯 API RADICAL: Updating coordinates for player ${id}: (${x}, ${y})`);
+    console.log(`🚨 EMERGENCY API: Start updating coordinates for player ${id}: (${x}, ${y})`);
     
     try {
-      // Валидация данных
+      // Проверяем базовые данные
+      if (!id) throw new Error('No player ID provided');
+      if (x === undefined || x === null) throw new Error('No X coordinate provided');
+      if (y === undefined || y === null) throw new Error('No Y coordinate provided');
+      
+      const playerId = parseInt(id);
+      if (isNaN(playerId) || playerId <= 0) {
+        throw new Error(`Invalid player ID: ${id}`);
+      }
+      
       const validX = parseFloat(x);
       const validY = parseFloat(y);
       
       if (isNaN(validX) || isNaN(validY)) {
-        throw new Error(`Invalid coordinates: x=${x}, y=${y}`);
+        throw new Error(`Invalid coordinates: x=${x} (${typeof x}), y=${y} (${typeof y})`);
       }
       
       const coordinatesData = { x: validX, y: validY };
-      console.log(`📤 API RADICAL: Отправляем координаты:`, coordinatesData);
+      const url = `${API_ENDPOINTS.COORDINATES}/${playerId}`;
       
-      const response = await this.fetchWithErrorHandling(
-        `${API_ENDPOINTS.COORDINATES}/${id}`,
-        {
-          method: 'PATCH', // Используем PATCH для координат
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(coordinatesData),
+      console.log(`🚨 EMERGENCY API: Sending to URL: ${url}`);
+      console.log(`🚨 EMERGENCY API: Data:`, coordinatesData);
+      
+      // ПРЯМОЙ fetch без обёртки для максимальной диагностики
+      console.log('🚨 EMERGENCY API: Starting fetch...');
+      
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(coordinatesData),
+      });
+      
+      console.log(`🚨 EMERGENCY API: Response status: ${response.status}`);
+      console.log(`🚨 EMERGENCY API: Response ok: ${response.ok}`);
+      console.log(`🚨 EMERGENCY API: Response headers:`, [...response.headers.entries()]);
+      
+      const responseText = await response.text();
+      console.log(`🚨 EMERGENCY API: Response text:`, responseText);
+      
+      if (!response.ok) {
+        let errorDetails;
+        try {
+          errorDetails = JSON.parse(responseText);
+        } catch (e) {
+          errorDetails = { rawResponse: responseText };
         }
-      );
+        
+        console.error(`🚨 EMERGENCY API: HTTP ${response.status} error:`, errorDetails);
+        throw new Error(`HTTP ${response.status}: ${JSON.stringify(errorDetails)}`);
+      }
       
-      console.log(`✅ API RADICAL: Coordinates updated successfully`);
-      return response;
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (e) {
+        console.error('🚨 EMERGENCY API: Failed to parse response JSON:', e);
+        throw new Error(`Invalid JSON response: ${responseText}`);
+      }
+      
+      console.log(`🚨 EMERGENCY API: Parsed response:`, responseData);
+      
+      if (responseData.success) {
+        console.log(`✅ EMERGENCY API: Coordinates updated successfully!`);
+        return responseData;
+      } else {
+        throw new Error(`Server returned success=false: ${JSON.stringify(responseData)}`);
+      }
       
     } catch (error) {
-      console.error(`❌ API RADICAL: Failed to update coordinates for player ${id}:`, error);
+      console.error(`❌ EMERGENCY API: COMPLETE FAILURE for player ${id}:`, error);
+      console.error(`❌ EMERGENCY API: Error stack:`, error.stack);
       
-      // 🚀 FALLBACK к старому методу если новый не работает
+      // 🔄 ЕДИНСТВЕННЫЙ FALLBACK - старый endpoint
       try {
-        console.log(`🔄 API FALLBACK: Пробуем старый метод...`);
+        console.log(`🔄 EMERGENCY FALLBACK: Trying old PUT endpoint...`);
         return await this.updatePlayerCoordinatesFallback(id, x, y);
       } catch (fallbackError) {
-        console.error(`❌ API FALLBACK: Тоже не работает:`, fallbackError);
-        throw error; // Бросаем оригинальную ошибку
+        console.error(`❌ EMERGENCY FALLBACK: Also failed:`, fallbackError);
+        throw new Error(`All methods failed. Original: ${error.message}. Fallback: ${fallbackError.message}`);
       }
     }
   }
