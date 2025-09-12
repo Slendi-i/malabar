@@ -97,8 +97,10 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
     
     console.log('🚀 ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ: Инициализация...');
     
-    // Первая синхронизация сразу
-    performFullSync();
+    // Первая синхронизация через 1 секунду (даём время на загрузку)
+    setTimeout(() => {
+      performFullSync();
+    }, 1000);
     
     // Устанавливаем интервал на 10 секунд
     syncIntervalRef.current = setInterval(() => {
