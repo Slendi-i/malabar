@@ -141,7 +141,7 @@ export default function Home() {
     lastSyncTime, 
     syncOnChange, 
     isSyncing 
-  } = usePeriodicSync(players, setPlayers, currentUser, setCurrentUser);
+  } = usePeriodicSync(players, setPlayers, currentUser, setCurrentUser, isMounted);
 
   // 🚀 ОТЛАДКА: Проверяем что хук монтируется
   console.log('🔧 Periodic sync hook mounted, isSyncing:', isSyncing);

@@ -5,7 +5,7 @@ import apiService from './apiService';
  * 🚀 ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ
  * Синхронизирует все данные каждые 10 секунд вместо постоянных подключений к БД
  */
-export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser) {
+export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser, isMounted = true) {
   const syncIntervalRef = useRef(null);
   const lastSyncRef = useRef(Date.now());
   const [syncStatus, setSyncStatus] = useState('idle');
@@ -14,6 +14,12 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
 
   // 🚀 ПОЛНАЯ СИНХРОНИЗАЦИЯ ВСЕХ ДАННЫХ (стабильная функция)
   const performFullSync = useCallback(async () => {
+    // Проверяем что компонент смонтирован
+    if (!isMounted) {
+      console.log('⏸️ Синхронизация пропущена (компонент не смонтирован)');
+      return;
+    }
+    
     console.log('🔄 ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ: Начинаем полную синхронизацию...');
     setSyncStatus('syncing');
     
@@ -73,7 +79,7 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
       // Сбрасываем статус ошибки через 5 секунд
       setTimeout(() => setSyncStatus('idle'), 5000);
     }
-  }, [setPlayers, setCurrentUser, currentUser]);
+  }, [setPlayers, setCurrentUser, currentUser, isMounted]);
 
   // 🚀 ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ (при изменениях) - автоматическая
   const forceSync = useCallback(async () => {
@@ -83,9 +89,9 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
 
   // 🚀 ИНИЦИАЛИЗАЦИЯ ПЕРИОДИЧЕСКОЙ СИНХРОНИЗАЦИИ
   useEffect(() => {
-    // Проверяем что мы в браузере
-    if (typeof window === 'undefined') {
-      console.log('⏸️ Периодическая синхронизация пропущена (серверный рендеринг)');
+    // Проверяем что мы в браузере и компонент смонтирован
+    if (typeof window === 'undefined' || !isMounted) {
+      console.log('⏸️ Периодическая синхронизация пропущена (серверный рендеринг или не смонтирован)');
       return;
     }
     
@@ -109,7 +115,7 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
         console.log('🧹 ПЕРИОДИЧЕСКАЯ СИНХРОНИЗАЦИЯ: Интервал очищен');
       }
     };
-  }, [performFullSync]);
+  }, [performFullSync, isMounted]);
 
   // 🚀 СИНХРОНИЗАЦИЯ ПРИ ИЗМЕНЕНИЯХ (debounced)
   const syncOnChange = useCallback(() => {
