@@ -24,9 +24,10 @@ module.exports = {
     },
     {
       name: 'malabar-frontend',
-      script: 'npm',
-      args: 'start',
       cwd: './',
+      script: './node_modules/next/dist/bin/next',
+      args: 'start -p 3000',
+      exec_mode: 'fork',
       instances: 1,
       autorestart: true,
       watch: false,
@@ -36,7 +37,8 @@ module.exports = {
       max_restarts: 5,
       env: {
         NODE_ENV: 'production',
-        PORT: 3000
+        PORT: 3000,
+        NEXT_TELEMETRY_DISABLED: 1
       },
       error_file: './logs/frontend-error.log',
       out_file: './logs/frontend-out.log',
