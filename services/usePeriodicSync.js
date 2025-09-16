@@ -51,13 +51,18 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
         }
       });
       
-      // 2. Синхронизируем текущего пользователя
+      // 2. Синхронизируем текущего пользователя — не затираем локальный state при неуспехе
       if (currentUser && currentUser.id) {
         console.log('👤 Синхронизация текущего пользователя...');
         const userResponse = await apiService.getCurrentUser();
-        if (userResponse) {
-          setCurrentUser(userResponse);
-          console.log('👤 Пользователь синхронизирован:', userResponse.name);
+        if (userResponse && userResponse.isLoggedIn) {
+          setCurrentUser({
+            type: userResponse.type || currentUser.type,
+            id: typeof userResponse.id === 'number' ? userResponse.id : currentUser.id,
+            name: userResponse.name || userResponse.username || currentUser.name,
+            isLoggedIn: true
+          });
+          console.log('👤 Пользователь синхронизирован:', userResponse.name || userResponse.username);
         }
       }
       

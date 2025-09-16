@@ -272,18 +272,24 @@ export default function Home() {
                 localStorage.setItem('currentUser', JSON.stringify(normalized));
               }
             } else {
-              // Очищаем состояние если пользователь не авторизован
-              setCurrentUser(null);
-              if (typeof window !== 'undefined') {
-                localStorage.removeItem('currentUser');
+              // Не очищаем состояние, если пользователь уже авторизовался параллельно
+              const hasLocal = typeof window !== 'undefined' && !!localStorage.getItem('currentUser');
+              if (!currentUser && !hasLocal) {
+                setCurrentUser(null);
+                if (typeof window !== 'undefined') {
+                  localStorage.removeItem('currentUser');
+                }
               }
             }
           } catch (e) {
             console.warn('Failed to load user from API:', e);
             // При ошибке API тоже очищаем состояние
-            setCurrentUser(null);
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('currentUser');
+            const hasLocal = typeof window !== 'undefined' && !!localStorage.getItem('currentUser');
+            if (!currentUser && !hasLocal) {
+              setCurrentUser(null);
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('currentUser');
+              }
             }
           }
         }
