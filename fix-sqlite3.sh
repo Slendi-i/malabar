@@ -1,16 +1,16 @@
 #!/bin/bash
 
-echo "🔧 Исправление проблемы с sqlite3..."
+echo "🔧 Исправление проблемы с sqlite3 (invalid ELF header)..."
 
 # Переходим в директорию сервера
-cd server
+cd server || { echo "❌ Не удалось перейти в директорию server"; exit 1; }
 
 echo "🗑️ Удаляем старые модули sqlite3..."
 rm -rf node_modules/sqlite3
-rm -rf node_modules/.cache
+rm -rf node_modules/.cache || true
 
 echo "📦 Переустанавливаем sqlite3 для текущей платформы..."
-npm install sqlite3 --build-from-source
+npm install --no-audit --no-fund sqlite3 --build-from-source
 
 # Проверяем результат
 if [ $? -eq 0 ]; then
@@ -18,12 +18,14 @@ if [ $? -eq 0 ]; then
     echo "🧪 Тестируем подключение к БД..."
     node -e "
         const sqlite3 = require('sqlite3').verbose();
-        const db = new sqlite3.Database('./malabar.db', (err) => {
+        const path = require('path');
+        const dbPath = path.join(__dirname, 'malabar.db');
+        const db = new sqlite3.Database(dbPath, (err) => {
             if (err) {
                 console.error('❌ Ошибка подключения к БД:', err.message);
                 process.exit(1);
             } else {
-                console.log('✅ Подключение к БД успешно!');
+                console.log('✅ Подключение к БД успешно!', dbPath);
                 db.close();
                 process.exit(0);
             }
@@ -32,7 +34,7 @@ if [ $? -eq 0 ]; then
 else
     echo "❌ Ошибка установки sqlite3"
     echo "🔧 Пробуем rebuild..."
-    npm rebuild sqlite3
+    npm rebuild sqlite3 || exit 1
 fi
 
-echo "🎯 Готово! Теперь можете запустить ./restart-servers.sh"
+echo "🎯 Готово! Теперь можно запускать PM2 через ./fix-and-restart-server.sh"
