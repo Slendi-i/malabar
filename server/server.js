@@ -9,10 +9,19 @@ const WebSocket = require('ws');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
+// Middleware с расширенными CORS настройками для VPS
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://46.173.17.229:3000', 'http://vet-klinika-moscow.ru:3000'],
-  credentials: true // Включаем cookies для авторизации
+  origin: [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://46.173.17.229:3000',
+    'http://vet-klinika-moscow.ru:3000',
+    // Также поддерживаем https на случай если будет SSL
+    'https://46.173.17.229:3000',
+    'https://vet-klinika-moscow.ru:3000'
+  ],
+  credentials: true, // Включаем cookies для авторизации
+  optionsSuccessStatus: 200 // Поддержка legacy браузеров
 }));
 app.use(cookieParser());
 app.use(bodyParser.json({ limit: '50mb' }));

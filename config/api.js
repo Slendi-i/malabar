@@ -1,30 +1,45 @@
 // API Configuration
-// Flexible configuration for different environments
+// Robust configuration for VPS deployment
 
-// Определяем базовый URL API
+// Определяем базовый URL API с улучшенной логикой для VPS
 const getApiBaseUrl = () => {
-  // Если мы в браузере, пытаемся определить на основе текущего хоста
+  // Если мы в браузере, определяем на основе текущего хоста
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
+    const port = window.location.port;
     
-    // Если это известные домены или IP
-    if (host === 'vet-klinika-moscow.ru' || host === '46.173.17.229') {
-      return `http://${host}:3001`;
+    console.log('🔧 API Config - определяем URL для хоста:', host, 'порт:', port);
+    
+    // VPS сервер - известные домены/IP
+    if (host === 'vet-klinika-moscow.ru') {
+      const apiUrl = 'http://vet-klinika-moscow.ru:3001';
+      console.log('✅ API Config - используем домен VPS:', apiUrl);
+      return apiUrl;
     }
     
-    // Для локальной разработки
+    if (host === '46.173.17.229') {
+      const apiUrl = 'http://46.173.17.229:3001';
+      console.log('✅ API Config - используем IP VPS:', apiUrl);
+      return apiUrl;
+    }
+    
+    // Локальная разработка
     if (host === 'localhost' || host === '127.0.0.1') {
-      return 'http://localhost:3001';
+      const apiUrl = 'http://localhost:3001';
+      console.log('✅ API Config - локальная разработка:', apiUrl);
+      return apiUrl;
     }
     
-    // Fallback - пытаемся использовать текущий хост
-    return `http://${host}:3001`;
+    // Fallback - если работаем на нестандартном хосте, пробуем с VPS IP
+    console.warn('⚠️ API Config - неизвестный хост, используем VPS IP как fallback');
+    return 'http://46.173.17.229:3001';
   }
   
-  // Server-side rendering или другие случаи
-  return process.env.NODE_ENV === 'production'
-    ? 'http://46.173.17.229:3001'  // VPS сервер по умолчанию
-    : 'http://localhost:3001';     // Локальная разработка
+  // Server-side rendering - принудительно используем VPS на продакшене
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.VPS_MODE === 'true';
+  const apiUrl = isProduction ? 'http://46.173.17.229:3001' : 'http://localhost:3001';
+  console.log('🖥️ API Config - SSR режим:', apiUrl, '(production:', isProduction, ')');
+  return apiUrl;
 };
 
 const API_BASE_URL = getApiBaseUrl();

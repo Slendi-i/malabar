@@ -1,27 +1,66 @@
 import { API_ENDPOINTS } from '../config/api';
 
 class ApiService {
-  // Generic fetch wrapper with error handling
-    async fetchWithErrorHandling(url, options = {}) {
+  // Generic fetch wrapper with enhanced error handling for VPS
+  async fetchWithErrorHandling(url, options = {}) {
+    const startTime = Date.now();
+    
     try {
+      console.log('🌐 API Request:', url, options.method || 'GET');
+      
       const response = await fetch(url, {
         credentials: 'include', // Включаем cookies для авторизации
         headers: {
           'Content-Type': 'application/json',
           ...options.headers
         },
+        timeout: 15000, // 15 секунд таймаут
         ...options
       });
       
+      const responseTime = Date.now() - startTime;
+      console.log(`⏱️ API Response time: ${responseTime}ms`);
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`❌ HTTP ${response.status}:`, errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
       }
       
-      return await response.json();
+      const data = await response.json();
+      console.log('✅ API Success:', url, `(${responseTime}ms)`);
+      return data;
+      
     } catch (error) {
-      console.error('API request failed:', error);
+      const responseTime = Date.now() - startTime;
+      
+      // Детальная диагностика ошибок сети
+      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        console.error(`🔥 СЕТЕВАЯ ОШИБКА (${responseTime}ms):`, {
+          url,
+          error: error.message,
+          possibleCauses: [
+            'Сервер не запущен на порту 3001',
+            'CORS блокирует запрос',
+            'Неправильный URL API',
+            'Проблемы с сетью'
+          ]
+        });
+        throw new Error(`Не удается подключиться к серверу. Проверьте запущен ли сервер на порту 3001.`);
+      }
+      
+      if (error.name === 'AbortError' || error.message.includes('timeout')) {
+        console.error(`⏰ ТАЙМАУТ (${responseTime}ms):`, url);
+        throw new Error(`Сервер не отвечает в течение 15 секунд. Попробуйте позже.`);
+      }
+      
+      console.error(`❌ API Error (${responseTime}ms):`, {
+        url,
+        error: error.message,
+        stack: error.stack
+      });
+      
       // НЕ возвращаем пустые данные - это заставит frontend перезаписать БД!
-      // Пусть frontend сам решает что делать при ошибке
       throw error;
     }
   }
