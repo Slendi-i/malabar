@@ -4,6 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const fs = require('fs');
 const WebSocket = require('ws');
 
 const app = express();
@@ -27,12 +28,27 @@ app.use(cookieParser());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
-// Database setup
-const db = new sqlite3.Database('./malabar.db', (err) => {
+// Database setup with error handling and fallback
+const dbPath = path.join(__dirname, 'malabar.db');
+console.log('🗃️ Attempting to connect to database:', dbPath);
+
+const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
-    console.error('Error opening database:', err.message);
+    console.error('❌ Error opening database:', err.message);
+    console.error('❌ Database path:', dbPath);
+    console.error('❌ Current working directory:', process.cwd());
+    console.error('❌ __dirname:', __dirname);
+    
+    // Попробуем создать директорию если её нет
+    const dbDir = path.dirname(dbPath);
+    if (!fs.existsSync(dbDir)) {
+      console.log('📁 Creating database directory:', dbDir);
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
+    
+    process.exit(1); // Выходим если не можем подключиться к БД
   } else {
-    console.log('Connected to SQLite database');
+    console.log('✅ Connected to SQLite database:', dbPath);
   }
 });
 
@@ -900,10 +916,24 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Start server with WebSocket support
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log('Database initialized');
+// Start server with enhanced error handling
+const server = app.listen(PORT, '0.0.0.0', (err) => {
+  if (err) {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
+  }
+  
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ Server URL: http://0.0.0.0:${PORT}`);
+  console.log(`✅ API Health: http://0.0.0.0:${PORT}/api/health`);
+  console.log('✅ Database initialized');
+  console.log('✅ WebSocket server ready');
+  
+  // Проверяем что сервер действительно слушает
+  const address = server.address();
+  if (address) {
+    console.log(`🌐 Server listening on ${address.address}:${address.port}`);
+  }
 });
 
 // WebSocket server for real-time updates

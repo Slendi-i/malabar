@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'malabar-backend',
+      name: 'malabar-server',
       script: './server/server.js',
       cwd: './',
       instances: 1,
