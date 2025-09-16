@@ -21,6 +21,18 @@ export default function Home() {
   const containerRef = useRef(null);
   const imageRef = useRef(null);
   const dataLoadedRef = useRef(false); // Флаг что данные уже загружены
+  const authLockRef = useRef(0); // Блокировка сброса авторизации
+  // Защищённая установка пользователя: блокируем сброс при активной блокировке
+  const safeSetCurrentUser = useCallback((nextUser) => {
+    const now = Date.now();
+    const lockUntil = authLockRef.current || 0;
+    const isReset = !nextUser || nextUser === null || nextUser.isLoggedIn === false;
+    if (isReset && now < lockUntil) {
+      console.warn('⛔ Блокируем сброс авторизации во время lock-интервала');
+      return;
+    }
+    setCurrentUser(nextUser);
+  }, []);
   
   // 🚀 ОПТИМИЗАЦИЯ: Убрали автоматическое сохранение
   // Теперь данные сохраняются только при явных действиях пользователя
@@ -373,7 +385,12 @@ export default function Home() {
         role: userData.type,
         playerId: userData.type === 'player' ? userData.id : null
       });
-      setCurrentUser(userData);
+      // Ставим защитную блокировку на 60 секунд от любых внешних сбросов
+      authLockRef.current = Date.now() + 60000;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('auth_lock_until', String(authLockRef.current));
+      }
+      safeSetCurrentUser(userData);
       
       // Сохраняем в localStorage для persistence
       if (typeof window !== 'undefined') {
@@ -399,7 +416,11 @@ export default function Home() {
         }
       }
       
-      setCurrentUser(fallbackUserData);
+      authLockRef.current = Date.now() + 60000;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('auth_lock_until', String(authLockRef.current));
+      }
+      safeSetCurrentUser(fallbackUserData);
       // Сохраняем fallback данные в localStorage
       if (typeof window !== 'undefined') {
         localStorage.setItem('currentUser', JSON.stringify(fallbackUserData));
@@ -428,6 +449,11 @@ export default function Home() {
     }
     
     // Очищаем состояние и localStorage
+    // Явный логаут: снимаем блок и очищаем стейт
+    authLockRef.current = 0;
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth_lock_until');
+    }
     setCurrentUser(null);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('currentUser');
