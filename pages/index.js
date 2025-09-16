@@ -263,35 +263,49 @@ export default function Home() {
         
         // Load players from API ОДИН раз
         console.log('📡 Загружаем игроков с API...');
-        const response = await apiService.getPlayers();
-        
-        // Проверяем что получили корректный ответ с данными игроков
-        if (response && response.players && Array.isArray(response.players)) {
+        let response;
+        try {
+          response = await apiService.getPlayers();
+        } catch (e) {
+          console.warn('⚠️ API недоступен, используем локальный fallback игроков');
+        }
+
+        const buildFallbackPlayers = () => {
+          return Array.from({ length: 12 }).map((_, idx) => {
+            const id = idx + 1;
+            return {
+              id,
+              name: `Player ${id}`,
+              avatar: '',
+              socialLinks: { twitch: '', telegram: '', discord: '' },
+              stats: { wins: 0, rerolls: 0, drops: 0 },
+              games: [],
+              isOnline: false,
+              position: id
+            };
+          });
+        };
+
+        // Проверяем что получили корректный ответ с данными игроков, иначе — локальный fallback
+        if (response && response.players && Array.isArray(response.players) && response.players.length > 0) {
           const normalizedPlayers = response.players.map(player => ({
             ...player,
-            // Нормализуем аватар - убираем дублирование полей image/avatar
             avatar: player.avatar || '',
             games: Array.isArray(player.games) ? player.games : [],
-            stats: player.stats || {
-              wins: 0,
-              rerolls: 0,
-              drops: 0,
-              position: player.id
-            },
-            // 🚨 РАДИКАЛЬНО: НЕ ЗАГРУЖАЕМ КООРДИНАТЫ В REACT STATE
-            // Позиции будут загружены напрямую в DOM через API в PlayerIcons
+            stats: player.stats || { wins: 0, rerolls: 0, drops: 0 },
+            position: player.position || player.id
           }));
-          
           setPlayers(normalizedPlayers);
-          dataLoadedRef.current = true; // 🔒 Блокируем повторные загрузки
-          
           console.log('✅ Данные загружены ОДИН раз:', normalizedPlayers?.length, 'игроков');
           setSyncStatus('synchronized');
         } else {
-          console.error('❌ Некорректный ответ от API:', response);
-          setSyncStatus('error');
-          // НЕ создаем дефолтных игроков - это может перезаписать БД!
+          const fallbackPlayers = buildFallbackPlayers();
+          setPlayers(fallbackPlayers);
+          console.log('✅ Fallback: создан локальный список игроков:', fallbackPlayers.length);
+          setSyncStatus('fallback');
         }
+
+        dataLoadedRef.current = true; // 🔒 Блокируем повторные загрузки
         
         // Пытаемся загрузить пользователя из API только если не восстановили из localStorage
         if (!restoredUser) {

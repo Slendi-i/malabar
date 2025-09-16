@@ -190,7 +190,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
       // Небольшая задержка чтобы DOM элементы успели создаться
       setTimeout(() => {
         // Сначала пробуем загрузить из API
-        loadPlayerCoordinatesFromAPI().then(() => {
+        loadPlayerCoordinatesFromAPI().catch(() => {}).then(() => {
           // Для игроков без координат в БД устанавливаем сетку
           safePlayers.forEach((player, index) => {
             const currentPos = getPlayerPosition(player.id);
