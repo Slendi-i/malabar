@@ -513,7 +513,7 @@ export default function Home() {
 
       {/* Кнопка авторизации */}
       <div className="absolute top-4 right-20 z-50">
-        {currentUser && currentUser.name && currentUser.isLoggedIn ? (
+        {currentUser && (currentUser.type === 'admin' || currentUser.type === 'player') ? (
           <Button 
             variant="contained" 
             onClick={handleLogout}
@@ -541,7 +541,7 @@ export default function Home() {
               boxShadow: 'none'
             }}
           >
-            Выйти ({currentUser.name})
+            Выйти ({currentUser.name || (currentUser.type === 'admin' ? 'Администратор' : 'Пользователь')})
           </Button>
         ) : (
           <Button 

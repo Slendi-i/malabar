@@ -292,6 +292,7 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
 
   const canDrag = (playerId) => {
     if (!currentUser || !playerId) return false;
+    if (!currentUser.isLoggedIn) return false; // Требуется подтвержденный логин
     
     // Администратор может перетаскивать все фишки
     if (currentUser.type === 'admin') return true;
