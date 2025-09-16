@@ -934,6 +934,12 @@ app.post('/api/users/current', (req, res) => {
           sameSite: 'lax',
           maxAge: 30 * 24 * 60 * 60 * 1000
         });
+        // Дополнительная читабельная cookie для быстрого UI (не содержит секретов)
+        res.cookie('auth_view', JSON.stringify({ username, role: role || null, playerId: Number.isInteger(playerId) ? playerId : null, t: Date.now() }), {
+          httpOnly: false,
+          sameSite: 'lax',
+          maxAge: 24 * 60 * 60 * 1000
+        });
       } catch (e) {
         console.warn('Failed to set auth cookie:', e);
       }
@@ -959,6 +965,7 @@ app.post('/api/users/current', (req, res) => {
       // Очищаем cookie авторизации
       try {
         res.clearCookie('auth');
+        res.clearCookie('auth_view');
       } catch (e) {}
 
       res.json({ message: 'Logout successful' });

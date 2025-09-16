@@ -194,6 +194,31 @@ export default function Home() {
       if (typeof window === 'undefined') return null;
       
       try {
+        // 1) Быстрое восстановление из читаемой cookie (auth_view)
+        const cookies = document.cookie ? document.cookie.split(';').map(v => v.trim()) : [];
+        const authViewCookie = cookies.find(c => c.startsWith('auth_view='));
+        if (authViewCookie) {
+          try {
+            const raw = decodeURIComponent(authViewCookie.split('=')[1]);
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.username) {
+              const cookieUser = {
+                type: parsed.role || 'viewer',
+                id: Number.isInteger(parsed.playerId) ? parsed.playerId : (parsed.role === 'admin' ? 0 : -1),
+                name: parsed.username,
+                isLoggedIn: true
+              };
+              authLockRef.current = Date.now() + 60000;
+              localStorage.setItem('auth_lock_until', String(authLockRef.current));
+              localStorage.setItem('currentUser', JSON.stringify(cookieUser));
+              setCurrentUser(cookieUser);
+              return cookieUser;
+            }
+          } catch (e) {
+            // игнорируем невалидную cookie
+          }
+        }
+        // 2) Восстановление из localStorage
         const savedUser = localStorage.getItem('currentUser');
         if (savedUser) {
           const userData = JSON.parse(savedUser);
