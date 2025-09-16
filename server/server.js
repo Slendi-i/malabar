@@ -884,32 +884,10 @@ app.get('/api/users/current', (req, res) => {
       }
     }
   } catch (e) {
-    // игнорируем и переходим к БД
+    // игнорируем и отвечаем 401 ниже
   }
-  
-  // 2) Fallback: БД (совместимость со старой логикой)
-  db.get('SELECT * FROM users WHERE isLoggedIn = 1 ORDER BY lastLogin DESC LIMIT 1', (err, row) => {
-    if (err) {
-      console.error('Database error:', err);
-      return res.status(500).json({ error: 'Database error' });
-    }
-    
-    if (!row) {
-      // Возвращаем 401 если пользователь не авторизован
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-    
-    // Маппинг к фронтенд-модели пользователя
-    const result = {
-      id: row.playerId != null ? row.playerId : row.id,
-      name: row.username,
-      username: row.username,
-      isLoggedIn: Boolean(row.isLoggedIn),
-      type: row.role || (row.username === 'Администратор' ? 'admin' : 'viewer'),
-      lastLogin: row.lastLogin
-    };
-    res.json(result);
-  });
+  // 2) Без валидной cookie — не авторизован
+  return res.status(401).json({ error: 'Not authenticated' });
 });
 
 // Set current user (login/logout)

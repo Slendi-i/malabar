@@ -297,39 +297,21 @@ export default function Home() {
         if (!restoredUser) {
           try {
             const apiUser = await apiService.getCurrentUser();
-            // Если API вернул null (не авторизован) или Guest - очищаем состояние
-            if (apiUser && apiUser.username && apiUser.username !== 'Guest' && apiUser.isLoggedIn) {
+            if (apiUser && apiUser.username && apiUser.isLoggedIn) {
               const normalized = {
                 type: apiUser.type || (apiUser.name === 'Администратор' ? 'admin' : 'viewer'),
                 id: typeof apiUser.id === 'number' ? apiUser.id : -1,
                 name: apiUser.name || apiUser.username,
                 isLoggedIn: true
               };
-              setCurrentUser(normalized);
-              // Сохраняем в localStorage
+              safeSetCurrentUser(normalized);
               if (typeof window !== 'undefined') {
                 localStorage.setItem('currentUser', JSON.stringify(normalized));
-              }
-            } else {
-              // Не очищаем состояние, если пользователь уже авторизовался параллельно
-              const hasLocal = typeof window !== 'undefined' && !!localStorage.getItem('currentUser');
-              if (!currentUser && !hasLocal) {
-                setCurrentUser(null);
-                if (typeof window !== 'undefined') {
-                  localStorage.removeItem('currentUser');
-                }
               }
             }
           } catch (e) {
             console.warn('Failed to load user from API:', e);
-            // При ошибке API тоже очищаем состояние
-            const hasLocal = typeof window !== 'undefined' && !!localStorage.getItem('currentUser');
-            if (!currentUser && !hasLocal) {
-              setCurrentUser(null);
-              if (typeof window !== 'undefined') {
-                localStorage.removeItem('currentUser');
-              }
-            }
+            // Ничего не сбрасываем
           }
         }
       } catch (error) {
