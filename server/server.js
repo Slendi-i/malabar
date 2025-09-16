@@ -143,6 +143,8 @@ db.serialize(() => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
       isLoggedIn INTEGER DEFAULT 0,
+      role TEXT DEFAULT NULL,
+      playerId INTEGER DEFAULT NULL,
       lastLogin DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `, (err) => {
@@ -150,6 +152,18 @@ db.serialize(() => {
       console.error('Error creating users table:', err);
     } else {
       console.log('Users table created/verified');
+      // Ensure new columns exist for legacy DBs
+      db.all('PRAGMA table_info(users)', (e2, cols) => {
+        if (e2) return;
+        const hasRole = cols.some(c => c.name === 'role');
+        const hasPlayerId = cols.some(c => c.name === 'playerId');
+        if (!hasRole) {
+          db.run('ALTER TABLE users ADD COLUMN role TEXT DEFAULT NULL');
+        }
+        if (!hasPlayerId) {
+          db.run('ALTER TABLE users ADD COLUMN playerId INTEGER DEFAULT NULL');
+        }
+      });
     }
   });
 });
@@ -860,25 +874,29 @@ app.get('/api/users/current', (req, res) => {
       return res.status(401).json({ error: 'Not authenticated' });
     }
     
-    res.json({
-      id: row.id,
+    // Маппинг к фронтенд-модели пользователя
+    const result = {
+      id: row.playerId != null ? row.playerId : row.id,
+      name: row.username,
       username: row.username,
       isLoggedIn: Boolean(row.isLoggedIn),
+      type: row.role || (row.username === 'Администратор' ? 'admin' : 'viewer'),
       lastLogin: row.lastLogin
-    });
+    };
+    res.json(result);
   });
 });
 
 // Set current user (login/logout)
 app.post('/api/users/current', (req, res) => {
-  const { username, isLoggedIn } = req.body;
+  const { username, isLoggedIn, role, playerId } = req.body;
   
   if (isLoggedIn) {
     // Login: Create or update user
     db.run(`
-      INSERT OR REPLACE INTO users (username, isLoggedIn, lastLogin)
-      VALUES (?, 1, CURRENT_TIMESTAMP)
-    `, [username], function(err) {
+      INSERT OR REPLACE INTO users (username, isLoggedIn, role, playerId, lastLogin)
+      VALUES (?, 1, ?, ?, CURRENT_TIMESTAMP)
+    `, [username, role || null, Number.isInteger(playerId) ? playerId : null], function(err) {
       if (err) {
         console.error('Login error:', err);
         return res.status(500).json({ error: 'Login failed' });
@@ -887,10 +905,12 @@ app.post('/api/users/current', (req, res) => {
       // Broadcast user login to all connected clients
       broadcastUpdate('user_logged_in', { 
         username,
-        userId: this.lastID 
+        userId: this.lastID,
+        role: role || null,
+        playerId: Number.isInteger(playerId) ? playerId : null
       });
       
-      res.json({ message: 'Login successful', userId: this.lastID });
+      res.json({ message: 'Login successful', userId: this.lastID, role: role || null, playerId: Number.isInteger(playerId) ? playerId : null });
     });
   } else {
     // Logout: Set all users to logged out

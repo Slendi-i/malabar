@@ -260,10 +260,16 @@ export default function Home() {
             const apiUser = await apiService.getCurrentUser();
             // Если API вернул null (не авторизован) или Guest - очищаем состояние
             if (apiUser && apiUser.username && apiUser.username !== 'Guest' && apiUser.isLoggedIn) {
-              setCurrentUser(apiUser);
+              const normalized = {
+                type: apiUser.type || (apiUser.name === 'Администратор' ? 'admin' : 'viewer'),
+                id: typeof apiUser.id === 'number' ? apiUser.id : -1,
+                name: apiUser.name || apiUser.username,
+                isLoggedIn: true
+              };
+              setCurrentUser(normalized);
               // Сохраняем в localStorage
               if (typeof window !== 'undefined') {
-                localStorage.setItem('currentUser', JSON.stringify(apiUser));
+                localStorage.setItem('currentUser', JSON.stringify(normalized));
               }
             } else {
               // Очищаем состояние если пользователь не авторизован
@@ -337,24 +343,27 @@ export default function Home() {
       let userData;
       
       if (login === 'admin' && password === 'admin') {
-        userData = { type: 'admin', id: 0, name: 'Администратор' };
+        userData = { type: 'admin', id: 0, name: 'Администратор', isLoggedIn: true };
       } else {
         const playerNumber = parseInt(login.replace('Player', ''));
         if (!isNaN(playerNumber) && login === `Player${playerNumber}` && password === `Player${playerNumber}`) {
           userData = {
             type: 'player',
             id: playerNumber,
-            name: `Игрок ${playerNumber}`
+            name: `Игрок ${playerNumber}`,
+            isLoggedIn: true
           };
         } else {
-          userData = { type: 'viewer', id: -1, name: 'Зритель' };
+          userData = { type: 'viewer', id: -1, name: 'Зритель', isLoggedIn: true };
         }
       }
       
       // Save user to API (fix format for server)
       await apiService.setCurrentUser({
         username: userData.name,
-        isLoggedIn: true
+        isLoggedIn: true,
+        role: userData.type,
+        playerId: userData.type === 'player' ? userData.id : null
       });
       setCurrentUser(userData);
       
@@ -367,17 +376,18 @@ export default function Home() {
       // Fallback to local state if API fails
       let fallbackUserData;
       if (login === 'admin' && password === 'admin') {
-        fallbackUserData = { type: 'admin', id: 0, name: 'Администратор' };
+        fallbackUserData = { type: 'admin', id: 0, name: 'Администратор', isLoggedIn: true };
       } else {
         const playerNumber = parseInt(login.replace('Player', ''));
         if (!isNaN(playerNumber) && login === `Player${playerNumber}` && password === `Player${playerNumber}`) {
           fallbackUserData = {
             type: 'player',
             id: playerNumber,
-            name: `Игрок ${playerNumber}`
+            name: `Игрок ${playerNumber}`,
+            isLoggedIn: true
           };
         } else {
-          fallbackUserData = { type: 'viewer', id: -1, name: 'Зритель' };
+          fallbackUserData = { type: 'viewer', id: -1, name: 'Зритель', isLoggedIn: true };
         }
       }
       
@@ -391,7 +401,9 @@ export default function Home() {
       try {
         await apiService.setCurrentUser({
           username: fallbackUserData.name,
-          isLoggedIn: true
+          isLoggedIn: true,
+          role: fallbackUserData.type,
+          playerId: fallbackUserData.type === 'player' ? fallbackUserData.id : null
         });
       } catch (apiError) {
         console.warn('Fallback API save failed, using localStorage only:', apiError);
