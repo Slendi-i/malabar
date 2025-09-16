@@ -291,18 +291,26 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
   }, []);
 
   const canDrag = (playerId) => {
-    if (!currentUser || !playerId) return false;
-    if (!currentUser.isLoggedIn) return false; // Требуется подтвержденный логин
+    if (!playerId) return false;
+    // Читаем роль напрямую из cookie (быстро и надёжно)
+    let role = currentUser?.type;
+    let uid = currentUser?.id;
+    try {
+      const cookies = typeof document !== 'undefined' ? (document.cookie ? document.cookie.split(';').map(v => v.trim()) : []) : [];
+      const authViewCookie = cookies.find(c => c.startsWith('auth_view='));
+      if (authViewCookie) {
+        const raw = decodeURIComponent(authViewCookie.split('=')[1]);
+        const parsed = JSON.parse(raw);
+        if (parsed) {
+          role = parsed.role || role;
+          uid = Number.isInteger(parsed.playerId) ? parsed.playerId : uid;
+        }
+      }
+    } catch (e) {}
     
-    // Администратор может перетаскивать все фишки
-    if (currentUser.type === 'admin') return true;
-    
-    // Игрок может перетаскивать только свою фишку
-    if (currentUser.type === 'player') {
-      return String(currentUser.id) === String(playerId);
-    }
-    
-    // Зрители не могут перетаскивать фишки
+    if (!role) return false;
+    if (role === 'admin') return true;
+    if (role === 'player') return String(uid) === String(playerId);
     return false;
   };
 
