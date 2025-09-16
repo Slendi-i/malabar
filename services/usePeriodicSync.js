@@ -51,8 +51,9 @@ export function usePeriodicSync(players, setPlayers, currentUser, setCurrentUser
         }
       });
       
-      // 2. Синхронизируем текущего пользователя — не затираем локальный state при неуспехе
-      if (currentUser && currentUser.id) {
+      // 2. Синхронизируем текущего пользователя — только если нет локально сохранённого пользователя
+      const hasLocalUser = typeof window !== 'undefined' && !!localStorage.getItem('currentUser');
+      if (!hasLocalUser && currentUser && (currentUser.id || currentUser.type)) {
         console.log('👤 Синхронизация текущего пользователя...');
         const userResponse = await apiService.getCurrentUser();
         if (userResponse && userResponse.isLoggedIn) {

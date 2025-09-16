@@ -185,7 +185,9 @@ export default function Home() {
         const savedUser = localStorage.getItem('currentUser');
         if (savedUser) {
           const userData = JSON.parse(savedUser);
-          setCurrentUser(userData);
+          // Усилили: принудительно проставляем isLoggedIn=true, не даём синхронизации сбросить
+          const normalizedLocal = { ...userData, isLoggedIn: true };
+          setCurrentUser(normalizedLocal);
           return userData;
         }
       } catch (error) {

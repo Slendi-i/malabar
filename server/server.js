@@ -913,7 +913,7 @@ app.post('/api/users/current', (req, res) => {
       res.json({ message: 'Login successful', userId: this.lastID, role: role || null, playerId: Number.isInteger(playerId) ? playerId : null });
     });
   } else {
-    // Logout: Set all users to logged out
+    // Logout: Set all users to logged out (мягко, только если явно logout)
     db.run('UPDATE users SET isLoggedIn = 0', (err) => {
       if (err) {
         console.error('Logout error:', err);
