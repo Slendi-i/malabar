@@ -863,6 +863,31 @@ app.post('/api/players/:id/social', (req, res) => {
 
 // Get current user
 app.get('/api/users/current', (req, res) => {
+  // 1) Приоритет: cookie авторизации
+  try {
+    if (req.cookies && req.cookies.auth) {
+      try {
+        const cookieUser = JSON.parse(req.cookies.auth);
+        if (cookieUser && cookieUser.username) {
+          return res.json({
+            id: Number.isInteger(cookieUser.playerId) ? cookieUser.playerId : 0,
+            name: cookieUser.username,
+            username: cookieUser.username,
+            isLoggedIn: true,
+            type: cookieUser.role || 'viewer',
+            lastLogin: new Date().toISOString()
+          });
+        }
+      } catch (e) {
+        // Невалидная cookie — очищаем
+        res.clearCookie('auth');
+      }
+    }
+  } catch (e) {
+    // игнорируем и переходим к БД
+  }
+  
+  // 2) Fallback: БД (совместимость со старой логикой)
   db.get('SELECT * FROM users WHERE isLoggedIn = 1 ORDER BY lastLogin DESC LIMIT 1', (err, row) => {
     if (err) {
       console.error('Database error:', err);
@@ -902,6 +927,17 @@ app.post('/api/users/current', (req, res) => {
         return res.status(500).json({ error: 'Login failed' });
       }
       
+      // Устанавливаем httpOnly cookie авторизации (30 дней)
+      try {
+        res.cookie('auth', JSON.stringify({ username, role: role || null, playerId: Number.isInteger(playerId) ? playerId : null }), {
+          httpOnly: true,
+          sameSite: 'lax',
+          maxAge: 30 * 24 * 60 * 60 * 1000
+        });
+      } catch (e) {
+        console.warn('Failed to set auth cookie:', e);
+      }
+
       // Broadcast user login to all connected clients
       broadcastUpdate('user_logged_in', { 
         username,
@@ -920,6 +956,11 @@ app.post('/api/users/current', (req, res) => {
         return res.status(500).json({ error: 'Logout failed' });
       }
       
+      // Очищаем cookie авторизации
+      try {
+        res.clearCookie('auth');
+      } catch (e) {}
+
       res.json({ message: 'Logout successful' });
     });
   }
