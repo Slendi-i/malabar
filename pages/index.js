@@ -257,8 +257,8 @@ export default function Home() {
           console.log('✅ API сервер доступен');
         } catch (healthError) {
           console.error('❌ API сервер недоступен:', healthError);
+          // Не прерываем загрузку — перейдем к локальному fallback игроков
           setSyncStatus('error');
-          throw new Error('API сервер недоступен. Проверьте что сервер запущен на порту 3001.');
         }
         
         // Load players from API ОДИН раз

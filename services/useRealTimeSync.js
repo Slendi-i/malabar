@@ -97,7 +97,14 @@ export function useRealTimeSync(onPlayersUpdate, onUserUpdate) {
       setConnectionStatus('connecting');
       isConnectingRef.current = true;
       
-      ws.current = new WebSocket(API_ENDPOINTS.WEBSOCKET);
+      try {
+        ws.current = new WebSocket(API_ENDPOINTS.WEBSOCKET);
+      } catch (e) {
+        console.warn('WebSocket init failed, fallback to disconnected mode:', e);
+        setConnectionStatus('failed');
+        isConnectingRef.current = false;
+        return;
+      }
 
       ws.current.onopen = () => {
         console.log('🔗 WebSocket: Соединение установлено!');
