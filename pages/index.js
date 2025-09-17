@@ -194,30 +194,23 @@ export default function Home() {
       if (typeof window === 'undefined') return null;
       
       try {
-        // 1) Быстрое восстановление из читаемой cookie (auth_view)
-        const cookies = document.cookie ? document.cookie.split(';').map(v => v.trim()) : [];
-        const authViewCookie = cookies.find(c => c.startsWith('auth_view='));
-        if (authViewCookie) {
-          try {
-            const raw = decodeURIComponent(authViewCookie.split('=')[1]);
-            const parsed = JSON.parse(raw);
-            if (parsed && parsed.username) {
-              const cookieUser = {
-                type: parsed.role || 'viewer',
-                id: Number.isInteger(parsed.playerId) ? parsed.playerId : (parsed.role === 'admin' ? 0 : -1),
-                name: parsed.username,
+        // 1) Пытаемся запросить пользователя с сервера (если есть session cookie)
+        try {
+          apiService.getCurrentUser().then(apiUser => {
+            if (apiUser && apiUser.username && apiUser.isLoggedIn) {
+              const normalized = {
+                type: apiUser.type || 'viewer',
+                id: typeof apiUser.id === 'number' ? apiUser.id : -1,
+                name: apiUser.name || apiUser.username,
                 isLoggedIn: true
               };
               authLockRef.current = Date.now() + 60000;
               localStorage.setItem('auth_lock_until', String(authLockRef.current));
-              localStorage.setItem('currentUser', JSON.stringify(cookieUser));
-              setCurrentUser(cookieUser);
-              return cookieUser;
+              localStorage.setItem('currentUser', JSON.stringify(normalized));
+              setCurrentUser(normalized);
             }
-          } catch (e) {
-            // игнорируем невалидную cookie
-          }
-        }
+          }).catch(() => {});
+        } catch (e) {}
         // 2) Восстановление из localStorage
         const savedUser = localStorage.getItem('currentUser');
         if (savedUser) {
@@ -381,83 +374,25 @@ export default function Home() {
   // Обработчики авторизации
   const handleLogin = async (login, password) => {
     try {
-      let userData;
-      
-      if (login === 'admin' && password === 'admin') {
-        userData = { type: 'admin', id: 0, name: 'Администратор', isLoggedIn: true };
-      } else {
-        const playerNumber = parseInt(login.replace('Player', ''));
-        if (!isNaN(playerNumber) && login === `Player${playerNumber}` && password === `Player${playerNumber}`) {
-          userData = {
-            type: 'player',
-            id: playerNumber,
-            name: `Игрок ${playerNumber}`,
-            isLoggedIn: true
-          };
-        } else {
-          userData = { type: 'viewer', id: -1, name: 'Зритель', isLoggedIn: true };
+      await apiService.login(login, password);
+      // После успешного логина спрашиваем сервер о текущем пользователе
+      const apiUser = await apiService.getCurrentUser();
+      if (apiUser && apiUser.username && apiUser.isLoggedIn) {
+        const normalized = {
+          type: apiUser.type || 'viewer',
+          id: typeof apiUser.id === 'number' ? apiUser.id : -1,
+          name: apiUser.name || apiUser.username,
+          isLoggedIn: true
+        };
+        authLockRef.current = Date.now() + 60000;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('auth_lock_until', String(authLockRef.current));
+          localStorage.setItem('currentUser', JSON.stringify(normalized));
         }
-      }
-      
-      // Save user to API (fix format for server)
-      await apiService.setCurrentUser({
-        username: userData.name,
-        isLoggedIn: true,
-        role: userData.type,
-        playerId: userData.type === 'player' ? userData.id : null
-      });
-      // Ставим защитную блокировку на 60 секунд от любых внешних сбросов
-      authLockRef.current = Date.now() + 60000;
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('auth_lock_until', String(authLockRef.current));
-      }
-      safeSetCurrentUser(userData);
-      
-      // Сохраняем в localStorage для persistence
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('currentUser', JSON.stringify(userData));
+        safeSetCurrentUser(normalized);
       }
     } catch (error) {
       console.error('Login failed:', error);
-      // Fallback to local state if API fails
-      let fallbackUserData;
-      if (login === 'admin' && password === 'admin') {
-        fallbackUserData = { type: 'admin', id: 0, name: 'Администратор', isLoggedIn: true };
-      } else {
-        const playerNumber = parseInt(login.replace('Player', ''));
-        if (!isNaN(playerNumber) && login === `Player${playerNumber}` && password === `Player${playerNumber}`) {
-          fallbackUserData = {
-            type: 'player',
-            id: playerNumber,
-            name: `Игрок ${playerNumber}`,
-            isLoggedIn: true
-          };
-        } else {
-          fallbackUserData = { type: 'viewer', id: -1, name: 'Зритель', isLoggedIn: true };
-        }
-      }
-      
-      authLockRef.current = Date.now() + 60000;
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('auth_lock_until', String(authLockRef.current));
-      }
-      safeSetCurrentUser(fallbackUserData);
-      // Сохраняем fallback данные в localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('currentUser', JSON.stringify(fallbackUserData));
-      }
-      
-      // Пытаемся сохранить в API тоже (для fallback случая)
-      try {
-        await apiService.setCurrentUser({
-          username: fallbackUserData.name,
-          isLoggedIn: true,
-          role: fallbackUserData.type,
-          playerId: fallbackUserData.type === 'player' ? fallbackUserData.id : null
-        });
-      } catch (apiError) {
-        console.warn('Fallback API save failed, using localStorage only:', apiError);
-      }
     }
   };
 

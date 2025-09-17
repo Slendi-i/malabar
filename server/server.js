@@ -6,9 +6,14 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
 const WebSocket = require('ws');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-env-very-strong-secret';
+const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
 
 // Middleware с расширенными CORS настройками для VPS
 app.use(cors({
@@ -145,7 +150,8 @@ db.serialize(() => {
       isLoggedIn INTEGER DEFAULT 0,
       role TEXT DEFAULT NULL,
       playerId INTEGER DEFAULT NULL,
-      lastLogin DATETIME DEFAULT CURRENT_TIMESTAMP
+      lastLogin DATETIME DEFAULT CURRENT_TIMESTAMP,
+      passwordHash TEXT DEFAULT NULL
     )
   `, (err) => {
     if (err) {
@@ -157,11 +163,15 @@ db.serialize(() => {
         if (e2) return;
         const hasRole = cols.some(c => c.name === 'role');
         const hasPlayerId = cols.some(c => c.name === 'playerId');
+        const hasPasswordHash = cols.some(c => c.name === 'passwordHash');
         if (!hasRole) {
           db.run('ALTER TABLE users ADD COLUMN role TEXT DEFAULT NULL');
         }
         if (!hasPlayerId) {
           db.run('ALTER TABLE users ADD COLUMN playerId INTEGER DEFAULT NULL');
+        }
+        if (!hasPasswordHash) {
+          db.run('ALTER TABLE users ADD COLUMN passwordHash TEXT DEFAULT NULL');
         }
       });
     }
@@ -861,93 +871,117 @@ app.post('/api/players/:id/social', (req, res) => {
 
 // 🚀 УДАЛЕН дублирующий POST роут - используем только PATCH /coordinates
 
-// Get current user
-app.get('/api/users/current', (req, res) => {
-  // 1) Приоритет: cookie авторизации
+// JWT utils
+function signJwt(payload) {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+}
+
+function authFromCookie(req) {
+  const token = req.cookies && req.cookies.auth_jwt;
+  if (!token) return null;
   try {
-    if (req.cookies && req.cookies.auth) {
-      try {
-        const cookieUser = JSON.parse(req.cookies.auth);
-        if (cookieUser && cookieUser.username) {
-          return res.json({
-            id: Number.isInteger(cookieUser.playerId) ? cookieUser.playerId : 0,
-            name: cookieUser.username,
-            username: cookieUser.username,
-            isLoggedIn: true,
-            type: cookieUser.role || 'viewer',
-            lastLogin: new Date().toISOString()
-          });
-        }
-      } catch (e) {
-        // Невалидная cookie — очищаем
-        res.clearCookie('auth');
-      }
-    }
+    return jwt.verify(token, JWT_SECRET);
   } catch (e) {
-    // игнорируем и отвечаем 401 ниже
+    return null;
   }
-  // 2) Без валидной cookie — не авторизован
-  return res.status(401).json({ error: 'Not authenticated' });
+}
+
+// Auth: current user
+app.get('/api/users/current', (req, res) => {
+  const auth = authFromCookie(req);
+  if (!auth) return res.status(401).json({ error: 'Not authenticated' });
+  res.json({
+    id: Number.isInteger(auth.playerId) ? auth.playerId : 0,
+    name: auth.username,
+    username: auth.username,
+    isLoggedIn: true,
+    type: auth.role || 'viewer',
+    lastLogin: auth.lastLogin || new Date().toISOString()
+  });
 });
 
-// Set current user (login/logout)
-app.post('/api/users/current', (req, res) => {
-  const { username, isLoggedIn, role, playerId } = req.body;
-  
-  if (isLoggedIn) {
-    // Login: Create or update user
-    db.run(`
-      INSERT OR REPLACE INTO users (username, isLoggedIn, role, playerId, lastLogin)
-      VALUES (?, 1, ?, ?, CURRENT_TIMESTAMP)
-    `, [username, role || null, Number.isInteger(playerId) ? playerId : null], function(err) {
-      if (err) {
-        console.error('Login error:', err);
+// Auth: login
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+
+  db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
+    if (err) {
+      console.error('Login select error:', err);
+      return res.status(500).json({ error: 'Login failed' });
+    }
+
+    const setLoggedInAndRespond = (role, playerId) => {
+      db.run('UPDATE users SET isLoggedIn = 1, lastLogin = CURRENT_TIMESTAMP WHERE username = ?', [username], function(updateErr) {
+        if (updateErr) {
+          console.error('Login update error:', updateErr);
+          return res.status(500).json({ error: 'Login failed' });
+        }
+        const token = signJwt({ username, role: role || null, playerId: Number.isInteger(playerId) ? playerId : null, lastLogin: new Date().toISOString() });
+        try {
+          res.cookie('auth_jwt', token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+          });
+        } catch (e) {}
+
+        broadcastUpdate('user_logged_in', { username, role: role || null, playerId: Number.isInteger(playerId) ? playerId : null });
+        res.json({ message: 'Login successful' });
+      });
+    };
+
+    // Пользователь существует
+    if (user) {
+      try {
+        if (user.passwordHash) {
+          const ok = await bcrypt.compare(password, user.passwordHash);
+          if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+          return setLoggedInAndRespond(user.role, user.playerId);
+        } else {
+          // Миграция: если hash отсутствует, допускаем временно пароль==логин, после чего задаём hash
+          if (password === username) {
+            const hash = await bcrypt.hash(password, 10);
+            db.run('UPDATE users SET passwordHash = ? WHERE username = ?', [hash, username], function(uErr) {
+              if (uErr) {
+                console.error('Set password hash error:', uErr);
+                return res.status(500).json({ error: 'Login failed' });
+              }
+              return setLoggedInAndRespond(user.role, user.playerId);
+            });
+          } else {
+            return res.status(401).json({ error: 'Invalid credentials' });
+          }
+        }
+      } catch (cmpErr) {
+        console.error('Bcrypt error:', cmpErr);
         return res.status(500).json({ error: 'Login failed' });
       }
-      
-      // Устанавливаем httpOnly cookie авторизации (30 дней)
-      try {
-        res.cookie('auth', JSON.stringify({ username, role: role || null, playerId: Number.isInteger(playerId) ? playerId : null }), {
-          httpOnly: true,
-          sameSite: 'lax',
-          maxAge: 30 * 24 * 60 * 60 * 1000
-        });
-        // Дополнительная читабельная cookie для быстрого UI (не содержит секретов)
-        res.cookie('auth_view', JSON.stringify({ username, role: role || null, playerId: Number.isInteger(playerId) ? playerId : null, t: Date.now() }), {
-          httpOnly: false,
-          sameSite: 'lax',
-          maxAge: 24 * 60 * 60 * 1000
-        });
-      } catch (e) {
-        console.warn('Failed to set auth cookie:', e);
-      }
+    } else {
+      // Пользователь не найден
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+  });
+});
 
-      // Broadcast user login to all connected clients
-      broadcastUpdate('user_logged_in', { 
-        username,
-        userId: this.lastID,
-        role: role || null,
-        playerId: Number.isInteger(playerId) ? playerId : null
-      });
-      
-      res.json({ message: 'Login successful', userId: this.lastID, role: role || null, playerId: Number.isInteger(playerId) ? playerId : null });
-    });
-  } else {
-    // Logout: Set all users to logged out (мягко, только если явно logout)
-    db.run('UPDATE users SET isLoggedIn = 0', (err) => {
-      if (err) {
-        console.error('Logout error:', err);
-        return res.status(500).json({ error: 'Logout failed' });
-      }
-      
-      // Очищаем cookie авторизации
+// Auth: logout
+app.post('/api/auth/logout', (req, res) => {
+  const auth = authFromCookie(req);
+  if (auth && auth.username) {
+    db.run('UPDATE users SET isLoggedIn = 0 WHERE username = ?', [auth.username], () => {
       try {
-        res.clearCookie('auth');
-        res.clearCookie('auth_view');
+        res.clearCookie('auth_jwt');
       } catch (e) {}
-
       res.json({ message: 'Logout successful' });
     });
+  } else {
+    try {
+      res.clearCookie('auth_jwt');
+    } catch (e) {}
+    res.json({ message: 'Logout successful' });
   }
 });
 

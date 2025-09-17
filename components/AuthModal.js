@@ -95,16 +95,7 @@ export default function AuthModal({ open, onClose, onLogin }) {
             Войти
           </Button>
         </div>
-        <div style={{ 
-          marginTop: '20px',
-          fontSize: '14px',
-          color: '#666666',
-          fontFamily: 'Raleway, sans-serif',
-          textAlign: 'center'
-        }}>
-          <p>Админ: admin/admin</p>
-          <p>Игроки: Player1/Player1 ... Player12/Player12</p>
-        </div>
+        {/* Подсказки логинов/паролей удалены из UI для безопасности */}
       </Box>
     </Modal>
   );

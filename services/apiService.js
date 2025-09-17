@@ -97,18 +97,17 @@ class ApiService {
     });
   }
 
-  // Авторизация (используем setCurrentUser для логина)
+  // Авторизация (новые эндпоинты)
   async login(username, password) {
-    return this.setCurrentUser({
-      username: username,
-      isLoggedIn: true
+    return this.fetchWithErrorHandling(API_ENDPOINTS.LOGIN, {
+      method: 'POST',
+      body: JSON.stringify({ username, password })
     });
   }
 
   async logout() {
-    return this.setCurrentUser({
-      username: '',
-      isLoggedIn: false
+    return this.fetchWithErrorHandling(API_ENDPOINTS.LOGOUT, {
+      method: 'POST'
     });
   }
 
