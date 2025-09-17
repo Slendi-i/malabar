@@ -8,7 +8,15 @@ const fs = require('fs');
 const WebSocket = require('ws');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+// Load env from server/.env, and optionally from server/passwords-player.env (override)
+const envDefaultPath = path.join(__dirname, '.env');
+const envAltPath = path.join(__dirname, 'passwords-player.env');
+try { require('dotenv').config({ path: envDefaultPath }); } catch (e) {}
+try {
+  if (fs.existsSync(envAltPath)) {
+    require('dotenv').config({ path: envAltPath, override: true });
+  }
+} catch (e) {}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
