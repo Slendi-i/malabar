@@ -173,6 +173,8 @@ db.serialize(() => {
         if (!hasPasswordHash) {
           db.run('ALTER TABLE users ADD COLUMN passwordHash TEXT DEFAULT NULL');
         }
+        // После валидации структуры пользователей — устанавливаем пароли из ENV (если заданы)
+        seedPasswordsFromEnv();
       });
     }
   });
@@ -388,6 +390,58 @@ function checkAndInsertPlayers() {
     } else {
       console.log(`Database already has ${row.count} players`);
     }
+  });
+}
+
+// Установка/обновление паролей из ENV при старте сервера
+function seedPasswordsFromEnv() {
+  const tasks = [];
+
+  function upsertUserPassword(username, role, playerId, plainPassword) {
+    return new Promise((resolve) => {
+      if (!plainPassword || typeof plainPassword !== 'string' || plainPassword.length < 6) {
+        return resolve();
+      }
+      const passwordHash = bcrypt.hashSync(plainPassword, 10);
+      db.run(
+        'INSERT OR IGNORE INTO users (username, isLoggedIn, role, playerId, lastLogin) VALUES (?, 0, ?, ?, CURRENT_TIMESTAMP)',
+        [username, role || null, Number.isInteger(playerId) ? playerId : null],
+        () => {
+          db.run(
+            'UPDATE users SET passwordHash = ?, role = ?, playerId = ? WHERE username = ?',
+            [passwordHash, role || null, Number.isInteger(playerId) ? playerId : null, username],
+            (err) => {
+              if (err) {
+                console.warn('Password seed failed for', username, err.message);
+              } else {
+                console.log('Password seeded for', username);
+              }
+              resolve();
+            }
+          );
+        }
+      );
+    });
+  }
+
+  if (process.env.ADMIN_PASSWORD) {
+    tasks.push(upsertUserPassword('admin', 'admin', null, process.env.ADMIN_PASSWORD));
+  }
+
+  for (let i = 1; i <= 12; i += 1) {
+    const envVar = `PLAYER${i}_PASSWORD`;
+    if (process.env[envVar]) {
+      tasks.push(upsertUserPassword(`Player${i}`, 'player', i, process.env[envVar]));
+    }
+  }
+
+  if (tasks.length === 0) {
+    console.log('Password seeding: no env variables provided');
+    return;
+  }
+
+  Promise.all(tasks).then(() => {
+    console.log('Password seeding completed');
   });
 }
 
