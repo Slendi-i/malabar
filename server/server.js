@@ -8,12 +8,13 @@ const fs = require('fs');
 const WebSocket = require('ws');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-env-very-strong-secret';
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
+const COOKIE_SECURE = (process.env.COOKIE_SECURE || '').toLowerCase() !== 'false' && (process.env.NODE_ENV === 'production');
 
 // Middleware с расширенными CORS настройками для VPS
 app.use(cors({
@@ -977,8 +978,8 @@ app.post('/api/auth/login', (req, res) => {
         try {
           res.cookie('auth_jwt', token, {
             httpOnly: true,
-            sameSite: 'none',
-            secure: process.env.NODE_ENV === 'production',
+            sameSite: COOKIE_SECURE ? 'none' : 'lax',
+            secure: COOKIE_SECURE,
             maxAge: 7 * 24 * 60 * 60 * 1000
           });
         } catch (e) {}
