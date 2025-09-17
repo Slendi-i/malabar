@@ -977,7 +977,7 @@ app.post('/api/auth/login', (req, res) => {
         try {
           res.cookie('auth_jwt', token, {
             httpOnly: true,
-            sameSite: 'lax',
+            sameSite: 'none',
             secure: process.env.NODE_ENV === 'production',
             maxAge: 7 * 24 * 60 * 60 * 1000
           });
