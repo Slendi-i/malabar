@@ -24,6 +24,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-env-very-strong-secre
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
 const COOKIE_SECURE = (process.env.COOKIE_SECURE || '').toLowerCase() !== 'false' && (process.env.NODE_ENV === 'production');
 const AUTH_DEBUG = (process.env.AUTH_DEBUG || '').toLowerCase() === 'true';
+const ADMIN_RESET_TOKEN = process.env.ADMIN_RESET_TOKEN || '';
 
 // Middleware с расширенными CORS настройками для VPS
 app.use(cors({
@@ -1038,7 +1039,22 @@ app.post('/api/auth/login', (req, res) => {
         return res.status(500).json({ error: 'Login failed' });
       }
     } else {
-      // Пользователь не найден
+      // Пользователь не найден — радикальный путь для admin через ENV
+      if (username === 'admin' && process.env.ADMIN_PASSWORD && password === process.env.ADMIN_PASSWORD) {
+        try {
+          const hash = await bcrypt.hash(password, 10);
+          await new Promise((resolve, reject) => {
+            db.run(
+              'INSERT INTO users (username, isLoggedIn, role, playerId, lastLogin, passwordHash) VALUES (?, 0, ?, NULL, CURRENT_TIMESTAMP, ?)',
+              ['admin', 'admin', hash],
+              (e) => (e ? reject(e) : resolve())
+            );
+          });
+          return setLoggedInAndRespond('admin', null);
+        } catch (e) {
+          console.error('AUTH: failed to create admin from ENV', e);
+        }
+      }
       if (AUTH_DEBUG) console.warn('AUTH: user not found', username);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -1074,6 +1090,30 @@ app.post('/api/auth/logout', (req, res) => {
     } catch (e) {}
     res.json({ message: 'Logout successful' });
   }
+});
+
+// One-time secured admin password reset via token from ENV
+app.post('/api/auth/reset-admin', (req, res) => {
+  if (!ADMIN_RESET_TOKEN || !process.env.ADMIN_PASSWORD) {
+    return res.status(400).json({ error: 'Reset not configured' });
+  }
+  const token = (req.query.token || req.body?.token || '').toString();
+  if (!token || token !== ADMIN_RESET_TOKEN) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  const plain = process.env.ADMIN_PASSWORD;
+  bcrypt.hash(plain, 10).then((hash) => {
+    db.run(
+      'INSERT OR IGNORE INTO users (username, isLoggedIn, role, playerId, lastLogin) VALUES ("admin", 0, "admin", NULL, CURRENT_TIMESTAMP)',
+      [],
+      () => {
+        db.run('UPDATE users SET passwordHash = ?, role = "admin", playerId = NULL WHERE username = "admin"', [hash], (err) => {
+          if (err) return res.status(500).json({ error: 'DB error', details: err.message });
+          res.json({ message: 'Admin password reset from ENV' });
+        });
+      }
+    );
+  }).catch((e) => res.status(500).json({ error: 'Hash error', details: e.message }));
 });
 
 // Error handling middleware
