@@ -15,6 +15,7 @@ const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-env-very-strong-secret';
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '7d';
 const COOKIE_SECURE = (process.env.COOKIE_SECURE || '').toLowerCase() !== 'false' && (process.env.NODE_ENV === 'production');
+const AUTH_DEBUG = (process.env.AUTH_DEBUG || '').toLowerCase() === 'true';
 
 // Middleware с расширенными CORS настройками для VPS
 app.use(cors({
@@ -994,7 +995,10 @@ app.post('/api/auth/login', (req, res) => {
       try {
         if (user.passwordHash) {
           const ok = await bcrypt.compare(password, user.passwordHash);
-          if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+          if (!ok) {
+            if (AUTH_DEBUG) console.warn('AUTH: invalid password for user', username);
+            return res.status(401).json({ error: 'Invalid credentials' });
+          }
           return setLoggedInAndRespond(user.role, user.playerId);
         } else {
           // Миграция: если hash отсутствует, допускаем временно пароль==логин, после чего задаём hash
@@ -1008,6 +1012,7 @@ app.post('/api/auth/login', (req, res) => {
               return setLoggedInAndRespond(user.role, user.playerId);
             });
           } else {
+            if (AUTH_DEBUG) console.warn('AUTH: user without hash and password!=username', username);
             return res.status(401).json({ error: 'Invalid credentials' });
           }
         }
@@ -1017,8 +1022,22 @@ app.post('/api/auth/login', (req, res) => {
       }
     } else {
       // Пользователь не найден
+      if (AUTH_DEBUG) console.warn('AUTH: user not found', username);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+  });
+});
+
+// Опциональный диагностический эндпоинт (включается AUTH_DEBUG=true)
+app.get('/api/auth/seed-status', (req, res) => {
+  if (!AUTH_DEBUG) return res.status(404).json({ error: 'Not found' });
+  db.get('SELECT username, role, playerId, passwordHash IS NOT NULL as hasHash FROM users WHERE username = ?', ['admin'], (err, row) => {
+    const envSeen = {
+      hasAdminPasswordEnv: Boolean(process.env.ADMIN_PASSWORD),
+      hasJWTSecretEnv: Boolean(process.env.JWT_SECRET)
+    };
+    if (err) return res.json({ envSeen, admin: null, error: err.message });
+    res.json({ envSeen, admin: row || null });
   });
 });
 
