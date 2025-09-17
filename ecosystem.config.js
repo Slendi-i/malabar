@@ -23,6 +23,25 @@ module.exports = {
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
     },
     {
+      name: 'malabar-set-passwords',
+      cwd: './server',
+      script: 'set-passwords.js',
+      node_args: '-r dotenv/config',
+      exec_mode: 'fork',
+      instances: 1,
+      autorestart: false,
+      watch: false,
+      max_memory_restart: '256M',
+      env: {
+        NODE_ENV: 'production'
+      },
+      error_file: '../logs/set-passwords-error.log',
+      out_file: '../logs/set-passwords-out.log',
+      time: true,
+      merge_logs: true,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+    },
+    {
       name: 'malabar-frontend',
       cwd: './',
       script: './node_modules/next/dist/bin/next',

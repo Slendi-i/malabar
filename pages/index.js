@@ -375,7 +375,6 @@ export default function Home() {
   const handleLogin = async (login, password) => {
     try {
       await apiService.login(login, password);
-      // После успешного логина спрашиваем сервер о текущем пользователе
       const apiUser = await apiService.getCurrentUser();
       if (apiUser && apiUser.username && apiUser.isLoggedIn) {
         const normalized = {
@@ -390,9 +389,11 @@ export default function Home() {
           localStorage.setItem('currentUser', JSON.stringify(normalized));
         }
         safeSetCurrentUser(normalized);
+        return true;
       }
+      return false;
     } catch (error) {
-      console.error('Login failed:', error);
+      return false;
     }
   };
 

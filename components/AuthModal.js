@@ -4,11 +4,31 @@ import { Modal, Box, TextField, Button, Typography } from '@mui/material';
 export default function AuthModal({ open, onClose, onLogin }) {
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onLogin(login, password);
-    onClose();
+    setError('');
+    if (!login || !password) {
+      setError('Введите логин и пароль');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      const ok = await onLogin(login.trim(), password);
+      if (ok) {
+        setLogin('');
+        setPassword('');
+        onClose();
+      } else {
+        setError('Неверный логин или пароль');
+      }
+    } catch (err) {
+      setError('Неверный логин или пароль');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -74,10 +94,16 @@ export default function AuthModal({ open, onClose, onLogin }) {
             }
           }}
         />
+        {error && (
+          <Typography color="error" sx={{ mb: 2, fontFamily: 'Raleway, sans-serif' }}>
+            {error}
+          </Typography>
+        )}
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <Button
             type="submit"
             variant="contained"
+            disabled={submitting}
             sx={{
               bgcolor: '#151515',
               color: '#FFFFFF',
@@ -92,7 +118,7 @@ export default function AuthModal({ open, onClose, onLogin }) {
               textTransform: 'none'
             }}
           >
-            Войти
+            {submitting ? 'Входим...' : 'Войти'}
           </Button>
         </div>
         {/* Подсказки логинов/паролей удалены из UI для безопасности */}
