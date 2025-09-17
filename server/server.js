@@ -1002,7 +1002,16 @@ app.post('/api/auth/login', (req, res) => {
     if (user) {
       try {
         if (user.passwordHash) {
-          const ok = await bcrypt.compare(password, user.passwordHash);
+          let ok = await bcrypt.compare(password, user.passwordHash);
+          // 🔧 Ремонтный режим: если hash повреждён, но ENV-пароль верный — чиним hash
+          if (!ok && AUTH_DEBUG && username === 'admin' && process.env.ADMIN_PASSWORD && password === process.env.ADMIN_PASSWORD) {
+            try {
+              const newHash = await bcrypt.hash(password, 10);
+              await new Promise((resolve) => db.run('UPDATE users SET passwordHash = ? WHERE username = ?', [newHash, username], () => resolve()));
+              ok = true;
+              console.warn('AUTH: repaired admin passwordHash from ENV');
+            } catch (e) {}
+          }
           if (!ok) {
             if (AUTH_DEBUG) console.warn('AUTH: invalid password for user', username);
             return res.status(401).json({ error: 'Invalid credentials' });
