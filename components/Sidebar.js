@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@mui/material';
 import PlayerProfileModal from './PlayerProfileModal';
 import DiceModal from './DiceModal';
@@ -42,6 +42,11 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
   
   // Отладочная информация
   console.log('Sidebar render, rulesModalOpen:', rulesModalOpen);
+  
+  // Отслеживаем изменения состояния
+  React.useEffect(() => {
+    console.log('rulesModalOpen изменилось на:', rulesModalOpen);
+  }, [rulesModalOpen]);
   const [currentPlayerProfile, setCurrentPlayerProfile] = useState(null);
 
   const handlePlayerClick = (player) => {
@@ -297,7 +302,9 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
           onClick={() => {
             console.log('Кнопка Правила нажата, открываем модальное окно');
             alert('Кнопка Правила нажата!'); // Временная отладка
+            console.log('Текущее состояние rulesModalOpen:', rulesModalOpen);
             setRulesModalOpen(true);
+            console.log('Установили rulesModalOpen в true');
           }}
         >
           <span style={{
