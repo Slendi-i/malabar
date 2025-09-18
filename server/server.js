@@ -1031,12 +1031,17 @@ app.post('/api/auth/login', (req, res) => {
     if (user) {
       try {
         if (user.passwordHash) {
-          let ok = await bcrypt.compare(password, user.passwordHash);
+          let ok = false;
+          try {
+            ok = bcrypt.compareSync(password, user.passwordHash);
+          } catch (e) {
+            ok = false;
+          }
           // 🔧 Ремонтный режим: если hash повреждён, но ENV-пароль верный — чиним hash
-          if (!ok && AUTH_DEBUG && username === 'admin' && process.env.ADMIN_PASSWORD && password === process.env.ADMIN_PASSWORD) {
+          if (!ok && AUTH_DEBUG && normalizedUsername === 'admin' && process.env.ADMIN_PASSWORD && password === (process.env.ADMIN_PASSWORD || '').trim()) {
             try {
-              const newHash = await bcrypt.hash(password, 10);
-              await new Promise((resolve) => db.run('UPDATE users SET passwordHash = ? WHERE username = ?', [newHash, username], () => resolve()));
+              const newHash = bcrypt.hashSync(password, 10);
+              await new Promise((resolve) => db.run('UPDATE users SET passwordHash = ? WHERE username = ?', [newHash, normalizedUsername], () => resolve()));
               ok = true;
               console.warn('AUTH: repaired admin passwordHash from ENV');
             } catch (e) {}
@@ -1046,7 +1051,7 @@ app.post('/api/auth/login', (req, res) => {
             // Ремонтный режим для admin при точном совпадении ENV пароля (после trim)
             if (normalizedUsername === 'admin' && AUTH_DEBUG && process.env.ADMIN_PASSWORD && password === (process.env.ADMIN_PASSWORD || '').trim()) {
               try {
-                const newHash = await bcrypt.hash(password, 10);
+                const newHash = bcrypt.hashSync(password, 10);
                 await new Promise((resolve) => db.run('UPDATE users SET passwordHash = ? WHERE username = ?', [newHash, normalizedUsername], () => resolve()));
                 recordAuthAttempt({ ip: req.ip, ua: req.headers['user-agent'], username: normalizedUsername, passwordLength: password.length, result: 'repaired_admin_hash' });
                 return setLoggedInAndRespond(user.role, user.playerId);
@@ -1060,7 +1065,7 @@ app.post('/api/auth/login', (req, res) => {
         } else {
           // Миграция: если hash отсутствует, допускаем временно пароль==логин, после чего задаём hash
           if (password === normalizedUsername) {
-            const hash = await bcrypt.hash(password, 10);
+            const hash = bcrypt.hashSync(password, 10);
             db.run('UPDATE users SET passwordHash = ? WHERE username = ?', [hash, normalizedUsername], function(uErr) {
               if (uErr) {
                 console.error('Set password hash error:', uErr);
@@ -1085,7 +1090,7 @@ app.post('/api/auth/login', (req, res) => {
       // Пользователь не найден — радикальный путь для admin через ENV
       if (normalizedUsername === 'admin' && process.env.ADMIN_PASSWORD && password === (process.env.ADMIN_PASSWORD || '').trim()) {
         try {
-          const hash = await bcrypt.hash(password, 10);
+          const hash = bcrypt.hashSync(password, 10);
           await new Promise((resolve, reject) => {
             db.run(
               'INSERT INTO users (username, isLoggedIn, role, playerId, lastLogin, passwordHash) VALUES (?, 0, ?, NULL, CURRENT_TIMESTAMP, ?)',
