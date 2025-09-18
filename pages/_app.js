@@ -1,5 +1,7 @@
 import '../styles/globals.css';
 import ErrorBoundary from '../components/ErrorBoundary';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
 
 // Скрываем фронтенд-логи вне локальной среды (localhost)
 if (typeof window !== 'undefined') {
@@ -13,11 +15,21 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// Создаем тему для Material-UI
+const theme = createTheme({
+  palette: {
+    mode: 'light',
+  },
+});
+
 function MyApp({ Component, pageProps }) {
   return (
-    <ErrorBoundary>
-      <Component {...pageProps} />
-    </ErrorBoundary>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <ErrorBoundary>
+        <Component {...pageProps} />
+      </ErrorBoundary>
+    </ThemeProvider>
   );
 }
 

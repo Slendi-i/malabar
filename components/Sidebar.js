@@ -51,10 +51,9 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
   
   const [currentPlayerProfile, setCurrentPlayerProfile] = useState(null);
   
-  // Простая функция для тестирования
-  const testRulesClick = () => {
-    console.log('ТЕСТ: Кнопка Правила нажата!');
-    alert('ТЕСТ: Кнопка Правила нажата!');
+  // Функция для открытия модального окна правил
+  const handleRulesClick = () => {
+    console.log('Кнопка Правила нажата!');
     setRulesModalOpen(true);
   };
 
@@ -538,7 +537,7 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
           marginTop: '20px',
           marginBottom: '20px'
         }}
-        onClick={testRulesClick}
+        onClick={handleRulesClick}
       >
         <span style={{
           fontFamily: 'Raleway',
