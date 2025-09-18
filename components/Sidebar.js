@@ -42,6 +42,7 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
   
   // Отладочная информация
   console.log('Sidebar render, rulesModalOpen:', rulesModalOpen);
+  console.log('Sidebar: Компонент рендерится!');
   
   // Отслеживаем изменения состояния
   React.useEffect(() => {
@@ -294,37 +295,6 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
 
       </div>
 
-      <Button 
-        variant="contained" 
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          justifyContent: 'center',
-          alignItems: 'center',
-          padding: '14px 24px',
-          gap: '10px',
-          width: '100%',
-          height: '49px',
-          background: '#FF0000', // Красный цвет для отладки
-          borderRadius: '6px',
-          textTransform: 'none',
-          marginTop: '20px',
-          marginBottom: '20px'
-        }}
-        onClick={testRulesClick}
-      >
-        <span style={{
-          fontFamily: 'Raleway',
-          fontStyle: 'normal',
-          fontWeight: 700,
-          fontSize: '18px',
-          lineHeight: '21px',
-          color: '#FFFFFF'
-        }}>
-          Правила
-        </span>
-      </Button>
-
       <div style={{
         display: 'flex',
         flexDirection: 'column',
@@ -551,6 +521,36 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
         })}
       </div>
 
+      <Button 
+        variant="contained" 
+        style={{
+          display: 'flex',
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '14px 24px',
+          gap: '10px',
+          width: '100%',
+          height: '49px',
+          background: '#FF0000', // Красный цвет для отладки
+          borderRadius: '6px',
+          textTransform: 'none',
+          marginTop: '20px',
+          marginBottom: '20px'
+        }}
+        onClick={testRulesClick}
+      >
+        <span style={{
+          fontFamily: 'Raleway',
+          fontStyle: 'normal',
+          fontWeight: 700,
+          fontSize: '18px',
+          lineHeight: '21px',
+          color: '#FFFFFF'
+        }}>
+          Правила
+        </span>
+      </Button>
 
       {selectedPlayer && (
         <PlayerProfileModal
