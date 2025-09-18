@@ -32,10 +32,15 @@ app.use(cors({
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://46.173.17.229:3000',
-    'http://vet-klinika-moscow.ru:3000',
-    // Также поддерживаем https на случай если будет SSL
+    'http://46.173.17.229',
     'https://46.173.17.229:3000',
-    'https://vet-klinika-moscow.ru:3000'
+    'https://46.173.17.229',
+    'http://vet-klinika-moscow.ru:3000',
+    'http://vet-klinika-moscow.ru',
+    'https://vet-klinika-moscow.ru:3000',
+    'https://vet-klinika-moscow.ru',
+    'http://www.vet-klinika-moscow.ru',
+    'https://www.vet-klinika-moscow.ru'
   ],
   credentials: true, // Включаем cookies для авторизации
   optionsSuccessStatus: 200 // Поддержка legacy браузеров

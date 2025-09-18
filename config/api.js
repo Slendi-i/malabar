@@ -5,26 +5,29 @@
 const getApiBaseUrl = () => {
   // Если мы в браузере, определяем на основе текущего хоста
   if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    const port = window.location.port;
+    const host = window.location.hostname.toLowerCase();
+    const isHttps = window.location.protocol === 'https:';
     
-    console.log('🔧 API Config - определяем URL для хоста:', host, 'порт:', port);
+    console.log('🔧 API Config - определяем URL для хоста:', host, 'https:', isHttps);
     
-    // VPS сервер - известные домены/IP
-    if (host === 'vet-klinika-moscow.ru') {
-      const apiUrl = 'http://vet-klinika-moscow.ru:3001';
+    // Нормализуем www
+    const bareHost = host.startsWith('www.') ? host.slice(4) : host;
+    
+    // VPS сервер - домен и IP
+    if (bareHost === 'vet-klinika-moscow.ru') {
+      const apiUrl = `${isHttps ? 'https' : 'http'}://vet-klinika-moscow.ru:3001`;
       console.log('✅ API Config - используем домен VPS:', apiUrl);
       return apiUrl;
     }
     
-    if (host === '46.173.17.229') {
-      const apiUrl = 'http://46.173.17.229:3001';
+    if (bareHost === '46.173.17.229') {
+      const apiUrl = `${isHttps ? 'https' : 'http'}://46.173.17.229:3001`;
       console.log('✅ API Config - используем IP VPS:', apiUrl);
       return apiUrl;
     }
     
     // Локальная разработка
-    if (host === 'localhost' || host === '127.0.0.1') {
+    if (bareHost === 'localhost' || bareHost === '127.0.0.1') {
       const apiUrl = 'http://localhost:3001';
       console.log('✅ API Config - локальная разработка:', apiUrl);
       return apiUrl;
@@ -32,7 +35,7 @@ const getApiBaseUrl = () => {
     
     // Fallback - если работаем на нестандартном хосте, пробуем с VPS IP
     console.warn('⚠️ API Config - неизвестный хост, используем VPS IP как fallback');
-    return 'http://46.173.17.229:3001';
+    return `${isHttps ? 'https' : 'http'}://46.173.17.229:3001`;
   }
   
   // Server-side rendering - принудительно используем VPS на продакшене
