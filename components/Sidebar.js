@@ -3,6 +3,7 @@ import { Button } from '@mui/material';
 import PlayerProfileModal from './PlayerProfileModal';
 import DiceModal from './DiceModal';
 import GameRollModal from './GameRollModal';
+import RulesModal from './RulesModal';
 import apiService from '../services/apiService';
 
 const calculateStats = (games = []) => {
@@ -37,6 +38,7 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [diceModalOpen, setDiceModalOpen] = useState(false);
   const [gameRollModalOpen, setGameRollModalOpen] = useState(false);
+  const [rulesModalOpen, setRulesModalOpen] = useState(false);
   const [currentPlayerProfile, setCurrentPlayerProfile] = useState(null);
 
   const handlePlayerClick = (player) => {
@@ -508,6 +510,7 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
           textTransform: 'none',
           marginBottom: '20px'
         }}
+        onClick={() => setRulesModalOpen(true)}
       >
         <span style={{
           fontFamily: 'Raleway',
@@ -546,6 +549,11 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
         currentUser={currentUser}
         onGameSelect={handleGameSelect}
         playerProfile={currentPlayerProfile}
+      />
+
+      <RulesModal
+        open={rulesModalOpen}
+        onClose={() => setRulesModalOpen(false)}
       />
     </div>
   );
