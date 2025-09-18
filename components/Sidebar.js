@@ -39,6 +39,9 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
   const [diceModalOpen, setDiceModalOpen] = useState(false);
   const [gameRollModalOpen, setGameRollModalOpen] = useState(false);
   const [rulesModalOpen, setRulesModalOpen] = useState(false);
+  
+  // Отладочная информация
+  console.log('Sidebar render, rulesModalOpen:', rulesModalOpen);
   const [currentPlayerProfile, setCurrentPlayerProfile] = useState(null);
 
   const handlePlayerClick = (player) => {
@@ -508,9 +511,17 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
           background: '#151515',
           borderRadius: '6px',
           textTransform: 'none',
-          marginBottom: '20px'
+          marginBottom: '20px',
+          zIndex: 1000,
+          position: 'relative'
         }}
-        onClick={() => setRulesModalOpen(true)}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Кнопка Правила нажата, открываем модальное окно');
+          alert('Кнопка Правила нажата!'); // Временная отладка
+          setRulesModalOpen(true);
+        }}
       >
         <span style={{
           fontFamily: 'Raleway',

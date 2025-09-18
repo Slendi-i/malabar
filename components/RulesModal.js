@@ -1,6 +1,7 @@
 import { Modal, Box, Typography, Button } from '@mui/material';
 
 export default function RulesModal({ open, onClose }) {
+  console.log('RulesModal render, open:', open);
   return (
     <Modal open={open} onClose={onClose}>
       <Box 
