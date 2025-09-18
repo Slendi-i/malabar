@@ -47,7 +47,15 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
   React.useEffect(() => {
     console.log('rulesModalOpen изменилось на:', rulesModalOpen);
   }, [rulesModalOpen]);
+  
   const [currentPlayerProfile, setCurrentPlayerProfile] = useState(null);
+  
+  // Простая функция для тестирования
+  const testRulesClick = () => {
+    console.log('ТЕСТ: Кнопка Правила нажата!');
+    alert('ТЕСТ: Кнопка Правила нажата!');
+    setRulesModalOpen(true);
+  };
 
   const handlePlayerClick = (player) => {
     if (player && typeof player === 'object') {
@@ -284,41 +292,38 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
           </Button>
         </div>
 
-        <Button 
-          variant="contained" 
-          style={{
-            display: 'flex',
-            flexDirection: 'row',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: '14px 24px',
-            gap: '10px',
-            width: '100%',
-            height: '49px',
-            background: '#151515',
-            borderRadius: '6px',
-            textTransform: 'none'
-          }}
-          onClick={() => {
-            console.log('Кнопка Правила нажата, открываем модальное окно');
-            alert('Кнопка Правила нажата!'); // Временная отладка
-            console.log('Текущее состояние rulesModalOpen:', rulesModalOpen);
-            setRulesModalOpen(true);
-            console.log('Установили rulesModalOpen в true');
-          }}
-        >
-          <span style={{
-            fontFamily: 'Raleway',
-            fontStyle: 'normal',
-            fontWeight: 700,
-            fontSize: '18px',
-            lineHeight: '21px',
-            color: '#FFFFFF'
-          }}>
-            Правила
-          </span>
-        </Button>
       </div>
+
+      <Button 
+        variant="contained" 
+        style={{
+          display: 'flex',
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '14px 24px',
+          gap: '10px',
+          width: '100%',
+          height: '49px',
+          background: '#FF0000', // Красный цвет для отладки
+          borderRadius: '6px',
+          textTransform: 'none',
+          marginTop: '20px',
+          marginBottom: '20px'
+        }}
+        onClick={testRulesClick}
+      >
+        <span style={{
+          fontFamily: 'Raleway',
+          fontStyle: 'normal',
+          fontWeight: 700,
+          fontSize: '18px',
+          lineHeight: '21px',
+          color: '#FFFFFF'
+        }}>
+          Правила
+        </span>
+      </Button>
 
       <div style={{
         display: 'flex',
