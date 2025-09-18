@@ -26,6 +26,22 @@ const COOKIE_SECURE = (process.env.COOKIE_SECURE || '').toLowerCase() !== 'false
 const AUTH_DEBUG = (process.env.AUTH_DEBUG || '').toLowerCase() === 'true';
 const ADMIN_RESET_TOKEN = process.env.ADMIN_RESET_TOKEN || '';
 
+// In-memory diagnostics: последние попытки авторизации (при AUTH_DEBUG)
+const recentAuthAttempts = [];
+function recordAuthAttempt(entry) {
+  if (!AUTH_DEBUG) return;
+  try {
+    recentAuthAttempts.push({
+      time: new Date().toISOString(),
+      ...entry
+    });
+    // Храним только последние 30 записей
+    if (recentAuthAttempts.length > 30) {
+      recentAuthAttempts.splice(0, recentAuthAttempts.length - 30);
+    }
+  } catch (e) {}
+}
+
 // Middleware с расширенными CORS настройками для VPS
 app.use(cors({
   origin: [
@@ -974,12 +990,14 @@ app.get('/api/users/current', (req, res) => {
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) {
+    recordAuthAttempt({ ip: req.ip, ua: req.headers['user-agent'], username, result: 'missing_credentials' });
     return res.status(400).json({ error: 'Username and password are required' });
   }
 
   db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
     if (err) {
       console.error('Login select error:', err);
+      recordAuthAttempt({ ip: req.ip, ua: req.headers['user-agent'], username, result: 'db_error' });
       return res.status(500).json({ error: 'Login failed' });
     }
 
@@ -1020,8 +1038,10 @@ app.post('/api/auth/login', (req, res) => {
           }
           if (!ok) {
             if (AUTH_DEBUG) console.warn('AUTH: invalid password for user', username);
+            recordAuthAttempt({ ip: req.ip, ua: req.headers['user-agent'], username, result: 'invalid_password' });
             return res.status(401).json({ error: 'Invalid credentials' });
           }
+          recordAuthAttempt({ ip: req.ip, ua: req.headers['user-agent'], username, result: 'success' });
           return setLoggedInAndRespond(user.role, user.playerId);
         } else {
           // Миграция: если hash отсутствует, допускаем временно пароль==логин, после чего задаём hash
@@ -1030,17 +1050,21 @@ app.post('/api/auth/login', (req, res) => {
             db.run('UPDATE users SET passwordHash = ? WHERE username = ?', [hash, username], function(uErr) {
               if (uErr) {
                 console.error('Set password hash error:', uErr);
+                recordAuthAttempt({ ip: req.ip, ua: req.headers['user-agent'], username, result: 'set_hash_error' });
                 return res.status(500).json({ error: 'Login failed' });
               }
+              recordAuthAttempt({ ip: req.ip, ua: req.headers['user-agent'], username, result: 'success_migrated' });
               return setLoggedInAndRespond(user.role, user.playerId);
             });
           } else {
             if (AUTH_DEBUG) console.warn('AUTH: user without hash and password!=username', username);
+            recordAuthAttempt({ ip: req.ip, ua: req.headers['user-agent'], username, result: 'no_hash_invalid' });
             return res.status(401).json({ error: 'Invalid credentials' });
           }
         }
       } catch (cmpErr) {
         console.error('Bcrypt error:', cmpErr);
+        recordAuthAttempt({ ip: req.ip, ua: req.headers['user-agent'], username, result: 'bcrypt_error' });
         return res.status(500).json({ error: 'Login failed' });
       }
     } else {
@@ -1055,12 +1079,15 @@ app.post('/api/auth/login', (req, res) => {
               (e) => (e ? reject(e) : resolve())
             );
           });
+          recordAuthAttempt({ ip: req.ip, ua: req.headers['user-agent'], username, result: 'success_created_admin' });
           return setLoggedInAndRespond('admin', null);
         } catch (e) {
           console.error('AUTH: failed to create admin from ENV', e);
+          recordAuthAttempt({ ip: req.ip, ua: req.headers['user-agent'], username, result: 'create_admin_failed' });
         }
       }
       if (AUTH_DEBUG) console.warn('AUTH: user not found', username);
+      recordAuthAttempt({ ip: req.ip, ua: req.headers['user-agent'], username, result: 'user_not_found' });
       return res.status(401).json({ error: 'Invalid credentials' });
     }
   });
@@ -1074,8 +1101,8 @@ app.get('/api/auth/seed-status', (req, res) => {
       hasAdminPasswordEnv: Boolean(process.env.ADMIN_PASSWORD),
       hasJWTSecretEnv: Boolean(process.env.JWT_SECRET)
     };
-    if (err) return res.json({ envSeen, admin: null, error: err.message });
-    res.json({ envSeen, admin: row || null });
+    if (err) return res.json({ envSeen, admin: null, error: err.message, recentAuthAttempts });
+    res.json({ envSeen, admin: row || null, recentAuthAttempts });
   });
 });
 
