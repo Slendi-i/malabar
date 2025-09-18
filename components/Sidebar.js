@@ -188,99 +188,97 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
 
       <div style={{
         display: 'flex',
-        flexDirection: 'row',
+        flexDirection: 'column',
         alignItems: 'center',
         padding: '0px',
         gap: '10px',
-        width: '100%',
-        height: '49px'
+        width: '100%'
       }}>
-        <Button 
-          variant="contained" 
-          style={{
-            display: 'flex',
-            flexDirection: 'row',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: '14px 24px',
-            gap: '10px',
-            width: '100%',
-            height: '49px',
-            background: '#151515',
-            borderRadius: '6px',
-            textTransform: 'none'
-          }}
-          onClick={() => {
-            if (currentUser?.type === 'player') {
-              const profile = players.find(p => p.id === currentUser.id);
-              setCurrentPlayerProfile(profile ? {
-                ...profile,
-                games: Array.isArray(profile.games) ? profile.games : []
-              } : null);
-            }
-            setDiceModalOpen(true);
-          }}
-        >
-          <span style={{
-            fontFamily: 'Raleway',
-            fontStyle: 'normal',
-            fontWeight: 700,
-            fontSize: '18px',
-            lineHeight: '21px',
-            color: '#FFFFFF'
-          }}>
-            Кинуть кубик
-          </span>
-        </Button>
-        <Button 
-          variant="contained" 
-          style={{
-            display: 'flex',
-            flexDirection: 'row',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: '14px 24px',
-            gap: '10px',
-            width: '100%',
-            height: '49px',
-            background: '#151515',
-            borderRadius: '6px',
-            textTransform: 'none'
-          }}
-          onClick={() => {
-            if (currentUser?.type === 'player') {
-              const profile = players.find(p => p.id === currentUser.id);
-              setCurrentPlayerProfile(profile ? {
-                ...profile,
-                games: Array.isArray(profile.games) ? profile.games : []
-              } : null);
-            }
-            setGameRollModalOpen(true);
-          }}
-        >
-          <span style={{
-            fontFamily: 'Raleway',
-            fontStyle: 'normal',
-            fontWeight: 700,
-            fontSize: '18px',
-            lineHeight: '21px',
-            color: '#FFFFFF'
-          }}>
-            Ролл игры
-          </span>
-        </Button>
-      </div>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          padding: '0px',
+          gap: '10px',
+          width: '100%',
+          height: '49px'
+        }}>
+          <Button 
+            variant="contained" 
+            style={{
+              display: 'flex',
+              flexDirection: 'row',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: '14px 24px',
+              gap: '10px',
+              width: '100%',
+              height: '49px',
+              background: '#151515',
+              borderRadius: '6px',
+              textTransform: 'none'
+            }}
+            onClick={() => {
+              if (currentUser?.type === 'player') {
+                const profile = players.find(p => p.id === currentUser.id);
+                setCurrentPlayerProfile(profile ? {
+                  ...profile,
+                  games: Array.isArray(profile.games) ? profile.games : []
+                } : null);
+              }
+              setDiceModalOpen(true);
+            }}
+          >
+            <span style={{
+              fontFamily: 'Raleway',
+              fontStyle: 'normal',
+              fontWeight: 700,
+              fontSize: '18px',
+              lineHeight: '21px',
+              color: '#FFFFFF'
+            }}>
+              Кинуть кубик
+            </span>
+          </Button>
+          <Button 
+            variant="contained" 
+            style={{
+              display: 'flex',
+              flexDirection: 'row',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: '14px 24px',
+              gap: '10px',
+              width: '100%',
+              height: '49px',
+              background: '#151515',
+              borderRadius: '6px',
+              textTransform: 'none'
+            }}
+            onClick={() => {
+              if (currentUser?.type === 'player') {
+                const profile = players.find(p => p.id === currentUser.id);
+                setCurrentPlayerProfile(profile ? {
+                  ...profile,
+                  games: Array.isArray(profile.games) ? profile.games : []
+                } : null);
+              }
+              setGameRollModalOpen(true);
+            }}
+          >
+            <span style={{
+              fontFamily: 'Raleway',
+              fontStyle: 'normal',
+              fontWeight: 700,
+              fontSize: '18px',
+              lineHeight: '21px',
+              color: '#FFFFFF'
+            }}>
+              Ролл игры
+            </span>
+          </Button>
+        </div>
 
-      <div style={{
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: '0px',
-        gap: '10px',
-        width: '100%',
-        height: '49px',
-        marginTop: '20px'
-      }}>
         <Button 
           variant="contained" 
           style={{
