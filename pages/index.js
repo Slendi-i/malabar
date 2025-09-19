@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@mui/material';
-import RulesModal from '../components/RulesModal';
 import Sidebar from '../components/Sidebar';
 import PlayerIcons from '../components/PlayerIcons';
 import AuthModal from '../components/AuthModal';
@@ -11,7 +10,6 @@ import { usePeriodicSync } from '../services/usePeriodicSync';
 export default function Home() {
   const [players, setPlayers] = useState([]);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [rulesOpen, setRulesOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [isMounted, setIsMounted] = useState(false);
   const [imageDimensions, setImageDimensions] = useState({ 
@@ -186,46 +184,6 @@ export default function Home() {
     }
   }, [isConnected, connectionStatus, isSyncing]);
 
-  // Глобальный обработчик кликов по кнопке "Правила" (на случай, если рендер другой версии кнопки)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const clickHandler = (event) => {
-      try {
-        const target = event.target;
-        if (!target) return;
-        // Ищем вверх по дереву ближайшую кнопку
-        const button = target.closest('button');
-        if (!button) return;
-        const text = ((button.textContent || '').trim() || '').toLowerCase();
-        if (text.includes('правил')) {
-          event.preventDefault();
-          event.stopPropagation();
-          setRulesOpen(true);
-        }
-      } catch (_) {}
-    };
-
-    document.addEventListener('click', clickHandler, true);
-    
-    // Глобальные функции для ручного открытия из консоли
-    window.openRules = () => setRulesOpen(true);
-    window.closeRules = () => setRulesOpen(false);
-    window.toggleRules = () => setRulesOpen(prev => !prev);
-    
-    // Быстрые хоткеи: R — открыть правила
-    const keyHandler = (e) => {
-      if (e.key?.toLowerCase() === 'r') {
-        setRulesOpen(true);
-      }
-    };
-    document.addEventListener('keydown', keyHandler, true);
-
-    return () => {
-      document.removeEventListener('click', clickHandler, true);
-      document.removeEventListener('keydown', keyHandler, true);
-    };
-  }, []);
 
   // Инициализация компонента
   useEffect(() => {
@@ -657,10 +615,6 @@ export default function Home() {
         onLogin={handleLogin}
       />
 
-      <RulesModal
-        open={rulesOpen}
-        onClose={() => setRulesOpen(false)}
-      />
     </div>
   );
 }

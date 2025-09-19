@@ -2,25 +2,10 @@ import React from 'react';
 import { Modal, Box, Typography, Button } from '@mui/material';
 
 export default function RulesModal({ open, onClose }) {
-  console.log('RulesModal render, open:', open);
-  console.log('RulesModal: onClose function type:', typeof onClose);
-  
-  React.useEffect(() => {
-    console.log('RulesModal: useEffect triggered, open changed to:', open);
-  }, [open]);
-  
   return (
     <Modal 
       open={open} 
-      // Отключаем автозакрытие от ESC и клика по подложке
-      onClose={(event, reason) => {
-        if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
-          // Игнорируем автозакрытие
-          return;
-        }
-        onClose?.();
-      }}
-      disableEscapeKeyDown
+      onClose={onClose}
     >
       <Box 
         sx={{
@@ -28,8 +13,8 @@ export default function RulesModal({ open, onClose }) {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: 500,
-          height: 400,
+          width: 700,
+          height: 600,
           bgcolor: 'white',
           boxShadow: 24,
           p: 4,
@@ -51,33 +36,181 @@ export default function RulesModal({ open, onClose }) {
         {/* Правила игры */}
         <Box sx={{ 
           fontFamily: 'Raleway, sans-serif',
-          fontSize: '14px',
+          fontSize: '16px',
           color: '#151515',
           mb: 4,
-          maxHeight: '200px',
-          overflowY: 'auto'
+          lineHeight: 1.6
         }}>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-            Как играть:
-          </Typography>
-          <Typography sx={{ mb: 1 }}>
-            1. Нажмите "Кинуть кубик" для броска
-          </Typography>
-          <Typography sx={{ mb: 1 }}>
-            2. Выберите игру в "Ролл игры"
-          </Typography>
-          <Typography sx={{ mb: 1 }}>
-            3. Следите за статистикой других игроков
-          </Typography>
-          <Typography sx={{ mb: 1 }}>
-            4. П - пройденные игры
-          </Typography>
-          <Typography sx={{ mb: 1 }}>
-            5. Р - рероллы (повторы)
-          </Typography>
-          <Typography sx={{ mb: 1 }}>
-            6. Д - дропы (пропуски)
-          </Typography>
+          {/* Пункт 1 - Скачивание */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#151515' }}>
+              1. Скачивание игр
+            </Typography>
+            <Typography sx={{ mb: 2 }}>
+              Необходимо скажать пак со всеми играми – 
+              <a 
+                href="https://utorrentgames.ru/engine/download.php?id=328568" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{ 
+                  color: '#1F19C3', 
+                  textDecoration: 'underline',
+                  fontWeight: 600
+                }}
+              >
+                ТУТ
+              </a>
+            </Typography>
+          </Box>
+
+          {/* Пункт 2 - Старт */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#151515' }}>
+              2. Начало игры
+            </Typography>
+            <Typography sx={{ mb: 2 }}>
+              Все стартуют с нулевой позиции
+            </Typography>
+          </Box>
+
+          {/* Пункт 3 - Ход */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#151515' }}>
+              3. Механика хода
+            </Typography>
+            <Box sx={{ pl: 2 }}>
+              <Typography sx={{ mb: 1 }}>• Бросаем кубики</Typography>
+              <Typography sx={{ mb: 1 }}>• Передвигаем фишку на то количество, сколько выпало в кубиках</Typography>
+              <Typography sx={{ mb: 2 }}>• Определяем пулл игр, который необходимо роллить:</Typography>
+              
+              {/* Цветные блоки категорий */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1, mb: 2 }}>
+                <Box sx={{ 
+                  bgcolor: '#1A992E', 
+                  color: 'white', 
+                  p: 1, 
+                  borderRadius: '4px',
+                  textAlign: 'center',
+                  fontWeight: 600
+                }}>
+                  🏃 Бегалки
+                </Box>
+                <Box sx={{ 
+                  bgcolor: '#1F19C3', 
+                  color: 'white', 
+                  p: 1, 
+                  borderRadius: '4px',
+                  textAlign: 'center',
+                  fontWeight: 600
+                }}>
+                  💼 Бизнес
+                </Box>
+                <Box sx={{ 
+                  bgcolor: '#FFD700', 
+                  color: '#151515', 
+                  p: 1, 
+                  borderRadius: '4px',
+                  textAlign: 'center',
+                  fontWeight: 600
+                }}>
+                  🧩 Головоломки
+                </Box>
+                <Box sx={{ 
+                  bgcolor: '#8B4513', 
+                  color: 'white', 
+                  p: 1, 
+                  borderRadius: '4px',
+                  textAlign: 'center',
+                  fontWeight: 600
+                }}>
+                  🔍 Поиск предметов
+                </Box>
+                <Box sx={{ 
+                  bgcolor: '#C32519', 
+                  color: 'white', 
+                  p: 1, 
+                  borderRadius: '4px',
+                  textAlign: 'center',
+                  fontWeight: 600
+                }}>
+                  🔫 Стрелялки
+                </Box>
+                <Box sx={{ 
+                  bgcolor: '#87CEEB', 
+                  color: '#151515', 
+                  p: 1, 
+                  borderRadius: '4px',
+                  textAlign: 'center',
+                  fontWeight: 600
+                }}>
+                  🎯 Шарики
+                </Box>
+              </Box>
+              
+              <Typography sx={{ mb: 2, fontStyle: 'italic' }}>
+                Белые и Стрелки - Общий пулл игр
+              </Typography>
+              
+              <Typography sx={{ mb: 1 }}>• Проходим игру</Typography>
+              
+              {/* Реролл */}
+              <Box sx={{ 
+                bgcolor: '#FFF3CD', 
+                border: '1px solid #FFEAA7', 
+                borderRadius: '6px', 
+                p: 2, 
+                mb: 2 
+              }}>
+                <Typography sx={{ fontWeight: 600, mb: 1, color: '#856404' }}>
+                  🔄 Реролл
+                </Typography>
+                <Typography sx={{ fontSize: '14px' }}>
+                  В случае если игра не запускается/постоянные краши/не проходима. Собирается консилиум из онлайн участников и решается, можно ли решить проблему. Если проблему решить не удается, игрок ставит статус игры «Реролл» и перевыбирает игру из того же пулла.
+                </Typography>
+              </Box>
+              
+              {/* Дроп */}
+              <Box sx={{ 
+                bgcolor: '#F8D7DA', 
+                border: '1px solid #F5C6CB', 
+                borderRadius: '6px', 
+                p: 2, 
+                mb: 2 
+              }}>
+                <Typography sx={{ fontWeight: 600, mb: 1, color: '#721C24' }}>
+                  ❌ Дроп
+                </Typography>
+                <Typography sx={{ fontSize: '14px' }}>
+                  Если игрок не терпит игру, ее можно дропнуть, отодвинув свою фишку на 12 клеток назад. Если у игрока нет 12 клеток позади него, дропнуть игру НЕЛЬЗЯ. На маршрутах без цвета дропнуть игру НЕЛЬЗЯ.
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+
+          {/* Пункт 4 - Завершение */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#151515' }}>
+              4. Завершение игры
+            </Typography>
+            <Typography sx={{ mb: 2 }}>
+              После прохождения игры, игрок ставит статус игры «Пройдено», по желанию может отписать комментарий к игре. Далее повторяется пункт 3.
+            </Typography>
+          </Box>
+
+          {/* Пункт 5 - Победа */}
+          <Box sx={{ 
+            bgcolor: '#D4EDDA', 
+            border: '1px solid #C3E6CB', 
+            borderRadius: '6px', 
+            p: 2 
+          }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, color: '#155724' }}>
+              🏆 Победа
+            </Typography>
+            <Typography sx={{ fontSize: '16px', fontWeight: 600 }}>
+              Побеждает тот, кто быстрее коснется финиша на 151 ячейке
+            </Typography>
+          </Box>
         </Box>
 
         {/* Кнопка закрытия */}

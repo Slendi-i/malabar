@@ -40,41 +40,12 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
   const [gameRollModalOpen, setGameRollModalOpen] = useState(false);
   const [rulesModalOpen, setRulesModalOpen] = useState(false);
   
-  // Отладочная информация
-  console.log('Sidebar render, rulesModalOpen:', rulesModalOpen);
-  console.log('Sidebar: Компонент рендерится!');
-  
-  // Добавляем глобальную функцию для тестирования
-  if (typeof window !== 'undefined') {
-    window.testRulesButton = () => {
-      console.log('Тестируем кнопку Правила...');
-      handleRulesClick({ preventDefault: () => {}, stopPropagation: () => {} });
-    };
-  }
-  
-  // Отслеживаем изменения состояния
-  React.useEffect(() => {
-    console.log('rulesModalOpen изменилось на:', rulesModalOpen);
-  }, [rulesModalOpen]);
   
   const [currentPlayerProfile, setCurrentPlayerProfile] = useState(null);
   
   // Функция для открытия модального окна правил
-  const handleRulesClick = (e) => {
-    console.log('handleRulesClick вызвана!');
-    console.log('Event:', e);
-    console.log('Текущее состояние rulesModalOpen:', rulesModalOpen);
-    
-    e.preventDefault();
-    e.stopPropagation();
-    
-    console.log('Устанавливаем rulesModalOpen = true');
+  const handleRulesClick = () => {
     setRulesModalOpen(true);
-    
-    // Дополнительная проверка через setTimeout
-    setTimeout(() => {
-      console.log('Проверка состояния через 100ms:', rulesModalOpen);
-    }, 100);
   };
 
   const handlePlayerClick = (player) => {
@@ -541,9 +512,8 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
       </div>
 
       <Button 
-        id="rules-button-debug"
         variant="contained" 
-        sx={{
+        style={{
           display: 'flex',
           flexDirection: 'row',
           justifyContent: 'center',
@@ -552,23 +522,13 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
           gap: '10px',
           width: '100%',
           height: '49px',
-          backgroundColor: '#FF0000 !important', // Красный цвет для отладки
+          background: '#151515',
           borderRadius: '6px',
           textTransform: 'none',
           marginTop: '20px',
-          marginBottom: '20px',
-          position: 'relative',
-          zIndex: 1000,
-          cursor: 'pointer',
-          '&:hover': {
-            backgroundColor: '#CC0000 !important'
-          }
+          marginBottom: '20px'
         }}
         onClick={handleRulesClick}
-        onMouseDown={() => console.log('Кнопка Правила: onMouseDown')}
-        onMouseEnter={() => console.log('Кнопка Правила: onMouseEnter')}
-        onMouseLeave={() => console.log('Кнопка Правила: onMouseLeave')}
-        onTouchStart={() => console.log('Кнопка Правила: onTouchStart')}
       >
         <span style={{
           fontFamily: 'Raleway',
