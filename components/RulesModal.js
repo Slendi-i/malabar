@@ -216,28 +216,6 @@ export default function RulesModal({ open, onClose }) {
           </Box>
         </Box>
 
-        {/* Кнопка закрытия */}
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-          <Button
-            variant="contained"
-            onClick={onClose}
-            sx={{
-              bgcolor: '#151515',
-              color: '#FFFFFF',
-              fontFamily: 'Raleway, sans-serif',
-              fontWeight: 700,
-              fontSize: '18px',
-              '&:hover': {
-                bgcolor: '#333333'
-              },
-              padding: '14px 32px',
-              borderRadius: '6px',
-              textTransform: 'none'
-            }}
-          >
-            Закрыть
-          </Button>
-        </Box>
       </Box>
     </Modal>
   );
