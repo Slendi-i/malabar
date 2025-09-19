@@ -73,6 +73,11 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
     if (!currentUser || currentUser.type !== 'player' || isTestRoll) return true;
 
     const games = playerProfile?.games || [];
+    const hasRerollGameToUpdate = games.some(
+      game => game.status === 'Реролл' && 
+             game.dice > 0 && 
+             !game.name
+    );
     const hasGameToUpdate = games.some(
       game => game.status === 'В процессе' && 
              game.dice > 0 && 
@@ -84,10 +89,10 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
              !game.name
     );
     const allGamesCompleted = games.every(
-      game => game.status !== 'В процессе'
+      game => game.status !== 'В процессе' && game.status !== 'Реролл'
     );
 
-    return hasGameToUpdate || hasEmptyGame || allGamesCompleted;
+    return hasRerollGameToUpdate || hasGameToUpdate || hasEmptyGame || allGamesCompleted;
   };
 
   const startRoll = () => {

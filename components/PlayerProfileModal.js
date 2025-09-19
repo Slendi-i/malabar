@@ -608,7 +608,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                 <tr style={{ backgroundColor: '#f5f5f5' }}>
                   <th style={{ padding: '12px', textAlign: 'left', fontWeight: 700 }}>Название игры</th>
                   <th style={{ padding: '12px', textAlign: 'left', fontWeight: 700 }}>Статус</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 700 }}>Комментарий</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 700, width: '200px' }}>Комментарий</th>
                   <th style={{ padding: '12px', textAlign: 'center', fontWeight: 700 }}>Кубик</th>
                   {canEditGames && <th style={{ padding: '12px', textAlign: 'left', fontWeight: 700 }}>Действия</th>}
                 </tr>
@@ -643,16 +643,35 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                         ))}
                       </Select>
                     </td>
-                    <td style={{ padding: '12px' }}>
+                    <td style={{ 
+                      padding: '12px', 
+                      width: '200px', 
+                      maxWidth: '200px',
+                      wordWrap: 'break-word',
+                      whiteSpace: 'pre-wrap'
+                    }}>
                       {canEditComments ? (
                         <TextField
                           value={game.comment}
                           onChange={(e) => handleGameFieldChange(index, 'comment', e.target.value)}
                           fullWidth
                           variant="standard"
+                          multiline
+                          maxRows={3}
+                          sx={{
+                            '& .MuiInputBase-input': {
+                              wordWrap: 'break-word',
+                              whiteSpace: 'pre-wrap'
+                            }
+                          }}
                         />
                       ) : (
-                        <Typography sx={{ fontFamily: 'Raleway, sans-serif' }}>
+                        <Typography sx={{ 
+                          fontFamily: 'Raleway, sans-serif',
+                          wordWrap: 'break-word',
+                          whiteSpace: 'pre-wrap',
+                          maxWidth: '100%'
+                        }}>
                           {game.comment}
                         </Typography>
                       )}

@@ -117,12 +117,21 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
       
       const games = Array.isArray(currentPlayer.games) ? [...currentPlayer.games] : [];
       
-      // Ищем игру в процессе с результатом броска но без названия
+      // Ищем игру со статусом "Реролл" с результатом броска но без названия
       let gameToUpdate = games.find(g => 
-        g && g.status === 'В процессе' && 
+        g && g.status === 'Реролл' && 
         g.dice > 0 && 
         (!g.name || g.name === '')
       );
+
+      // Если не найдена, ищем игру в процессе с результатом броска но без названия
+      if (!gameToUpdate) {
+        gameToUpdate = games.find(g => 
+          g && g.status === 'В процессе' && 
+          g.dice > 0 && 
+          (!g.name || g.name === '')
+        );
+      }
 
       // Если не найдена, ищем любую игру в процессе без названия
       if (!gameToUpdate) {
@@ -142,6 +151,10 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
         games.push(gameToUpdate);
       } else {
         gameToUpdate.name = gameName;
+        // Если игра была со статусом "Реролл", меняем статус на "В процессе"
+        if (gameToUpdate.status === 'Реролл') {
+          gameToUpdate.status = 'В процессе';
+        }
       }
 
       // Отправляем в БД через API
