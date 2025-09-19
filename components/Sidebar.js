@@ -117,43 +117,44 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
       
       const games = Array.isArray(currentPlayer.games) ? [...currentPlayer.games] : [];
       
-      // Ищем игру со статусом "Реролл" с результатом броска но без названия
-      let gameToUpdate = games.find(g => 
-        g && g.status === 'Реролл' && 
-        g.dice > 0 && 
-        (!g.name || g.name === '')
-      );
-
-      // Если не найдена, ищем игру в процессе с результатом броска но без названия
-      if (!gameToUpdate) {
-        gameToUpdate = games.find(g => 
+      // Проверяем, есть ли игра со статусом "Реролл" - если да, создаем новую строку с копированием кубика
+      const rerollGame = games.find(g => g && g.status === 'Реролл');
+      
+      if (rerollGame) {
+        // Создаем новую игру с копированием значения кубика из реролла
+        const newGame = {
+          name: gameName,
+          status: 'В процессе',
+          comment: '',
+          dice: rerollGame.dice // Копируем значение кубика
+        };
+        games.push(newGame);
+      } else {
+        // Оригинальная логика для обычных случаев
+        let gameToUpdate = games.find(g => 
           g && g.status === 'В процессе' && 
           g.dice > 0 && 
           (!g.name || g.name === '')
         );
-      }
 
-      // Если не найдена, ищем любую игру в процессе без названия
-      if (!gameToUpdate) {
-        gameToUpdate = games.find(g => 
-          g && g.status === 'В процессе' && 
-          (!g.name || g.name === '')
-        );
-      }
+        // Если не найдена, ищем любую игру в процессе без названия
+        if (!gameToUpdate) {
+          gameToUpdate = games.find(g => 
+            g && g.status === 'В процессе' && 
+            (!g.name || g.name === '')
+          );
+        }
 
-      if (!gameToUpdate) {
-        gameToUpdate = {
-          name: gameName,
-          status: 'В процессе',
-          comment: '',
-          dice: 0
-        };
-        games.push(gameToUpdate);
-      } else {
-        gameToUpdate.name = gameName;
-        // Если игра была со статусом "Реролл", меняем статус на "В процессе"
-        if (gameToUpdate.status === 'Реролл') {
-          gameToUpdate.status = 'В процессе';
+        if (!gameToUpdate) {
+          gameToUpdate = {
+            name: gameName,
+            status: 'В процессе',
+            comment: '',
+            dice: 0
+          };
+          games.push(gameToUpdate);
+        } else {
+          gameToUpdate.name = gameName;
         }
       }
 
