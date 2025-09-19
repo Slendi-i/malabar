@@ -12,8 +12,15 @@ export default function RulesModal({ open, onClose }) {
   return (
     <Modal 
       open={open} 
-      onClose={onClose}
-      disableEscapeKeyDown={false}
+      // Отключаем автозакрытие от ESC и клика по подложке
+      onClose={(event, reason) => {
+        if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
+          // Игнорируем автозакрытие
+          return;
+        }
+        onClose?.();
+      }}
+      disableEscapeKeyDown
     >
       <Box 
         sx={{

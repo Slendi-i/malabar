@@ -197,8 +197,8 @@ export default function Home() {
         // Ищем вверх по дереву ближайшую кнопку
         const button = target.closest('button');
         if (!button) return;
-        const text = (button.textContent || '').trim();
-        if (text === 'Правила') {
+        const text = ((button.textContent || '').trim() || '').toLowerCase();
+        if (text.includes('правил')) {
           event.preventDefault();
           event.stopPropagation();
           setRulesOpen(true);
@@ -207,7 +207,24 @@ export default function Home() {
     };
 
     document.addEventListener('click', clickHandler, true);
-    return () => document.removeEventListener('click', clickHandler, true);
+    
+    // Глобальные функции для ручного открытия из консоли
+    window.openRules = () => setRulesOpen(true);
+    window.closeRules = () => setRulesOpen(false);
+    window.toggleRules = () => setRulesOpen(prev => !prev);
+    
+    // Быстрые хоткеи: R — открыть правила
+    const keyHandler = (e) => {
+      if (e.key?.toLowerCase() === 'r') {
+        setRulesOpen(true);
+      }
+    };
+    document.addEventListener('keydown', keyHandler, true);
+
+    return () => {
+      document.removeEventListener('click', clickHandler, true);
+      document.removeEventListener('keydown', keyHandler, true);
+    };
   }, []);
 
   // Инициализация компонента
