@@ -608,7 +608,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                 <tr style={{ backgroundColor: '#f5f5f5' }}>
                   <th style={{ padding: '12px', textAlign: 'left', fontWeight: 700 }}>Название игры</th>
                   <th style={{ padding: '12px', textAlign: 'left', fontWeight: 700 }}>Статус</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 700, width: '200px' }}>Комментарий</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: 700 }}>Комментарий</th>
                   <th style={{ padding: '12px', textAlign: 'center', fontWeight: 700 }}>Кубик</th>
                   {canEditGames && <th style={{ padding: '12px', textAlign: 'left', fontWeight: 700 }}>Действия</th>}
                 </tr>
@@ -644,11 +644,10 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                       </Select>
                     </td>
                     <td style={{ 
-                      padding: '12px', 
-                      width: '200px', 
-                      maxWidth: '200px',
+                      padding: '12px',
                       wordWrap: 'break-word',
-                      whiteSpace: 'pre-wrap'
+                      whiteSpace: 'pre-wrap',
+                      verticalAlign: 'top'
                     }}>
                       {canEditComments ? (
                         <TextField
@@ -657,11 +656,14 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                           fullWidth
                           variant="standard"
                           multiline
-                          maxRows={3}
                           sx={{
                             '& .MuiInputBase-input': {
                               wordWrap: 'break-word',
-                              whiteSpace: 'pre-wrap'
+                              whiteSpace: 'pre-wrap',
+                              overflow: 'visible'
+                            },
+                            '& .MuiInputBase-root': {
+                              overflow: 'visible'
                             }
                           }}
                         />
@@ -669,8 +671,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                         <Typography sx={{ 
                           fontFamily: 'Raleway, sans-serif',
                           wordWrap: 'break-word',
-                          whiteSpace: 'pre-wrap',
-                          maxWidth: '100%'
+                          whiteSpace: 'pre-wrap'
                         }}>
                           {game.comment}
                         </Typography>

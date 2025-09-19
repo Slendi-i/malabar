@@ -73,11 +73,15 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
     if (!currentUser || currentUser.type !== 'player' || isTestRoll) return true;
 
     const games = playerProfile?.games || [];
-    const hasRerollGameToUpdate = games.some(
-      game => game.status === 'Реролл' && 
-             game.dice > 0 && 
-             !game.name
+    
+    // Проверяем, есть ли игры со статусом "Реролл" - для них всегда можно выбрать новую игру
+    const hasRerollGame = games.some(
+      game => game.status === 'Реролл'
     );
+    
+    // Если есть игра со статусом "Реролл", всегда разрешаем выбор
+    if (hasRerollGame) return true;
+    
     const hasGameToUpdate = games.some(
       game => game.status === 'В процессе' && 
              game.dice > 0 && 
@@ -89,10 +93,10 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
              !game.name
     );
     const allGamesCompleted = games.every(
-      game => game.status !== 'В процессе' && game.status !== 'Реролл'
+      game => game.status !== 'В процессе'
     );
 
-    return hasRerollGameToUpdate || hasGameToUpdate || hasEmptyGame || allGamesCompleted;
+    return hasGameToUpdate || hasEmptyGame || allGamesCompleted;
   };
 
   const startRoll = () => {
