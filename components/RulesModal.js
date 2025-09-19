@@ -89,7 +89,7 @@ export default function RulesModal({ open, onClose }) {
               {/* Цветные блоки категорий */}
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1, mb: 2 }}>
                 <Box sx={{ 
-                  bgcolor: '#1A992E', 
+                  bgcolor: '#1e3955', 
                   color: 'white', 
                   p: 1, 
                   borderRadius: '4px',
@@ -99,7 +99,7 @@ export default function RulesModal({ open, onClose }) {
                   🏃 Бегалки
                 </Box>
                 <Box sx={{ 
-                  bgcolor: '#1F19C3', 
+                  bgcolor: '#873127', 
                   color: 'white', 
                   p: 1, 
                   borderRadius: '4px',
@@ -109,8 +109,8 @@ export default function RulesModal({ open, onClose }) {
                   💼 Бизнес
                 </Box>
                 <Box sx={{ 
-                  bgcolor: '#FFD700', 
-                  color: '#151515', 
+                  bgcolor: '#32675b', 
+                  color: 'white', 
                   p: 1, 
                   borderRadius: '4px',
                   textAlign: 'center',
@@ -119,7 +119,7 @@ export default function RulesModal({ open, onClose }) {
                   🧩 Головоломки
                 </Box>
                 <Box sx={{ 
-                  bgcolor: '#8B4513', 
+                  bgcolor: '#c49b57', 
                   color: 'white', 
                   p: 1, 
                   borderRadius: '4px',
@@ -129,7 +129,7 @@ export default function RulesModal({ open, onClose }) {
                   🔍 Поиск предметов
                 </Box>
                 <Box sx={{ 
-                  bgcolor: '#C32519', 
+                  bgcolor: '#681e68', 
                   color: 'white', 
                   p: 1, 
                   borderRadius: '4px',
@@ -139,7 +139,7 @@ export default function RulesModal({ open, onClose }) {
                   🔫 Стрелялки
                 </Box>
                 <Box sx={{ 
-                  bgcolor: '#87CEEB', 
+                  bgcolor: '#7fd1d4', 
                   color: '#151515', 
                   p: 1, 
                   borderRadius: '4px',

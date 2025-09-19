@@ -317,9 +317,22 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderRadius: '4px',
-                  flexShrink: 0
+                  flexShrink: 0,
+                  overflow: 'hidden'
                 }}>
-                  {/* Иконка Twitch */}
+                  <img
+                    src="https://static.vecteezy.com/system/resources/previews/023/986/749/large_2x/twitch-logo-twitch-logo-transparent-twitch-icon-transparent-free-free-png.png"
+                    alt="Twitch"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      padding: '4px'
+                    }}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
                 </Box>
                 <TextField
                   value={socialLinks.twitch}
@@ -341,9 +354,22 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderRadius: '4px',
-                  flexShrink: 0
+                  flexShrink: 0,
+                  overflow: 'hidden'
                 }}>
-                  {/* Иконка Telegram */}
+                  <img
+                    src="https://cdn.freelance.ru/images/att/1840377_900_600.png"
+                    alt="Telegram"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      padding: '4px'
+                    }}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
                 </Box>
                 <TextField
                   value={socialLinks.telegram}
@@ -365,9 +391,22 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderRadius: '4px',
-                  flexShrink: 0
+                  flexShrink: 0,
+                  overflow: 'hidden'
                 }}>
-                  {/* Иконка Discord */}
+                  <img
+                    src="https://media.moddb.com/images/members/5/4563/4562559/profile/Discord-Logo.png"
+                    alt="Discord"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      padding: '4px'
+                    }}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
                 </Box>
                 <TextField
                   value={socialLinks.discord}
@@ -500,7 +539,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                   </Typography>
                 </Box>
 
-                {/* Позиция */}
+                {/* Сумма кубиков */}
                 <Box sx={{ 
                   p: 1.5,
                   border: '2px solid #666666',
@@ -521,7 +560,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                       fontSize: '15px',
                       fontWeight: 500
                     }}>
-                      Позиция
+                      Сумма кубиков
                     </Typography>
                   </Box>
                   <Typography sx={{ 
