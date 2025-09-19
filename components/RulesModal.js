@@ -3,12 +3,6 @@ import { Modal, Box, Typography, Button } from '@mui/material';
 export default function RulesModal({ open, onClose }) {
   console.log('RulesModal render, open:', open);
   
-  if (!open) {
-    console.log('RulesModal: modal is closed, not rendering');
-    return null;
-  }
-  
-  console.log('RulesModal: modal is open, rendering');
   return (
     <Modal 
       open={open} 
