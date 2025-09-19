@@ -13,13 +13,14 @@ export default function RulesModal({ open, onClose }) {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: 760,
-          height: 700,
+          width: 'min(820px, 92vw)',
+          height: 'min(760px, 90vh)',
           bgcolor: 'white',
           boxShadow: 24,
           p: 4,
           borderRadius: '10px',
-          fontFamily: 'Raleway, sans-serif'
+          fontFamily: 'Raleway, sans-serif',
+          overflow: 'hidden'
         }}
       >
         {/* Заголовок */}
@@ -36,10 +37,12 @@ export default function RulesModal({ open, onClose }) {
         {/* Правила игры */}
         <Box sx={{ 
           fontFamily: 'Raleway, sans-serif',
-          fontSize: '15px',
+          fontSize: '13px',
           color: '#151515',
-          mb: 4,
-          lineHeight: 1.5
+          lineHeight: 1.45,
+          maxHeight: 'calc(100% - 100px)',
+          overflowY: 'auto',
+          pr: 1
         }}>
           {/* Пункт 1 - Скачивание */}
           <Box sx={{ mb: 3 }}>
