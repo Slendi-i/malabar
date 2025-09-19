@@ -312,7 +312,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                 <Box sx={{ 
                   width: 40, 
                   height: 40, 
-                  bgcolor: '#9147ff', 
+                  bgcolor: 'transparent', 
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -349,7 +349,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                 <Box sx={{ 
                   width: 40, 
                   height: 40, 
-                  bgcolor: '#0088cc', 
+                  bgcolor: 'transparent', 
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -358,7 +358,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                   overflow: 'hidden'
                 }}>
                   <img
-                    src="https://cdn.freelance.ru/images/att/1840377_900_600.png"
+                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Telegram_Messenger.png/500px-Telegram_Messenger.png"
                     alt="Telegram"
                     style={{
                       width: '100%',
@@ -386,7 +386,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                 <Box sx={{ 
                   width: 40, 
                   height: 40, 
-                  bgcolor: '#5865f2', 
+                  bgcolor: 'transparent', 
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -395,7 +395,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                   overflow: 'hidden'
                 }}>
                   <img
-                    src="https://media.moddb.com/images/members/5/4563/4562559/profile/Discord-Logo.png"
+                    src="https://static.vecteezy.com/system/resources/previews/023/741/066/non_2x/discord-logo-icon-social-media-icon-free-png.png"
                     alt="Discord"
                     style={{
                       width: '100%',

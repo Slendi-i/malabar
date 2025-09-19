@@ -247,32 +247,51 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
           margin: '20px 0',
           flexWrap: 'wrap'
         }}>
-          {['Бегалки', 'Бизнес', 'Головоломки', 'Поиск предметов', 'Стрелялки', 'Шарики', 'Общий'].map(pool => (
-            <Button
-              key={pool}
-              variant={selectedPool === pool ? 'contained' : 'outlined'}
-              onClick={() => handlePoolSelect(pool)}
-              disabled={isRolling}
-              sx={{
-                fontFamily: 'Raleway, sans-serif',
-                fontWeight: 700,
-                fontSize: '14px',
-                minWidth: '110px',
-                color: selectedPool === pool ? '#FFFFFF' : '#151515',
-                bgcolor: selectedPool === pool ? '#151515' : 'transparent',
-                borderColor: '#151515',
-                '&:hover': {
-                  bgcolor: selectedPool === pool ? '#333333' : '#F5F5F5',
-                  borderColor: '#151515'
-                },
-                borderRadius: '6px',
-                textTransform: 'none',
-                padding: '8px 16px'
-              }}
-            >
-              {pool}
-            </Button>
-          ))}
+          {['Бегалки', 'Бизнес', 'Головоломки', 'Поиск предметов', 'Стрелялки', 'Шарики', 'Общий'].map(pool => {
+            // Цвета категорий из правил
+            const getCategoryColors = (category) => {
+              switch(category) {
+                case 'Бегалки': return { bg: '#1e3955', text: '#FFFFFF' };
+                case 'Бизнес': return { bg: '#873127', text: '#FFFFFF' };
+                case 'Головоломки': return { bg: '#32675b', text: '#FFFFFF' };
+                case 'Поиск предметов': return { bg: '#c49b57', text: '#FFFFFF' };
+                case 'Стрелялки': return { bg: '#681e68', text: '#FFFFFF' };
+                case 'Шарики': return { bg: '#7fd1d4', text: '#151515' };
+                case 'Общий': return { bg: '#151515', text: '#FFFFFF' };
+                default: return { bg: '#151515', text: '#FFFFFF' };
+              }
+            };
+
+            const colors = getCategoryColors(pool);
+            const isSelected = selectedPool === pool;
+
+            return (
+              <Button
+                key={pool}
+                variant={isSelected ? 'contained' : 'outlined'}
+                onClick={() => handlePoolSelect(pool)}
+                disabled={isRolling}
+                sx={{
+                  fontFamily: 'Raleway, sans-serif',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  minWidth: '110px',
+                  color: isSelected ? colors.text : colors.bg,
+                  bgcolor: isSelected ? colors.bg : 'transparent',
+                  borderColor: colors.bg,
+                  '&:hover': {
+                    bgcolor: isSelected ? colors.bg : `${colors.bg}20`,
+                    borderColor: colors.bg
+                  },
+                  borderRadius: '6px',
+                  textTransform: 'none',
+                  padding: '8px 16px'
+                }}
+              >
+                {pool}
+              </Button>
+            );
+          })}
         </div>
 
         {selectedPool && (
