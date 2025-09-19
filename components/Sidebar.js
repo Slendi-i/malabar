@@ -52,9 +52,21 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
   const [currentPlayerProfile, setCurrentPlayerProfile] = useState(null);
   
   // Функция для открытия модального окна правил
-  const handleRulesClick = () => {
-    console.log('Кнопка Правила нажата!');
+  const handleRulesClick = (e) => {
+    console.log('handleRulesClick вызвана!');
+    console.log('Event:', e);
+    console.log('Текущее состояние rulesModalOpen:', rulesModalOpen);
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('Устанавливаем rulesModalOpen = true');
     setRulesModalOpen(true);
+    
+    // Дополнительная проверка через setTimeout
+    setTimeout(() => {
+      console.log('Проверка состояния через 100ms:', rulesModalOpen);
+    }, 100);
   };
 
   const handlePlayerClick = (player) => {
@@ -535,9 +547,16 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
           borderRadius: '6px',
           textTransform: 'none',
           marginTop: '20px',
-          marginBottom: '20px'
+          marginBottom: '20px',
+          position: 'relative',
+          zIndex: 1000,
+          cursor: 'pointer'
         }}
         onClick={handleRulesClick}
+        onMouseDown={() => console.log('Кнопка Правила: onMouseDown')}
+        onMouseEnter={() => console.log('Кнопка Правила: onMouseEnter')}
+        onMouseLeave={() => console.log('Кнопка Правила: onMouseLeave')}
+        onTouchStart={() => console.log('Кнопка Правила: onTouchStart')}
       >
         <span style={{
           fontFamily: 'Raleway',

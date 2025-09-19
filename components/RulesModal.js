@@ -1,7 +1,13 @@
+import React from 'react';
 import { Modal, Box, Typography, Button } from '@mui/material';
 
 export default function RulesModal({ open, onClose }) {
   console.log('RulesModal render, open:', open);
+  console.log('RulesModal: onClose function type:', typeof onClose);
+  
+  React.useEffect(() => {
+    console.log('RulesModal: useEffect triggered, open changed to:', open);
+  }, [open]);
   
   return (
     <Modal 
