@@ -13,8 +13,8 @@ export default function RulesModal({ open, onClose }) {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: 700,
-          height: 600,
+          width: 760,
+          height: 700,
           bgcolor: 'white',
           boxShadow: 24,
           p: 4,
@@ -36,10 +36,10 @@ export default function RulesModal({ open, onClose }) {
         {/* Правила игры */}
         <Box sx={{ 
           fontFamily: 'Raleway, sans-serif',
-          fontSize: '16px',
+          fontSize: '15px',
           color: '#151515',
           mb: 4,
-          lineHeight: 1.6
+          lineHeight: 1.5
         }}>
           {/* Пункт 1 - Скачивание */}
           <Box sx={{ mb: 3 }}>
@@ -47,7 +47,7 @@ export default function RulesModal({ open, onClose }) {
               1. Скачивание игр
             </Typography>
             <Typography sx={{ mb: 2 }}>
-              Необходимо скажать пак со всеми играми – 
+              Необходимо скачать пак со всеми играми – 
               <a 
                 href="https://utorrentgames.ru/engine/download.php?id=328568" 
                 target="_blank" 
