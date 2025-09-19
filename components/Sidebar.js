@@ -44,6 +44,14 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
   console.log('Sidebar render, rulesModalOpen:', rulesModalOpen);
   console.log('Sidebar: Компонент рендерится!');
   
+  // Добавляем глобальную функцию для тестирования
+  if (typeof window !== 'undefined') {
+    window.testRulesButton = () => {
+      console.log('Тестируем кнопку Правила...');
+      handleRulesClick({ preventDefault: () => {}, stopPropagation: () => {} });
+    };
+  }
+  
   // Отслеживаем изменения состояния
   React.useEffect(() => {
     console.log('rulesModalOpen изменилось на:', rulesModalOpen);
@@ -533,8 +541,9 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
       </div>
 
       <Button 
+        id="rules-button-debug"
         variant="contained" 
-        style={{
+        sx={{
           display: 'flex',
           flexDirection: 'row',
           justifyContent: 'center',
@@ -543,14 +552,17 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
           gap: '10px',
           width: '100%',
           height: '49px',
-          background: '#FF0000', // Красный цвет для отладки
+          backgroundColor: '#FF0000 !important', // Красный цвет для отладки
           borderRadius: '6px',
           textTransform: 'none',
           marginTop: '20px',
           marginBottom: '20px',
           position: 'relative',
           zIndex: 1000,
-          cursor: 'pointer'
+          cursor: 'pointer',
+          '&:hover': {
+            backgroundColor: '#CC0000 !important'
+          }
         }}
         onClick={handleRulesClick}
         onMouseDown={() => console.log('Кнопка Правила: onMouseDown')}
