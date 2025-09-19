@@ -26,8 +26,7 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
     elapsedTime: 0,
     currentIndex: 0,
     targetGame: null,
-    totalSteps: 0,
-    stepsDone: 0
+    totalDuration: 0
   });
 
   const getModalTitle = () => {
@@ -111,37 +110,29 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
     const targetIndex = Math.floor(Math.random() * gamesPool.length);
     rollData.current.targetGame = gamesPool[targetIndex];
     
-    // Рассчитываем количество оборотов для плавного подхода к цели
-    const totalRotations = 3; // Минимум 3 полных оборота
-    const targetPosition = targetIndex;
-    const currentPosition = rollData.current.currentIndex;
-    
-    // Вычисляем, сколько шагов нужно сделать, чтобы дойти до цели
-    let stepsToTarget = (targetPosition - currentPosition + gamesPool.length) % gamesPool.length;
-    stepsToTarget += totalRotations * gamesPool.length; // Добавляем полные обороты
-    
-    rollData.current.totalSteps = stepsToTarget;
-    rollData.current.stepsDone = 0;
+    // Случайная длительность от 3 до 10 секунд
+    const minDuration = 3000;
+    const maxDuration = 10000;
+    rollData.current.totalDuration = Math.random() * (maxDuration - minDuration) + minDuration;
     
     const animate = () => {
       rollData.current.elapsedTime += rollData.current.speed;
-      rollData.current.stepsDone++;
       rollData.current.currentIndex = (rollData.current.currentIndex + 1) % gamesPool.length;
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const centerGame = updateVisibleGames(rollData.current.currentIndex);
       
       // Увеличиваем скорость в начале
-      if (rollData.current.elapsedTime > 3000) {
-        rollData.current.speed = Math.min(rollData.current.speed + 5, 200);
+      if (rollData.current.elapsedTime > 1000) {
+        rollData.current.speed = Math.min(rollData.current.speed + 3, 150);
       }
       
-      // Замедляемся при приближении к цели
-      const progress = rollData.current.stepsDone / rollData.current.totalSteps;
-      if (progress > 0.7) {
-        rollData.current.speed = Math.max(rollData.current.speed - 10, 100);
+      // Замедляемся при приближении к концу
+      const progress = rollData.current.elapsedTime / rollData.current.totalDuration;
+      if (progress > 0.8) {
+        rollData.current.speed = Math.max(rollData.current.speed - 5, 80);
       }
 
-      if (rollData.current.stepsDone < rollData.current.totalSteps) {
+      if (rollData.current.elapsedTime < rollData.current.totalDuration) {
         rollData.current.interval = setTimeout(animate, rollData.current.speed);
       } else {
         finishRoll();
@@ -152,9 +143,10 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
       clearTimeout(rollData.current.interval);
       setIsRolling(false);
       
-      // Убеждаемся, что мы точно на целевом элементе
+      // Вычисляем финальную позицию так, чтобы целевая игра была в центре
       const targetIndex = gamesPool.indexOf(rollData.current.targetGame);
-      rollData.current.currentIndex = targetIndex;
+      // Позиционируем так, чтобы целевая игра была в центре (индекс 3 из 7 видимых)
+      rollData.current.currentIndex = (targetIndex - 3 + gamesPool.length) % gamesPool.length;
       const centerGame = updateVisibleGames(rollData.current.currentIndex);
       
       setSelectedGame(centerGame);
