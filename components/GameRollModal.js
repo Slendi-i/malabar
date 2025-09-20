@@ -75,11 +75,11 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
     const games = playerProfile?.games || [];
     
     // Проверяем, есть ли игра со статусом "Реролл" - для неё можно выбрать новую игру
-    const hasRerollGame = games.some(
-      game => game.status === 'Реролл'
-    );
+    // Проверяем только последнюю игру (самую свежую)
+    const lastGame = games[games.length - 1];
+    const hasRerollGame = lastGame && lastGame.status === 'Реролл';
     
-    // Если есть игра со статусом "Реролл", разрешаем выбор
+    // Если последняя игра со статусом "Реролл", разрешаем выбор
     if (hasRerollGame) return true;
     
     const hasGameToUpdate = games.some(

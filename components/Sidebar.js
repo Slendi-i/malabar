@@ -118,7 +118,8 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
       const games = Array.isArray(currentPlayer.games) ? [...currentPlayer.games] : [];
       
       // Проверяем, есть ли игра со статусом "Реролл" - если да, создаем новую строку с копированием кубика
-      const rerollGame = games.find(g => g && g.status === 'Реролл');
+      // Ищем только последнюю игру со статусом "Реролл" (самую свежую)
+      const rerollGame = games.filter(g => g && g.status === 'Реролл').pop();
       
       if (rerollGame) {
         // Создаем новую игру с копированием значения кубика из реролла
@@ -126,7 +127,7 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
           name: gameName,
           status: 'В процессе',
           comment: '',
-          dice: rerollGame.dice // Копируем значение кубика
+          dice: rerollGame.dice // Копируем значение кубика только при реролле
         };
         games.push(newGame);
       } else {
