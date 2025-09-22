@@ -117,14 +117,26 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
       const games = Array.isArray(currentPlayer.games) ? [...currentPlayer.games] : [];
       
       // ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА ОТ НАРУШИТЕЛЕЙ ПРАВИЛ (серверная валидация)
-      const lastGame = games.length > 0 ? games[games.length - 1] : null;
+      // Повторяем ту же логику что и в GameRollModal
+      
+      // СЛУЧАЙ 1: Пустая таблица игр - НЕЛЬЗЯ
+      if (games.length === 0) {
+        console.error('🚫 НАРУШЕНИЕ ПРАВИЛ: попытка выбрать игру с пустой таблицей');
+        alert('🎲 Нарушение правил! Сначала кинь кубик, потом выбирай игру! Дебил.');
+        return;
+      }
+      
+      const lastGame = games[games.length - 1];
+      
+      // СЛУЧАЙ 2-3: Реролл или Дроп - МОЖНО
       const isRerollAllowed = lastGame && (lastGame.status === 'Реролл' || lastGame.status === 'Дроп');
+      
+      // СЛУЧАЙ 4: Есть игра "В процессе" с кубиком, но без названия - МОЖНО
       const hasValidGameWithDice = games.some(g => 
         g && g.status === 'В процессе' && g.dice > 0 && (!g.name || g.name === '')
       );
-      const allCompleted = games.length === 0 || games.every(g => g.status !== 'В процессе');
       
-      if (!isRerollAllowed && !hasValidGameWithDice && !allCompleted) {
+      if (!isRerollAllowed && !hasValidGameWithDice) {
         console.error('🚫 НАРУШЕНИЕ ПРАВИЛ: попытка выбрать игру без броска кубика');
         alert('🎲 Нарушение правил! Сначала кинь кубик, потом выбирай игру! Дебил.');
         return;
