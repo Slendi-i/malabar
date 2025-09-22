@@ -24,12 +24,17 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
     };
 
     games.forEach(game => {
-      if (game.status === 'Пройдено') stats.wins++;
-      else if (game.status === 'Реролл') stats.rerolls++;
-      else if (game.status === 'Дроп') stats.drops++;
-
-      if (game.status === 'Пройдено' && game.dice) {
-        stats.position += game.dice;
+      if (game.status === 'Пройдено') {
+        stats.wins++;
+        if (game.dice) {
+          stats.position += game.dice;
+        }
+      } else if (game.status === 'Реролл') {
+        stats.rerolls++;
+      } else if (game.status === 'Дроп') {
+        stats.drops++;
+        // При дропе позиция уменьшается на 12
+        stats.position -= 12;
       }
     });
 
@@ -168,12 +173,40 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
   const handleGameStatusChange = (index, status) => {
     const updatedGames = [...games];
     updatedGames[index].status = status;
+    
+    // При выборе статуса "Дроп" устанавливаем кубик как -12
+    if (status === 'Дроп') {
+      updatedGames[index].dice = -12;
+    }
+    
     setGames(updatedGames);
     updatePlayerData({ games: updatedGames });
   };
 
   const renderDiceValue = (value) => {
-    if (!value || value <= 0) return '-';
+    if (!value || (value <= 0 && value !== -12)) return '-';
+    
+    // Для дропа показываем -12
+    if (value === -12) {
+      return (
+        <Box sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '30px',
+          height: '30px',
+          bgcolor: '#ffebee',
+          border: '2px solid',
+          borderColor: '#f44336',
+          borderRadius: '4px',
+          fontSize: '12px',
+          fontWeight: 'bold',
+          color: '#f44336'
+        }}>
+          -12
+        </Box>
+      );
+    }
     
     return (
       <Box sx={{
