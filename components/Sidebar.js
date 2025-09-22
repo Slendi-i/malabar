@@ -76,17 +76,8 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
         (!g.dice || g.dice === 0)
       );
 
-      // ОТЛАДКА: посмотрим состояние при броске кубика
-      console.log('🎲 handleRollComplete отладка:', {
-        diceSum: sum,
-        totalGames: games.length,
-        foundGameToUpdate: gameToUpdate,
-        allGamesInProcess: games.filter(g => g && g.status === 'В процессе')
-      });
-
       if (!gameToUpdate) {
         // Если нет незавершенной игры, создаем новую строку (новый ход)
-        console.log('📝 Создаем новую строку для кубика');
         gameToUpdate = {
           name: '',
           status: 'В процессе',
@@ -96,7 +87,6 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
         games.push(gameToUpdate);
       } else {
         // Обновляем существующую незавершенную игру
-        console.log('✏️ Обновляем существующую игру кубиком:', gameToUpdate);
         gameToUpdate.dice = sum;
       }
 
@@ -126,20 +116,25 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
       
       const games = Array.isArray(currentPlayer.games) ? [...currentPlayer.games] : [];
       
+      // ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА ОТ НАРУШИТЕЛЕЙ ПРАВИЛ (серверная валидация)
+      const lastGame = games.length > 0 ? games[games.length - 1] : null;
+      const isRerollAllowed = lastGame && (lastGame.status === 'Реролл' || lastGame.status === 'Дроп');
+      const hasValidGameWithDice = games.some(g => 
+        g && g.status === 'В процессе' && g.dice > 0 && (!g.name || g.name === '')
+      );
+      const allCompleted = games.length === 0 || games.every(g => g.status !== 'В процессе');
+      
+      if (!isRerollAllowed && !hasValidGameWithDice && !allCompleted) {
+        console.error('🚫 НАРУШЕНИЕ ПРАВИЛ: попытка выбрать игру без броска кубика');
+        alert('🎲 Нарушение правил! Сначала кинь кубик, потом выбирай игру! Дебил.');
+        return;
+      }
+      
       // ИСПРАВЛЕННАЯ ЛОГИКА РЕРОЛЛА:
       // Проверяем только ПОСЛЕДНЮЮ игру - если она со статусом "Реролл", то создаем новую игру с её кубиком
       // НЕ ищем старые реролы в истории - это была ошибка, которая приводила к неправильному кубику
-      const lastGame = games.length > 0 ? games[games.length - 1] : null;
       const isLastGameReroll = lastGame && lastGame.status === 'Реролл';
       
-      // ОТЛАДКА: посмотрим что происходит
-      console.log('🎲 handleGameSelect отладка:', {
-        gameName,
-        totalGames: games.length,
-        lastGame: lastGame,
-        isLastGameReroll: isLastGameReroll,
-        allGames: games.map(g => ({ name: g.name, status: g.status, dice: g.dice }))
-      });
       
       if (isLastGameReroll) {
         // Создаем новую игру с копированием значения кубика из ПОСЛЕДНЕЙ игры с рероллом (игрок стоит на месте)
@@ -168,16 +163,8 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
           );
         }
 
-        // ОТЛАДКА: добавим консоль логи
-        console.log('🔍 Поиск игры для обновления:', {
-          totalGames: games.length,
-          foundGame: gameToUpdate,
-          allGamesInProcess: games.filter(g => g && g.status === 'В процессе')
-        });
-
         if (!gameToUpdate) {
           // Создаем новую игру только если не нашли существующую
-          console.log('📝 Создаем новую игру');
           gameToUpdate = {
             name: gameName,
             status: 'В процессе',
@@ -187,7 +174,6 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
           games.push(gameToUpdate);
         } else {
           // Обновляем существующую игру
-          console.log('✏️ Обновляем существующую игру:', gameToUpdate);
           gameToUpdate.name = gameName;
         }
       }

@@ -74,29 +74,48 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
 
     const games = playerProfile?.games || [];
     
-    // Проверяем, есть ли игра со статусом "Реролл" - для неё можно выбрать новую игру
-    // Проверяем только последнюю игру (самую свежую)
+    // ЗАЩИТА ОТ НАРУШИТЕЛЕЙ ПРАВИЛ:
+    // Игру можно выбирать ТОЛЬКО после броска кубика, кроме исключений
+    
     const lastGame = games[games.length - 1];
-    const hasRerollGame = lastGame && lastGame.status === 'Реролл';
     
-    // Если последняя игра со статусом "Реролл", разрешаем выбор
-    if (hasRerollGame) return true;
+    // ИСКЛЮЧЕНИЕ 1: Последняя игра со статусом "Реролл" - кубик известен
+    if (lastGame && lastGame.status === 'Реролл') {
+      setErrorMessage(''); // Очищаем ошибку
+      return true;
+    }
     
-    const hasGameToUpdate = games.some(
+    // ИСКЛЮЧЕНИЕ 2: Последняя игра со статусом "Дроп" - кубик = -12
+    if (lastGame && lastGame.status === 'Дроп') {
+      setErrorMessage(''); // Очищаем ошибку
+      return true;
+    }
+    
+    // ПРАВИЛЬНАЯ ПОСЛЕДОВАТЕЛЬНОСТЬ: Есть игра "В процессе" с кубиком, но без названия
+    const hasGameWithDice = games.some(
       game => game.status === 'В процессе' && 
              game.dice > 0 && 
-             !game.name
+             (!game.name || game.name === '')
     );
-    const hasEmptyGame = games.some(
-      game => game.status === 'В процессе' && 
-             !game.dice && 
-             !game.name
-    );
-    const allGamesCompleted = games.every(
+    
+    if (hasGameWithDice) {
+      setErrorMessage(''); // Очищаем ошибку
+      return true;
+    }
+    
+    // НОВЫЙ ХОД: Все игры завершены
+    const allGamesCompleted = games.length === 0 || games.every(
       game => game.status !== 'В процессе'
     );
-
-    return hasGameToUpdate || hasEmptyGame || allGamesCompleted;
+    
+    if (allGamesCompleted) {
+      setErrorMessage(''); // Очищаем ошибку
+      return true;
+    }
+    
+    // ВСЕ ОСТАЛЬНЫЕ СЛУЧАИ: НАРУШЕНИЕ ПРАВИЛ
+    setErrorMessage('🎲 Сначала кинь кубик, потом выбирай игру! Дебил.');
+    return false;
   };
 
   const startRoll = () => {
@@ -167,6 +186,13 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
 
     animate();
   };
+
+  // Проверяем возможность выбора игры при открытии модала
+  useEffect(() => {
+    if (open) {
+      canSelectGame(); // Это обновит errorMessage если нужно
+    }
+  }, [open, playerProfile]);
 
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
   useEffect(() => {
