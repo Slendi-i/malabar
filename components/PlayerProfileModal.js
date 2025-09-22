@@ -165,20 +165,44 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
 
   const handleGameFieldChange = (index, field, value) => {
     const updatedGames = [...games];
-    updatedGames[index][field] = value;
+    const currentGame = updatedGames[index];
+    
+    // Особая обработка изменения кубика при дропе
+    if (field === 'dice' && currentGame.status === 'Дроп') {
+      // При ручном изменении кубика во время дропа - обновляем originalDice  
+      currentGame.originalDice = value;
+      // dice остается -12 для дропа
+    } else {
+      currentGame[field] = value;
+    }
+    
     setGames(updatedGames);
     updatePlayerData({ games: updatedGames });
   };
 
   const handleGameStatusChange = (index, status) => {
     const updatedGames = [...games];
-    updatedGames[index].status = status;
+    const currentGame = updatedGames[index];
     
-    // При выборе статуса "Дроп" устанавливаем кубик как -12
+    // ИСПРАВЛЕНИЕ ЛОГИКИ ДРОПА: сохраняем оригинальный кубик
+    
     if (status === 'Дроп') {
-      updatedGames[index].dice = -12;
+      // При смене на "Дроп": сохраняем оригинальный кубик и показываем -12
+      if (currentGame.status !== 'Дроп') {
+        // Сохраняем оригинальный кубик только если не было дропа раньше
+        currentGame.originalDice = currentGame.dice;
+      }
+      currentGame.dice = -12;
+    } else if (currentGame.status === 'Дроп') {
+      // При смене С "Дроп" на другой статус: возвращаем оригинальный кубик
+      if (currentGame.originalDice !== undefined) {
+        currentGame.dice = currentGame.originalDice;
+        // Убираем originalDice после восстановления  
+        delete currentGame.originalDice;
+      }
     }
     
+    currentGame.status = status;
     setGames(updatedGames);
     updatePlayerData({ games: updatedGames });
   };
@@ -235,8 +259,22 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
   const canEditName = isAdmin;
   const canEditSocial = isAdmin || isCurrentPlayer;
   const canEditGames = isAdmin;
-  const canEditStatus = isAdmin || isCurrentPlayer;
   const canEditComments = isAdmin || isCurrentPlayer;
+  
+  // БЛОКИРОВКА СТАТУСА СТАРЫХ ИГР: 
+  // Нельзя менять статус если есть более новые ячейки (после кинутого кубика)
+  const canEditGameStatus = (gameIndex) => {
+    if (isAdmin) return true; // Админ может всегда
+    if (!isCurrentPlayer) return false; // Не свой профиль
+    
+    // Проверяем есть ли игры после текущей
+    const hasNewerGames = games.some((game, index) => 
+      index > gameIndex && (game.dice > 0 || game.name || game.status !== 'В процессе')
+    );
+    
+    // Если есть более новые игры - блокируем редактирование
+    return !hasNewerGames;
+  };
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -667,7 +705,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                       <Select
                         value={game.status}
                         onChange={(e) => handleGameStatusChange(index, e.target.value)}
-                        disabled={!canEditStatus}
+                        disabled={!canEditGameStatus(index)}
                         variant="standard"
                         sx={{ minWidth: '120px' }}
                       >
@@ -714,7 +752,7 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
                       {canEditGames ? (
                         <TextField
                           type="number"
-                          value={game.dice}
+                          value={game.status === 'Дроп' && game.originalDice !== undefined ? game.originalDice : game.dice}
                           onChange={(e) => handleGameFieldChange(index, 'dice', parseInt(e.target.value) || 0)}
                           variant="standard"
                           sx={{ width: '80px' }}
