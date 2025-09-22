@@ -34,12 +34,22 @@ const DiceModal = ({ open, onClose, currentUser, onRollComplete, playerProfile }
 
   useEffect(() => {
     if (open && currentUser?.type === 'player') {
-      const hasUnfinishedGame = playerProfile?.games?.some(
+      const games = playerProfile?.games || [];
+      
+      // Проверяем незавершенную игру "В процессе"
+      const hasUnfinishedGame = games.some(
         game => game.status === 'В процессе' && game.dice > 0
       );
       
+      // ЗАЩИТА ОТ РЕРОЛЛА: нельзя кидать кубик если последняя игра "Реролл"
+      const lastGame = games.length > 0 ? games[games.length - 1] : null;
+      const lastGameIsReroll = lastGame && lastGame.status === 'Реролл';
+      
       if (hasUnfinishedGame) {
         setErrorMessage('Завершите текущую игру перед новым броском');
+        setCanRoll(false);
+      } else if (lastGameIsReroll) {
+        setErrorMessage('После реролла сначала выберите новую игру, кубик копируется');
         setCanRoll(false);
       } else {
         setCanRoll(true);
