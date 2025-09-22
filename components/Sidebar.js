@@ -76,8 +76,17 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
         (!g.dice || g.dice === 0)
       );
 
+      // ОТЛАДКА: посмотрим состояние при броске кубика
+      console.log('🎲 handleRollComplete отладка:', {
+        diceSum: sum,
+        totalGames: games.length,
+        foundGameToUpdate: gameToUpdate,
+        allGamesInProcess: games.filter(g => g && g.status === 'В процессе')
+      });
+
       if (!gameToUpdate) {
         // Если нет незавершенной игры, создаем новую строку (новый ход)
+        console.log('📝 Создаем новую строку для кубика');
         gameToUpdate = {
           name: '',
           status: 'В процессе',
@@ -87,6 +96,7 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
         games.push(gameToUpdate);
       } else {
         // Обновляем существующую незавершенную игру
+        console.log('✏️ Обновляем существующую игру кубиком:', gameToUpdate);
         gameToUpdate.dice = sum;
       }
 
@@ -122,6 +132,15 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
       const lastGame = games.length > 0 ? games[games.length - 1] : null;
       const isLastGameReroll = lastGame && lastGame.status === 'Реролл';
       
+      // ОТЛАДКА: посмотрим что происходит
+      console.log('🎲 handleGameSelect отладка:', {
+        gameName,
+        totalGames: games.length,
+        lastGame: lastGame,
+        isLastGameReroll: isLastGameReroll,
+        allGames: games.map(g => ({ name: g.name, status: g.status, dice: g.dice }))
+      });
+      
       if (isLastGameReroll) {
         // Создаем новую игру с копированием значения кубика из ПОСЛЕДНЕЙ игры с рероллом (игрок стоит на месте)
         const newGame = {
@@ -132,14 +151,16 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
         };
         games.push(newGame);
       } else {
-        // Обычная логика - ищем игру в процессе для обновления
+        // ИСПРАВЛЕННАЯ ЛОГИКА: ищем существующую игру для обновления
+        
+        // Приоритет 1: Ищем игру "В процессе" с кубиком, но без названия (после броска кубика)
         let gameToUpdate = games.find(g => 
           g && g.status === 'В процессе' && 
-          g.dice > 0 && 
-          (!g.name || g.name === '')
+          (!g.name || g.name === '') &&
+          g.dice > 0
         );
 
-        // Если не найдена, ищем любую игру в процессе без названия
+        // Приоритет 2: Ищем любую игру "В процессе" без названия
         if (!gameToUpdate) {
           gameToUpdate = games.find(g => 
             g && g.status === 'В процессе' && 
@@ -147,7 +168,16 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
           );
         }
 
+        // ОТЛАДКА: добавим консоль логи
+        console.log('🔍 Поиск игры для обновления:', {
+          totalGames: games.length,
+          foundGame: gameToUpdate,
+          allGamesInProcess: games.filter(g => g && g.status === 'В процессе')
+        });
+
         if (!gameToUpdate) {
+          // Создаем новую игру только если не нашли существующую
+          console.log('📝 Создаем новую игру');
           gameToUpdate = {
             name: gameName,
             status: 'В процессе',
@@ -156,6 +186,8 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
           };
           games.push(gameToUpdate);
         } else {
+          // Обновляем существующую игру
+          console.log('✏️ Обновляем существующую игру:', gameToUpdate);
           gameToUpdate.name = gameName;
         }
       }
