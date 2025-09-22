@@ -261,11 +261,19 @@ export default function PlayerProfileModal({ player, open, onClose, setPlayers, 
   const canEditGames = isAdmin;
   const canEditComments = isAdmin || isCurrentPlayer;
   
-  // БЛОКИРОВКА СТАТУСА СТАРЫХ ИГР: 
-  // Нельзя менять статус если есть более новые ячейки (после кинутого кубика)
+  // БЛОКИРОВКА СТАТУСА ИГР: 
+  // 1. Нельзя менять статус если есть более новые ячейки (после кинутого кубика)
+  // 2. Нельзя менять статус если игра не выбрана (name пустое)
   const canEditGameStatus = (gameIndex) => {
     if (isAdmin) return true; // Админ может всегда
     if (!isCurrentPlayer) return false; // Не свой профиль
+    
+    const currentGame = games[gameIndex];
+    
+    // ЗАЩИТА ОТ НЕОПЫТНЫХ ПОЛЬЗОВАТЕЛЕЙ: статус можно менять только после выбора игры
+    if (!currentGame.name || currentGame.name === '') {
+      return false; // Нельзя менять статус если игра не выбрана
+    }
     
     // Проверяем есть ли игры после текущей
     const hasNewerGames = games.some((game, index) => 
