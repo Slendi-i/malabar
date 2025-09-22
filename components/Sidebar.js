@@ -68,13 +68,23 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
       
       const games = Array.isArray(currentPlayer.games) ? [...currentPlayer.games] : [];
       
-      // Ищем игру в процессе без результата броска
+      // Приоритет 1: Ищем игру "В процессе" с названием, но без кубика (после реролла)
       let gameToUpdate = games.find(g => 
         g && g.status === 'В процессе' && 
+        g.name && g.name !== '' &&
         (!g.dice || g.dice === 0)
       );
 
-      // Если не найдена, ищем любую игру в процессе
+      // Приоритет 2: Ищем игру в процессе без результата броска и без названия
+      if (!gameToUpdate) {
+        gameToUpdate = games.find(g => 
+          g && g.status === 'В процессе' && 
+          (!g.name || g.name === '') &&
+          (!g.dice || g.dice === 0)
+        );
+      }
+
+      // Приоритет 3: Ищем любую игру в процессе
       if (!gameToUpdate) {
         gameToUpdate = games.find(g => g && g.status === 'В процессе');
       }
@@ -117,19 +127,15 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
       
       const games = Array.isArray(currentPlayer.games) ? [...currentPlayer.games] : [];
       
-      // Проверяем, есть ли игра со статусом "Реролл" - если да, создаем новую строку с копированием кубика
+      // Проверяем, есть ли игра со статусом "Реролл" - если да, ОБНОВЛЯЕМ её, а не создаем новую
       // Ищем только последнюю игру со статусом "Реролл" (самую свежую)
-      const rerollGame = games.filter(g => g && g.status === 'Реролл').pop();
+      const rerollGameIndex = games.map((g, i) => g && g.status === 'Реролл' ? i : -1).filter(i => i !== -1).pop();
       
-      if (rerollGame) {
-        // Создаем новую игру с копированием значения кубика из реролла
-        const newGame = {
-          name: gameName,
-          status: 'В процессе',
-          comment: '',
-          dice: rerollGame.dice // Копируем значение кубика только при реролле
-        };
-        games.push(newGame);
+      if (rerollGameIndex !== undefined && rerollGameIndex >= 0) {
+        // Обновляем существующую игру с рероллом, а не создаем новую
+        games[rerollGameIndex].name = gameName;
+        games[rerollGameIndex].status = 'В процессе';
+        // Кубик остается тот же из реролла
       } else {
         // Оригинальная логика для обычных случаев
         let gameToUpdate = games.find(g => 
