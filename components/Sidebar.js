@@ -74,7 +74,7 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
       const lastGame = games.length > 0 ? games[games.length - 1] : null;
       if (lastGame && lastGame.status === 'Реролл') {
         console.error('🚫 НАРУШЕНИЕ ПРАВИЛ: попытка кинуть кубик после реролла');
-        alert('После реролла сначала выберите новую игру, кубик копируется');
+        alert('После реролла выбирают новую игру, Дебил.');
         return;
       }
       
