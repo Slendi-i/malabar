@@ -71,11 +71,9 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
       }
       
       // Используем правильный WebSocket URL из конфигурации
-      const wsUrl = API_ENDPOINTS?.WEBSOCKET || 
-        (window.location.protocol.replace('http', 'ws') + '//' + 
-         window.location.hostname + 
-         (window.location.hostname === 'malabar-event.ru' ? ':3001' : 
-          window.location.hostname === 'localhost' ? ':3001' : ':3001') + '/ws');
+      const wsUrl = API_ENDPOINTS?.WEBSOCKET || (
+        window.location.protocol.replace('http', 'ws') + '//' + window.location.host + '/ws'
+      );
       const ws = new WebSocket(wsUrl);
       
       const timeout = setTimeout(() => {

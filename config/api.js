@@ -20,10 +20,10 @@ const getApiBaseUrl = () => {
       return;
     }
     
-    // VPS сервер - новый домен
+    // VPS сервер - новый домен (используем same-origin без явного порта)
     if (bareHost === 'malabar-event.ru') {
-      const apiUrl = `https://malabar-event.ru:3001`;
-      console.log('✅ API Config - используем новый домен VPS:', apiUrl);
+      const apiUrl = `${window.location.protocol}//${bareHost}`;
+      console.log('✅ API Config - same-origin для нового домена:', apiUrl);
       return apiUrl;
     }
     
@@ -53,14 +53,16 @@ const getApiBaseUrl = () => {
       return apiUrl;
     }
     
-    // Fallback - если работаем на нестандартном хосте, пробуем с VPS IP
-    console.warn('⚠️ API Config - неизвестный хост, используем VPS IP как fallback');
-    return `${isHttps ? 'https' : 'http'}://46.173.17.229:3001`;
+    // Fallback - если работаем на нестандартном хосте, используем same-origin
+    console.warn('⚠️ API Config - неизвестный хост, используем same-origin как fallback');
+    return `${window.location.protocol}//${host}`;
   }
   
   // Server-side rendering - принудительно используем VPS на продакшене
   const isProduction = process.env.NODE_ENV === 'production' || process.env.VPS_MODE === 'true';
-  const apiUrl = isProduction ? 'http://46.173.17.229:3001' : 'http://localhost:3001';
+  // На SSR в продакшене используем домен, если задан ENV, иначе IP
+  const prodBase = process.env.PUBLIC_BASE_URL || 'https://malabar-event.ru';
+  const apiUrl = isProduction ? prodBase : 'http://localhost:3001';
   console.log('🖥️ API Config - SSR режим:', apiUrl, '(production:', isProduction, ')');
   return apiUrl;
 };
