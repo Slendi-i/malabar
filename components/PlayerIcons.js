@@ -71,8 +71,18 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
       }
       
       // Используем правильный WebSocket URL из конфигурации
+      const host = window.location.hostname.toLowerCase();
+      const isHttps = window.location.protocol === 'https:';
+      const wsProto = isHttps ? 'wss' : 'ws';
+
       const wsUrl = API_ENDPOINTS?.WEBSOCKET || (
-        window.location.protocol.replace('http', 'ws') + '//' + window.location.host + '/ws'
+        host === 'malabar-event.ru' || host === 'www.malabar-event.ru'
+          ? `${wsProto}://malabar-event.ru:3001/ws`
+          : host === '46.173.17.229'
+            ? `${wsProto}://46.173.17.229:3001/ws`
+            : host === 'localhost' || host === '127.0.0.1'
+              ? 'ws://localhost:3001/ws'
+              : `${wsProto}://${window.location.host.replace(/:.*/, '')}:3001/ws`
       );
       const ws = new WebSocket(wsUrl);
       

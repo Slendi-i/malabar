@@ -69,6 +69,42 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
+// Явная настройка WebSocket адреса: для продакшена используем :3001 на новом домене
+const getWebSocketUrl = (apiBaseUrl) => {
+  // Браузер
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname.toLowerCase();
+    const isHttps = window.location.protocol === 'https:';
+    const wsProto = isHttps ? 'wss' : 'ws';
+
+    // Новый домен: всегда на :3001
+    if (host === 'malabar-event.ru' || host === 'www.malabar-event.ru') {
+      return `${wsProto}://malabar-event.ru:3001/ws`;
+    }
+
+    // Доступ по IP
+    if (host === '46.173.17.229') {
+      return `${wsProto}://46.173.17.229:3001/ws`;
+    }
+
+    // Локальная разработка
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return `ws://localhost:3001/ws`;
+    }
+
+    // Fallback: из базового URL
+    try {
+      return apiBaseUrl.replace(/^http/, 'ws') + '/ws';
+    } catch (e) {
+      return `${wsProto}://${host}:3001/ws`;
+    }
+  }
+
+  // SSR: в проде используем новый домен с :3001, иначе локалку
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.VPS_MODE === 'true';
+  return isProduction ? 'wss://malabar-event.ru:3001/ws' : 'ws://localhost:3001/ws';
+};
+
 export const API_ENDPOINTS = {
   PLAYERS: `${API_BASE_URL}/api/players`,
   PLAYERS_UPDATES: `${API_BASE_URL}/api/players/updates`,
@@ -77,7 +113,7 @@ export const API_ENDPOINTS = {
   LOGIN: `${API_BASE_URL}/api/auth/login`,
   LOGOUT: `${API_BASE_URL}/api/auth/logout`,
   HEALTH: `${API_BASE_URL}/api/health`,
-  WEBSOCKET: API_BASE_URL.replace('http', 'ws') + '/ws'
+  WEBSOCKET: getWebSocketUrl(API_BASE_URL)
 };
 
 // Для отладки
