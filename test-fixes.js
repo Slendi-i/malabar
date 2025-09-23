@@ -16,7 +16,7 @@ async function testWebSocketStability() {
   
   try {
     const WebSocket = require('ws');
-    const ws = new WebSocket('ws://46.173.17.229:3001/ws');
+    const ws = new WebSocket('wss://malabar-event.ru:3001/ws');
     
     let messageCount = 0;
     const startTime = Date.now();

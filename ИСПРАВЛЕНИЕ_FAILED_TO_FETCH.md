@@ -42,11 +42,14 @@ node debug-connection.js
 
 ### Проверка API вручную
 ```bash
-# Проверка health endpoint
-curl http://46.173.17.229:3001/api/health
+# Проверка health endpoint (новый домен с SSL)
+curl https://malabar-event.ru:3001/api/health
 
-# Проверка игроков
-curl http://46.173.17.229:3001/api/players
+# Проверка игроков (новый домен с SSL)
+curl https://malabar-event.ru:3001/api/players
+
+# Проверка через IP (fallback)
+curl http://46.173.17.229:3001/api/health
 ```
 
 ### Проверка процессов
@@ -90,12 +93,18 @@ const getApiBaseUrl = () => {
     const host = window.location.hostname;
     console.log('🔧 API Config - определяем URL для хоста:', host);
     
-    if (host === 'vet-klinika-moscow.ru') {
-      return 'http://vet-klinika-moscow.ru:3001';
+    // Редирект с www на без www
+    if (host.startsWith('www.malabar-event.ru')) {
+      window.location.replace('https://malabar-event.ru' + window.location.pathname);
+      return;
+    }
+    
+    if (host === 'malabar-event.ru') {
+      return 'https://malabar-event.ru:3001';
     }
     // ... другие проверки
   }
-  return 'http://46.173.17.229:3001'; // Надежный fallback
+  return 'https://malabar-event.ru:3001'; // Надежный fallback с SSL
 };
 ```
 

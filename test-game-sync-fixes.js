@@ -198,7 +198,8 @@ async function testWebSocketSync() {
     log('🔄 Тестирование WebSocket синхронизации...');
     
     return new Promise((resolve, reject) => {
-        const ws = new WebSocket('ws://localhost:3001/ws');
+        const wsUrl = process.env.NODE_ENV === 'production' ? 'wss://malabar-event.ru:3001/ws' : 'ws://localhost:3001/ws';
+        const ws = new WebSocket(wsUrl);
         let messageReceived = false;
         
         ws.on('open', () => {

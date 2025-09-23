@@ -10,13 +10,33 @@ const getApiBaseUrl = () => {
     
     console.log('🔧 API Config - определяем URL для хоста:', host, 'https:', isHttps);
     
-    // Нормализуем www
+    // Нормализуем www и делаем редирект если нужно
     const bareHost = host.startsWith('www.') ? host.slice(4) : host;
     
-    // VPS сервер - домен и IP
+    // Редирект с www на без www для нового домена
+    if (host.startsWith('www.malabar-event.ru')) {
+      console.warn('⚠️ API Config - редирект с www на без www');
+      window.location.replace('https://malabar-event.ru' + window.location.pathname + window.location.search);
+      return;
+    }
+    
+    // VPS сервер - новый домен
+    if (bareHost === 'malabar-event.ru') {
+      const apiUrl = `https://malabar-event.ru:3001`;
+      console.log('✅ API Config - используем новый домен VPS:', apiUrl);
+      return apiUrl;
+    }
+    
+    // Обратная совместимость со старым доменом (с редиректом)
     if (bareHost === 'vet-klinika-moscow.ru') {
-      const apiUrl = `${isHttps ? 'https' : 'http'}://vet-klinika-moscow.ru:3001`;
-      console.log('✅ API Config - используем домен VPS:', apiUrl);
+      console.warn('⚠️ API Config - старый домен, перенаправляем на новый');
+      // Редирект на новый домен
+      if (typeof window !== 'undefined') {
+        window.location.replace('https://malabar-event.ru' + window.location.pathname + window.location.search);
+        return;
+      }
+      // Для SSR используем новый домен
+      const apiUrl = `https://malabar-event.ru:3001`;
       return apiUrl;
     }
     

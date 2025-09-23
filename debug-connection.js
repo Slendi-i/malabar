@@ -12,7 +12,8 @@ const http = require('http');
 // Конфигурация для тестирования
 const TEST_CONFIG = {
   VPS_IP: '46.173.17.229',
-  VPS_DOMAIN: 'vet-klinika-moscow.ru',
+  VPS_DOMAIN: 'malabar-event.ru',
+  OLD_VPS_DOMAIN: 'vet-klinika-moscow.ru', // Старый домен для тестирования обратной совместимости
   LOCAL_HOST: 'localhost',
   API_PORT: 3001,
   FRONTEND_PORT: 3000,
@@ -93,7 +94,8 @@ async function runDiagnostics() {
   
   const tests = [
     { name: 'VPS IP', host: TEST_CONFIG.VPS_IP, port: TEST_CONFIG.API_PORT },
-    { name: 'VPS Domain', host: TEST_CONFIG.VPS_DOMAIN, port: TEST_CONFIG.API_PORT },
+    { name: 'VPS New Domain', host: TEST_CONFIG.VPS_DOMAIN, port: TEST_CONFIG.API_PORT },
+    { name: 'VPS Old Domain (legacy)', host: TEST_CONFIG.OLD_VPS_DOMAIN, port: TEST_CONFIG.API_PORT },
     { name: 'Localhost', host: TEST_CONFIG.LOCAL_HOST, port: TEST_CONFIG.API_PORT }
   ];
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Tooltip } from '@mui/material';
 import apiService from '../services/apiService';
+import { API_ENDPOINTS } from '../config/api';
 
 export default function PlayerIcons({ players, setPlayers, currentUser, onPlayerPositionUpdate, updatePlayerPositionRef, syncOnChange }) {
   // Ensure players is an array and has the expected structure
@@ -69,7 +70,13 @@ export default function PlayerIcons({ players, setPlayers, currentUser, onPlayer
         return;
       }
       
-      const ws = new WebSocket(window.location.protocol.replace('http', 'ws') + '//' + window.location.host + '/ws');
+      // Используем правильный WebSocket URL из конфигурации
+      const wsUrl = API_ENDPOINTS?.WEBSOCKET || 
+        (window.location.protocol.replace('http', 'ws') + '//' + 
+         window.location.hostname + 
+         (window.location.hostname === 'malabar-event.ru' ? ':3001' : 
+          window.location.hostname === 'localhost' ? ':3001' : ':3001') + '/ws');
+      const ws = new WebSocket(wsUrl);
       
       const timeout = setTimeout(() => {
         ws.close();

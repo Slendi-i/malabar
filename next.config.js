@@ -32,6 +32,68 @@ const nextConfig = {
   // Production optimizations
   poweredByHeader: false,
   reactStrictMode: true,
+  // HTTPS and domain configuration
+  assetPrefix: process.env.NODE_ENV === 'production' ? 'https://malabar-event.ru' : '',
+  // Security headers for HTTPS
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload'
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY'
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
+          }
+        ]
+      }
+    ];
+  },
+  // Redirects configuration for domain migration
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'www.malabar-event.ru',
+          },
+        ],
+        destination: 'https://malabar-event.ru/:path*',
+        permanent: true,
+      },
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'vet-klinika-moscow.ru',
+          },
+        ],
+        destination: 'https://malabar-event.ru/:path*',
+        permanent: true,
+      },
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'www.vet-klinika-moscow.ru',
+          },
+        ],
+        destination: 'https://malabar-event.ru/:path*',
+        permanent: true,
+      },
+    ];
+  },
   // Error handling configuration
   onDemandEntries: {
     // период (в мс), в течение которого страницы будут храниться в памяти

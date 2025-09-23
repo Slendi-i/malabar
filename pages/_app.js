@@ -3,10 +3,35 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
-// Скрываем фронтенд-логи вне локальной среды (localhost)
+// Редиректы доменов и SSL
 if (typeof window !== 'undefined') {
-  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  if (!isLocal) {
+  const hostname = window.location.hostname.toLowerCase();
+  const protocol = window.location.protocol;
+  const pathname = window.location.pathname;
+  const search = window.location.search;
+  
+  // Редирект со старого домена на новый
+  if (hostname.includes('vet-klinika-moscow.ru')) {
+    const newUrl = `https://malabar-event.ru${pathname}${search}`;
+    console.log('🔄 Редирект со старого домена:', newUrl);
+    window.location.replace(newUrl);
+  }
+  // Редирект с www на без www для нового домена
+  else if (hostname === 'www.malabar-event.ru') {
+    const newUrl = `https://malabar-event.ru${pathname}${search}`;
+    console.log('🔄 Редирект с www на без www:', newUrl);
+    window.location.replace(newUrl);
+  }
+  // Принудительный HTTPS для основного домена
+  else if (hostname === 'malabar-event.ru' && protocol === 'http:') {
+    const newUrl = `https://malabar-event.ru${pathname}${search}`;
+    console.log('🔄 Редирект на HTTPS:', newUrl);
+    window.location.replace(newUrl);
+  }
+  
+  // Скрываем фронтенд-логи вне локальной среды (localhost)
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+  if (!isLocal && hostname !== 'malabar-event.ru') {
     const noop = () => {};
     console.log = noop;
     console.info = noop;

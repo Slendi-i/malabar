@@ -10,8 +10,8 @@ const WebSocket = require('ws');
 const { runFullDiagnosis } = require('./diagnose-and-fix-db');
 
 // Конфигурация
-const API_BASE = 'http://localhost:3001';
-const WS_URL = 'ws://localhost:3001/ws';
+const API_BASE = process.env.NODE_ENV === 'production' ? 'https://malabar-event.ru:3001' : 'http://localhost:3001';
+const WS_URL = process.env.NODE_ENV === 'production' ? 'wss://malabar-event.ru:3001/ws' : 'ws://localhost:3001/ws';
 
 const COLORS = {
   red: '\x1b[31m',
