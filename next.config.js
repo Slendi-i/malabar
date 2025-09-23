@@ -94,6 +94,15 @@ const nextConfig = {
       },
     ];
   },
+  // Proxy API to backend on the same server to avoid CORS and explicit ports
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:3001/api/:path*'
+      }
+    ];
+  },
   // Error handling configuration
   onDemandEntries: {
     // период (в мс), в течение которого страницы будут храниться в памяти
