@@ -12,7 +12,11 @@ export default function Home() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [isMounted, setIsMounted] = useState(false);
-  // Убрали imageDimensions - теперь используем фиксированные размеры 1920x1080
+  const [imageDimensions, setImageDimensions] = useState({ 
+    width: 800, 
+    height: 600,
+    ratio: 0.75
+  });
   const [syncStatus, setSyncStatus] = useState('disconnected');
   const containerRef = useRef(null);
   const imageRef = useRef(null);
@@ -340,7 +344,29 @@ export default function Home() {
     }
   }, [isMounted]);
 
-  // Размеры теперь фиксированы на 1920x1080 - убрали логику адаптива
+  // Обновление размеров при изменении окна
+  useEffect(() => {
+    const handleResize = () => {
+      if (containerRef.current && imageDimensions.ratio) {
+        const containerWidth = containerRef.current.clientWidth;
+        const calculatedHeight = containerWidth * imageDimensions.ratio;
+        
+        setImageDimensions(prev => ({
+          ...prev,
+          width: containerWidth,
+          height: calculatedHeight
+        }));
+      }
+    };
+
+    // Only add resize listener if we're in browser environment
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+      handleResize(); // Инициализация размеров
+
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, [imageDimensions.ratio]);
 
   // УБРАЛИ АВТОМАТИЧЕСКОЕ СОХРАНЕНИЕ - оно создавало бесконечные циклы!
   // Теперь сохранение происходит только явно через компоненты (PlayerProfileModal, PlayerIcons)
@@ -397,9 +423,7 @@ export default function Home() {
   if (!isMounted) return null;
 
   return (
-    <div className="scale-wrapper">
-      <div className="scale-container">
-        <div className="flex relative bg-gray-100" style={{ width: '1920px', height: '1080px' }}>
+    <div className="flex relative h-screen w-full bg-gray-100">
       {/* 🚀 УПРОЩЕННЫЙ ИНДИКАТОР СИНХРОНИЗАЦИИ - только цвет */}
       <div className="absolute bottom-4 right-4 z-50">
         <div className="flex items-center gap-2 bg-white bg-opacity-90 px-3 py-2 rounded-lg shadow-lg">
@@ -521,7 +545,8 @@ export default function Home() {
         <div
           style={{
             width: '100%',
-            height: '1080px',
+            height: `${imageDimensions.height}px`,
+            minHeight: '100vh',
             position: 'relative'
           }}
         >
@@ -534,10 +559,24 @@ export default function Home() {
               position: 'absolute',
               top: 0,
               left: 0,
-              width: '1920px',
-              height: '1080px',
+              width: '100%',
+              height: '100%',
               objectFit: 'cover',
               zIndex: 0
+            }}
+            onLoad={() => {
+              if (imageRef.current) {
+                const ratio = imageRef.current.naturalHeight / imageRef.current.naturalWidth;
+                setImageDimensions({
+                  width: imageRef.current.naturalWidth,
+                  height: imageRef.current.naturalHeight,
+                  ratio
+                });
+              }
+            }}
+            onError={() => {
+              console.warn('Failed to load game-field.jpg, using default dimensions');
+              // Keep default dimensions
             }}
           />
           
@@ -576,8 +615,6 @@ export default function Home() {
         onLogin={handleLogin}
       />
 
-        </div>
-      </div>
     </div>
   );
 }

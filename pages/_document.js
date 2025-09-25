@@ -5,7 +5,7 @@ export default function Document() {
     <Html lang="ru">
       <Head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=1920, initial-scale=1.0, user-scalable=no" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <body>
