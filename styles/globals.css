@@ -13,4 +13,68 @@ body {
   font-family: 'Raleway', sans-serif;
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
+}
+
+/* Система фиксированного масштабирования для базового разрешения 1920x1080 */
+html {
+  /* Базовые размеры для расчетов */
+  --base-width: 1920;
+  --base-height: 1080;
+}
+
+/* Контейнер с фиксированным масштабированием */
+.scale-container {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+  min-height: 100vh;
+  min-width: 100vw;
+}
+
+/* Центрирование масштабированного контента */
+.scale-wrapper {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+}
+
+/* Медиа-запросы для вычисления масштаба на разных разрешениях */
+@media screen {
+  .scale-container {
+    /* Вычисляем масштаб на основе размера экрана */
+    transform: scale(calc(min(100vw / 1920, 100vh / 1080)));
+  }
+}
+
+/* Для очень маленьких экранов (мобильные) */
+@media screen and (max-width: 768px) {
+  .scale-container {
+    transform: scale(calc(100vw / 1920));
+  }
+  .scale-wrapper {
+    align-items: flex-start;
+  }
+}
+
+/* Для очень больших экранов (4K и выше) */
+@media screen and (min-width: 3840px) {
+  .scale-container {
+    transform: scale(calc(min(100vw / 1920, 100vh / 1080)));
+  }
+}
+
+/* Дополнительные стили для предотвращения проблем с масштабированием */
+.scale-container * {
+  /* Запрещаем браузеру самостоятельно масштабировать элементы */
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
