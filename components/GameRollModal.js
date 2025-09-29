@@ -77,6 +77,14 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
       return true;
     }
 
+    // КРИТИЧЕСКИ ВАЖНО: Если ролл только что был выполнен в этом окне - БЛОКИРУЕМ
+    if (justRolled) {
+      console.log('🚫 canSelectGame: Блокировка из-за justRolled = true');
+      setErrorMessage('🎲 Сначала кинь кубик, потом выбирай игру! Дебил.');
+      setCanRollAgain(false);
+      return false;
+    }
+
     const games = playerProfile?.games || [];
     
     // ИСПРАВЛЕННАЯ ЛОГИКА: КОГДА МОЖНО РОЛЛИТЬ ИГРУ
@@ -112,6 +120,7 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
     );
     
     if (hasGameWithDice) {
+      console.log('✅ canSelectGame: Разрешение из-за игры с кубиком без названия');
       setErrorMessage('');
       setCanRollAgain(true);
       return true;
@@ -126,6 +135,8 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
   };
 
   const startRoll = () => {
+    console.log('🎯 startRoll: Попытка запуска ролла, justRolled =', justRolled, 'canRollAgain =', canRollAgain);
+    
     if (!selectedPool) {
       setErrorMessage('Выберите пул игр');
       return;
@@ -135,11 +146,13 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
     if (currentUser?.type === 'player' && !isTestRoll) {
       // Дополнительная защита: проверяем не был ли недавно выполнен ролл
       if (justRolled) {
+        console.log('🚫 startRoll: Блокировка из-за justRolled = true');
         setErrorMessage('🎲 Сначала кинь кубик, потом выбирай игру! Дебил.');
         return;
       }
       
       if (!canSelectGame()) {
+        console.log('🚫 startRoll: Блокировка из-за canSelectGame() = false');
         return; // canSelectGame() уже установит нужное сообщение об ошибке
       }
     }
@@ -198,6 +211,7 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
         onGameSelect(centerGame);
         
         // ВАЖНО: Блокируем повторные роллы и отмечаем что ролл только что был выполнен
+        console.log('🔒 finishRoll: Устанавливаем justRolled = true');
         setJustRolled(true);
         setCanRollAgain(false);
         setErrorMessage('🎲 Сначала кинь кубик, потом выбирай игру! Дебил.');
@@ -212,6 +226,7 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
     if (open) {
       // Сбрасываем состояния при открытии
       setSelectedGame(null);
+      console.log('🔓 useEffect[open]: Сбрасываем justRolled = false (открытие)');
       setJustRolled(false);
       // Проверяем условия роллинга
       canSelectGame(); // Это обновит errorMessage и canRollAgain если нужно
@@ -220,6 +235,7 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
       setErrorMessage('');
       setCanRollAgain(true);
       setSelectedGame(null);
+      console.log('🔓 useEffect[open]: Сбрасываем justRolled = false (закрытие)');
       setJustRolled(false);
     }
   }, [open, playerProfile]);
@@ -238,7 +254,10 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
     if (open && currentUser?.type === 'player' && !isTestRoll && !justRolled) {
       // Пересчитываем возможность роллинга при изменении профиля
       // НО только если ролл не был только что выполнен в этом окне
+      console.log('📊 useEffect[playerProfile]: Пересчитываем canSelectGame');
       canSelectGame();
+    } else if (justRolled) {
+      console.log('🚫 useEffect[playerProfile]: Пропускаем из-за justRolled = true');
     }
   }, [playerProfile?.games]);
 
@@ -423,7 +442,10 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
 
         <Button
           variant="contained"
-          onClick={startRoll}
+          onClick={() => {
+            console.log('🖱️ Button click: isRolling =', isRolling, 'selectedPool =', selectedPool, 'canRollAgain =', canRollAgain, 'justRolled =', justRolled);
+            startRoll();
+          }}
           disabled={isRolling || !selectedPool || !canRollAgain || justRolled}
           sx={{
             bgcolor: '#151515',
