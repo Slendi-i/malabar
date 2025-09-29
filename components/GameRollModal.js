@@ -72,20 +72,30 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
   };
 
   const canSelectGame = () => {
-    if (!currentUser || currentUser.type !== 'player' || isTestRoll) {
-      setCanRollAgain(true);
-      return true;
-    }
+    console.log('🔍 canSelectGame: Проверка условий роллинга');
+    console.log('🔍 Параметры:', {
+      currentUser: currentUser?.type,
+      isTestRoll,
+      justRolled,
+      gamesCount: playerProfile?.games?.length || 0
+    });
 
-    // КРИТИЧЕСКИ ВАЖНО: Если ролл только что был выполнен в этом окне - БЛОКИРУЕМ
+    // КРИТИЧЕСКИ ВАЖНО: Если ролл только что был выполнен в этом окне - БЛОКИРУЕМ НАВСЕГДА
     if (justRolled) {
-      console.log('🚫 canSelectGame: Блокировка из-за justRolled = true');
+      console.log('🚫 canSelectGame: ПОЛНАЯ БЛОКИРОВКА из-за justRolled = true');
       setErrorMessage('🎲 Сначала кинь кубик, потом выбирай игру! Дебил.');
       setCanRollAgain(false);
       return false;
     }
+    
+    if (!currentUser || currentUser.type !== 'player' || isTestRoll) {
+      console.log('✅ canSelectGame: Разрешение для админа/гостя/тестового ролла');
+      setCanRollAgain(true);
+      return true;
+    }
 
     const games = playerProfile?.games || [];
+    console.log('🎮 canSelectGame: Игры игрока:', games);
     
     // ИСПРАВЛЕННАЯ ЛОГИКА: КОГДА МОЖНО РОЛЛИТЬ ИГРУ
     
@@ -113,17 +123,25 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
     }
     
     // СЛУЧАЙ 4: Есть игра "В процессе" с кубиком, но без названия - МОЖНО (правильная последовательность)
-    const hasGameWithDice = games.some(
+    // НО ТОЛЬКО ОДНА ТАКАЯ ИГРА! Если их больше одной - значит уже роллили в этом окне
+    const gamesWithDiceNoName = games.filter(
       game => game.status === 'В процессе' && 
              game.dice > 0 && 
              (!game.name || game.name === '')
     );
     
-    if (hasGameWithDice) {
-      console.log('✅ canSelectGame: Разрешение из-за игры с кубиком без названия');
+    console.log('🎲 canSelectGame: Игры с кубиками без названий:', gamesWithDiceNoName.length);
+    
+    if (gamesWithDiceNoName.length === 1) {
+      console.log('✅ canSelectGame: Разрешение - ровно одна игра с кубиком без названия');
       setErrorMessage('');
       setCanRollAgain(true);
       return true;
+    } else if (gamesWithDiceNoName.length > 1) {
+      console.log('🚫 canSelectGame: Блокировка - несколько игр с кубиками без названий (уже роллили)');
+      setErrorMessage('🎲 Сначала кинь кубик, потом выбирай игру! Дебил.');
+      setCanRollAgain(false);
+      return false;
     }
     
     // ВСЕ ОСТАЛЬНЫЕ СЛУЧАИ: НЕЛЬЗЯ
@@ -223,12 +241,14 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
 
   // Проверяем возможность выбора игры при открытии модала
   useEffect(() => {
+    console.log('🚪 useEffect[open]: Модал открыт =', open);
     if (open) {
       // Сбрасываем состояния при открытии
       setSelectedGame(null);
       console.log('🔓 useEffect[open]: Сбрасываем justRolled = false (открытие)');
       setJustRolled(false);
       // Проверяем условия роллинга
+      console.log('🔓 useEffect[open]: Вызываем canSelectGame()');
       canSelectGame(); // Это обновит errorMessage и canRollAgain если нужно
     } else {
       // Сбрасываем состояния при закрытии модала
@@ -251,13 +271,15 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
 
   // Отслеживаем изменения в профиле игрока для пересчета условий роллинга
   useEffect(() => {
-    if (open && currentUser?.type === 'player' && !isTestRoll && !justRolled) {
-      // Пересчитываем возможность роллинга при изменении профиля
-      // НО только если ролл не был только что выполнен в этом окне
+    // ВАЖНО: Если уже роллили в этом окне - НЕ ПЕРЕСЧИТЫВАЕМ условия!
+    if (justRolled) {
+      console.log('🚫 useEffect[playerProfile]: Пропускаем из-за justRolled = true');
+      return;
+    }
+    
+    if (open && currentUser?.type === 'player' && !isTestRoll) {
       console.log('📊 useEffect[playerProfile]: Пересчитываем canSelectGame');
       canSelectGame();
-    } else if (justRolled) {
-      console.log('🚫 useEffect[playerProfile]: Пропускаем из-за justRolled = true');
     }
   }, [playerProfile?.games]);
 
@@ -444,6 +466,7 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
           variant="contained"
           onClick={() => {
             console.log('🖱️ Button click: isRolling =', isRolling, 'selectedPool =', selectedPool, 'canRollAgain =', canRollAgain, 'justRolled =', justRolled);
+            console.log('🖱️ Button disabled =', (isRolling || !selectedPool || !canRollAgain || justRolled));
             startRoll();
           }}
           disabled={isRolling || !selectedPool || !canRollAgain || justRolled}
