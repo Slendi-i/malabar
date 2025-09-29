@@ -19,6 +19,7 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
   const [errorMessage, setErrorMessage] = useState('');
   const [gamesPool, setGamesPool] = useState([]);
   const [canRollAgain, setCanRollAgain] = useState(true);
+  const [justRolled, setJustRolled] = useState(false);
   
   const rollData = useRef({
     interval: null,
@@ -132,6 +133,12 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
 
     // Проверяем условия непосредственно перед роллом
     if (currentUser?.type === 'player' && !isTestRoll) {
+      // Дополнительная защита: проверяем не был ли недавно выполнен ролл
+      if (justRolled) {
+        setErrorMessage('🎲 Сначала кинь кубик, потом выбирай игру! Дебил.');
+        return;
+      }
+      
       if (!canSelectGame()) {
         return; // canSelectGame() уже установит нужное сообщение об ошибке
       }
@@ -190,8 +197,8 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
       if (currentUser?.type === 'player' && !isTestRoll) {
         onGameSelect(centerGame);
         
-        // ВАЖНО: Сразу блокируем повторные роллы после выбора игры
-        // Профиль игрока обновится и useEffect пересчитает canRollAgain
+        // ВАЖНО: Блокируем повторные роллы и отмечаем что ролл только что был выполнен
+        setJustRolled(true);
         setCanRollAgain(false);
         setErrorMessage('🎲 Сначала кинь кубик, потом выбирай игру! Дебил.');
       }
@@ -203,8 +210,9 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
   // Проверяем возможность выбора игры при открытии модала
   useEffect(() => {
     if (open) {
-      // Сбрасываем состояние выбранной игры при открытии
+      // Сбрасываем состояния при открытии
       setSelectedGame(null);
+      setJustRolled(false);
       // Проверяем условия роллинга
       canSelectGame(); // Это обновит errorMessage и canRollAgain если нужно
     } else {
@@ -212,20 +220,24 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
       setErrorMessage('');
       setCanRollAgain(true);
       setSelectedGame(null);
+      setJustRolled(false);
     }
   }, [open, playerProfile]);
 
   // Проверяем условия при изменении режима тестового ролла
   useEffect(() => {
     if (open) {
+      // Сбрасываем флаг недавнего ролла при переключении режима
+      setJustRolled(false);
       canSelectGame();
     }
   }, [isTestRoll]);
 
   // Отслеживаем изменения в профиле игрока для пересчета условий роллинга
   useEffect(() => {
-    if (open && currentUser?.type === 'player' && !isTestRoll) {
+    if (open && currentUser?.type === 'player' && !isTestRoll && !justRolled) {
       // Пересчитываем возможность роллинга при изменении профиля
+      // НО только если ролл не был только что выполнен в этом окне
       canSelectGame();
     }
   }, [playerProfile?.games]);
@@ -412,7 +424,7 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
         <Button
           variant="contained"
           onClick={startRoll}
-          disabled={isRolling || !selectedPool || !canRollAgain}
+          disabled={isRolling || !selectedPool || !canRollAgain || justRolled}
           sx={{
             bgcolor: '#151515',
             color: '#FFFFFF',
