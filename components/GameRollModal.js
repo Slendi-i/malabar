@@ -18,6 +18,7 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
   const [selectedGame, setSelectedGame] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [gamesPool, setGamesPool] = useState([]);
+  const [canRollAgain, setCanRollAgain] = useState(true);
   
   const rollData = useRef({
     interval: null,
@@ -70,7 +71,10 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
   };
 
   const canSelectGame = () => {
-    if (!currentUser || currentUser.type !== 'player' || isTestRoll) return true;
+    if (!currentUser || currentUser.type !== 'player' || isTestRoll) {
+      setCanRollAgain(true);
+      return true;
+    }
 
     const games = playerProfile?.games || [];
     
@@ -79,6 +83,7 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
     // СЛУЧАЙ 1: Пустая таблица игр (стоит на нулевой клетке) - НЕЛЬЗЯ
     if (games.length === 0) {
       setErrorMessage('🎲 Сначала кинь кубик, потом выбирай игру! Дебил.');
+      setCanRollAgain(false);
       return false;
     }
     
@@ -87,12 +92,14 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
     // СЛУЧАЙ 2: Последняя игра "Реролл" - МОЖНО (кубик известен)
     if (lastGame && lastGame.status === 'Реролл') {
       setErrorMessage('');
+      setCanRollAgain(true);
       return true;
     }
     
     // СЛУЧАЙ 3: Последняя игра "Дроп" - МОЖНО (кубик = -12)
     if (lastGame && lastGame.status === 'Дроп') {
       setErrorMessage('');
+      setCanRollAgain(true);
       return true;
     }
     
@@ -105,6 +112,7 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
     
     if (hasGameWithDice) {
       setErrorMessage('');
+      setCanRollAgain(true);
       return true;
     }
     
@@ -112,6 +120,7 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
     // - Последняя игра "Пройдено" 
     // - Последняя игра "В процессе" (без кубика или с названием)
     setErrorMessage('🎲 Сначала кинь кубик, потом выбирай игру! Дебил.');
+    setCanRollAgain(false);
     return false;
   };
 
@@ -178,6 +187,12 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
       
       if (currentUser?.type === 'player' && !isTestRoll) {
         onGameSelect(centerGame);
+        
+        // ВАЖНО: Проверяем условия после выбора игры для предотвращения повторных роллов
+        // Используем setTimeout чтобы дать время обновиться профилю игрока
+        setTimeout(() => {
+          canSelectGame();
+        }, 100);
       }
     };
 
@@ -187,9 +202,21 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
   // Проверяем возможность выбора игры при открытии модала
   useEffect(() => {
     if (open) {
-      canSelectGame(); // Это обновит errorMessage если нужно
+      canSelectGame(); // Это обновит errorMessage и canRollAgain если нужно
+    } else {
+      // Сбрасываем состояния при закрытии модала
+      setErrorMessage('');
+      setCanRollAgain(true);
+      setSelectedGame(null);
     }
   }, [open, playerProfile]);
+
+  // Проверяем условия при изменении режима тестового ролла
+  useEffect(() => {
+    if (open) {
+      canSelectGame();
+    }
+  }, [isTestRoll]);
 
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
   useEffect(() => {
@@ -373,7 +400,7 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
         <Button
           variant="contained"
           onClick={startRoll}
-          disabled={isRolling || !selectedPool}
+          disabled={isRolling || !selectedPool || !canRollAgain}
           sx={{
             bgcolor: '#151515',
             color: '#FFFFFF',
