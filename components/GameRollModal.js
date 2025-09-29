@@ -130,9 +130,11 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
       return;
     }
 
-    if (currentUser?.type === 'player' && !isTestRoll && !canSelectGame()) {
-      setErrorMessage('Завершите текущие игры или бросьте кубик');
-      return;
+    // Проверяем условия непосредственно перед роллом
+    if (currentUser?.type === 'player' && !isTestRoll) {
+      if (!canSelectGame()) {
+        return; // canSelectGame() уже установит нужное сообщение об ошибке
+      }
     }
 
     setIsRolling(true);
@@ -188,11 +190,10 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
       if (currentUser?.type === 'player' && !isTestRoll) {
         onGameSelect(centerGame);
         
-        // ВАЖНО: Проверяем условия после выбора игры для предотвращения повторных роллов
-        // Используем setTimeout чтобы дать время обновиться профилю игрока
-        setTimeout(() => {
-          canSelectGame();
-        }, 100);
+        // ВАЖНО: Сразу блокируем повторные роллы после выбора игры
+        // Профиль игрока обновится и useEffect пересчитает canRollAgain
+        setCanRollAgain(false);
+        setErrorMessage('🎲 Сначала кинь кубик, потом выбирай игру! Дебил.');
       }
     };
 
@@ -202,6 +203,9 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
   // Проверяем возможность выбора игры при открытии модала
   useEffect(() => {
     if (open) {
+      // Сбрасываем состояние выбранной игры при открытии
+      setSelectedGame(null);
+      // Проверяем условия роллинга
       canSelectGame(); // Это обновит errorMessage и canRollAgain если нужно
     } else {
       // Сбрасываем состояния при закрытии модала
@@ -217,6 +221,14 @@ const GameRollModal = ({ open, onClose, currentUser, onGameSelect, playerProfile
       canSelectGame();
     }
   }, [isTestRoll]);
+
+  // Отслеживаем изменения в профиле игрока для пересчета условий роллинга
+  useEffect(() => {
+    if (open && currentUser?.type === 'player' && !isTestRoll) {
+      // Пересчитываем возможность роллинга при изменении профиля
+      canSelectGame();
+    }
+  }, [playerProfile?.games]);
 
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
   useEffect(() => {
