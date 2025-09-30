@@ -78,6 +78,17 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
         return;
       }
       
+      // КРИТИЧЕСКАЯ ПРОВЕРКА: нельзя кидать кубик если уже есть игра "В процессе" с кубиком
+      const hasUnfinishedGameWithDice = games.some(g => 
+        g && g.status === 'В процессе' && g.dice > 0
+      );
+      
+      if (hasUnfinishedGameWithDice) {
+        console.error('🚫 НАРУШЕНИЕ ПРАВИЛ: попытка кинуть кубик при наличии незавершенной игры');
+        alert('Завершите текущую игру перед новым броском!');
+        return;
+      }
+      
       // Проверяем, есть ли незавершенная игра (только статус "В процессе" без кубика)
       let gameToUpdate = games.find(g => 
         g && g.status === 'В процессе' && 
@@ -107,6 +118,17 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
           ? { ...player, games: games }
           : player
       ));
+      
+      // Обновляем профиль для DiceModal чтобы canRoll обновился
+      if (currentUser?.type === 'player') {
+        const updatedProfile = players.find(p => p.id === currentUser.id);
+        if (updatedProfile) {
+          setCurrentPlayerProfile({
+            ...updatedProfile,
+            games: games
+          });
+        }
+      }
     } catch (error) {
       console.error('❌ Ошибка сохранения результата броска:', error);
       alert('Ошибка сохранения результата броска. Попробуйте еще раз.');
