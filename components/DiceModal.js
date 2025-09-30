@@ -36,9 +36,11 @@ const DiceModal = ({ open, onClose, currentUser, onRollComplete, playerProfile }
     if (open && currentUser?.type === 'player') {
       const games = playerProfile?.games || [];
       
-      // Проверяем незавершенную игру "В процессе"
+      // Проверяем незавершенную последовательность: игра "В процессе" с кубиком, но БЕЗ названия
       const hasUnfinishedGame = games.some(
-        game => game.status === 'В процессе' && game.dice > 0
+        game => game.status === 'В процессе' && 
+                 game.dice > 0 && 
+                 (!game.name || game.name === '')
       );
       
       // ЗАЩИТА ОТ РЕРОЛЛА: нельзя кидать кубик если последняя игра "Реролл"

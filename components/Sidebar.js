@@ -277,6 +277,7 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
               textTransform: 'none'
             }}
             onClick={() => {
+              // Обновляем профиль игрока каждый раз при открытии
               if (currentUser?.type === 'player') {
                 const profile = players.find(p => p.id === currentUser.id);
                 setCurrentPlayerProfile(profile ? {
@@ -314,6 +315,7 @@ export default function Sidebar({ players = [], setPlayers, currentUser }) {
               textTransform: 'none'
             }}
             onClick={() => {
+              // Обновляем профиль игрока каждый раз при открытии
               if (currentUser?.type === 'player') {
                 const profile = players.find(p => p.id === currentUser.id);
                 setCurrentPlayerProfile(profile ? {
